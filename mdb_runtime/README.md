@@ -28,7 +28,7 @@ MDB_RUNTIME provides a complete runtime engine for building multi-tenant MongoDB
 - MongoDB-style API with automatic scoping
 
 **Connection Management** (`database/connection.py`)
-- Shared connection pooling for Ray actors
+- Shared connection pooling for efficient resource usage
 - Pool metrics and monitoring
 
 ### `auth` - Authentication & Authorization

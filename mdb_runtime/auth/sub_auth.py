@@ -1026,10 +1026,10 @@ async def ensure_demo_users_for_actor(
     This is the recommended way for actors to call ensure_demo_users_exist during
     initialization, as it automatically loads the manifest config.
     
-    Note: In isolated Ray environments, the manifest might not be accessible via
-    filesystem. In such cases, this function gracefully handles the error and
-    returns an empty list. The platform will still auto-detect and link platform
-    demo users on first access via request context.
+    Note: If the manifest file is not accessible via filesystem (e.g., not in the expected
+    location), this function gracefully handles the error and returns an empty list.
+    The platform will still auto-detect and link platform demo users on first access
+    via request context.
     
     Example usage in actor.initialize():
         from mdb_runtime.auth import ensure_demo_users_for_actor
@@ -1076,8 +1076,7 @@ async def ensure_demo_users_for_actor(
         if not manifest_path.exists():
             logger.warning(
                 f"Manifest not found at {manifest_path} for {slug_id}. "
-                f"This is normal in isolated Ray environments. Demo users will be "
-                f"auto-created on first access via request context."
+                f"Demo users will be auto-created on first access via request context."
             )
             return []
         
@@ -1093,7 +1092,7 @@ async def ensure_demo_users_for_actor(
         
     except FileNotFoundError:
         logger.debug(
-            f"Manifest file not accessible for {slug_id} (possibly isolated Ray environment). "
+            f"Manifest file not accessible for {slug_id}. "
             f"Demo users will be auto-created on first access."
         )
         return []

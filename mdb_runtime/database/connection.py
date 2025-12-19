@@ -1,13 +1,14 @@
 """
 Shared MongoDB Connection Pool Manager
 
-Provides a singleton MongoDB connection pool manager for Ray actors to share
-database connections efficiently. This prevents each actor from creating its
-own connection pool, reducing total connections from N×50 to N×5.
+Provides a singleton MongoDB connection pool manager for sharing database
+connections efficiently across multiple components in the same process.
+This prevents each component from creating its own connection pool, reducing
+total connections and improving resource utilization.
 
-This module implements a thread-safe singleton pattern that ensures all Ray
-actors in the same process share a single MongoDB client instance with a
-reasonable connection pool size.
+This module implements a thread-safe singleton pattern that ensures all
+components in the same process share a single MongoDB client instance with
+a reasonable connection pool size.
 
 This module is part of MDB_RUNTIME - MongoDB Multi-Tenant Runtime Engine.
 
@@ -30,8 +31,8 @@ logger = logging.getLogger(__name__)
 
 # Global singleton instance
 _shared_client: Optional[AsyncIOMotorClient] = None
-# Use threading.Lock for cross-thread safety in Ray's actor environment
-# Ray actors may run in different threads, so asyncio.Lock isn't sufficient
+# Use threading.Lock for cross-thread safety in multi-threaded environments
+# asyncio.Lock isn't sufficient for thread-safe initialization
 _init_lock = threading.Lock()
 
 
@@ -47,12 +48,12 @@ def get_shared_mongo_client(
     """
     Gets or creates a shared MongoDB client instance.
     
-    This function implements a singleton pattern to ensure all Ray actors
+    This function implements a singleton pattern to ensure all components
     in the same process share a single MongoDB client connection pool.
     
     Args:
         mongo_uri: MongoDB connection URI
-        max_pool_size: Maximum connection pool size (default: from env or 10 for actors)
+        max_pool_size: Maximum connection pool size (default: from env or 10)
         min_pool_size: Minimum connection pool size (default: from env or 1)
         server_selection_timeout_ms: Server selection timeout in milliseconds
         max_idle_time_ms: Maximum idle time before closing connections
@@ -75,7 +76,7 @@ def get_shared_mongo_client(
         min_pool_size = int(os.getenv("MONGO_ACTOR_MIN_POOL_SIZE", "1"))
     
     logger.info(
-        f"MongoDB Actor Pool Configuration: max_pool_size={max_pool_size}, "
+        f"MongoDB Shared Pool Configuration: max_pool_size={max_pool_size}, "
         f"min_pool_size={min_pool_size} (from env or defaults)"
     )
     
@@ -91,7 +92,7 @@ def get_shared_mongo_client(
             _shared_client = None
     
     # Thread-safe initialization with lock
-    # Use threading lock for Ray's multi-threaded actor environment
+    # Use threading lock for multi-threaded environments
     with _init_lock:
         # Double-check pattern: another thread may have initialized while we waited
         if _shared_client is not None:
@@ -104,14 +105,14 @@ def get_shared_mongo_client(
         
         logger.info(
             f"Creating shared MongoDB client with pool_size={max_pool_size}, "
-            f"min_pool_size={min_pool_size} (singleton for all actors in this process)"
+            f"min_pool_size={min_pool_size} (singleton for all components in this process)"
         )
         
         try:
             _shared_client = AsyncIOMotorClient(
                 mongo_uri,
                 serverSelectionTimeoutMS=server_selection_timeout_ms,
-                appname="ModularLabsActor",
+                appname="MDB_RUNTIME_Shared",
                 maxPoolSize=max_pool_size,
                 minPoolSize=min_pool_size,
                 maxIdleTimeMS=max_idle_time_ms,
@@ -129,7 +130,7 @@ def get_shared_mongo_client(
             )
             
             # Note: Ping verification happens asynchronously on first use
-            # This avoids blocking during synchronous __init__ in Ray actors
+            # This avoids blocking during synchronous initialization
             
             return _shared_client
         except Exception as e:
@@ -207,7 +208,7 @@ async def get_pool_metrics(client: Optional[AsyncIOMotorClient] = None) -> Dict[
     if client is not None:
         return await _get_client_pool_metrics(client)
     
-    # Try shared client first (for Ray actors)
+    # Try shared client first
     if _shared_client is not None:
         return await _get_client_pool_metrics(_shared_client)
     

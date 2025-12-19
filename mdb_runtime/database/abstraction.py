@@ -585,7 +585,7 @@ async def get_app_db(
 
 
 # ============================================================================
-# Actor Database Factory - Magical abstraction for Ray actors
+# Database Factory - Convenient factory for creating scoped database interfaces
 # ============================================================================
 
 def create_actor_database(
@@ -598,14 +598,15 @@ def create_actor_database(
     server_selection_timeout_ms: int = 5000,
 ) -> AppDB:
     """
-    Factory function that creates a Motor-like database interface for Ray actors.
+    Factory function that creates a Motor-like database interface with automatic
+    connection pooling and app scoping.
     
     This function abstracts away all the complexity of:
     - Connection pool management
     - Scoped wrapper setup
     - AppDB initialization
     
-    Actors can simply call this function and get back a database object that
+    Components can simply call this function and get back a database object that
     works exactly like Motor's AsyncIOMotorDatabase API, with automatic:
     - App scoping (read/write isolation)
     - Index management (automatic index creation)
@@ -616,7 +617,7 @@ def create_actor_database(
         db_name: Database name
         write_scope: App slug for write operations (documents get this app_id)
         read_scopes: List of app slugs for read operations (can read from these apps)
-        max_pool_size: Maximum connection pool size (default: 10 for actors)
+        max_pool_size: Maximum connection pool size (default: 10)
         min_pool_size: Minimum connection pool size (default: 1)
         server_selection_timeout_ms: Server selection timeout in milliseconds
     
@@ -626,7 +627,7 @@ def create_actor_database(
     Example:
         from mdb_runtime.database import create_actor_database
         
-        class AppActor:
+        class MyComponent:
             def __init__(self, mongo_uri: str, db_name: str, write_scope: str, read_scopes: List[str]):
                 # One line to get a Motor-like database interface!
                 self.db = create_actor_database(mongo_uri, db_name, write_scope, read_scopes)
@@ -669,7 +670,7 @@ def create_actor_database(
         db = AppDB(scoped_wrapper)
         
         logger.debug(
-            f"Created actor database for write_scope='{write_scope}', "
+            f"Created scoped database for write_scope='{write_scope}', "
             f"read_scopes={read_scopes}, db='{db_name}'"
         )
         
@@ -679,6 +680,6 @@ def create_actor_database(
         logger.critical(f"Failed to import database modules: {e}")
         raise RuntimeError(f"Database modules not available: {e}")
     except Exception as e:
-        logger.error(f"Failed to create actor database: {e}", exc_info=True)
-        raise RuntimeError(f"Failed to create actor database: {e}")
+        logger.error(f"Failed to create scoped database: {e}", exc_info=True)
+        raise RuntimeError(f"Failed to create scoped database: {e}")
 

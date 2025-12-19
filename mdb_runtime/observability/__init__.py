@@ -1,7 +1,7 @@
 """
 Observability components.
 
-Provides structured logging, metrics collection, distributed tracing,
+Provides structured logging, metrics collection, request tracing,
 and health check capabilities.
 """
 

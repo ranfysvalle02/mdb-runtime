@@ -11,7 +11,7 @@ A simple, beginner-friendly example that demonstrates:
 - Creating and registering an app manifest
 - Basic CRUD operations
 - Automatic app scoping
-- Docker Compose setup with MongoDB and Ray
+- Docker Compose setup with MongoDB
 
 **Perfect for:** Getting started with MDB_RUNTIME
 
@@ -28,8 +28,7 @@ Each example includes a `docker-compose.yml` file that provides:
 ### Standard Services
 
 - **MongoDB** - Database server with authentication
-- **MongoDB Express** - Web UI for browsing data
-- **Ray Head Node** - Distributed computing (optional)
+- **MongoDB Express** - Web UI for browsing data (optional)
 
 ### Quick Start with Docker
 
@@ -52,8 +51,7 @@ docker-compose down
 When Docker Compose is running:
 
 - **MongoDB:** `mongodb://admin:password@localhost:27017/?authSource=admin`
-- **MongoDB Express UI:** http://localhost:8081 (admin/admin)
-- **Ray Dashboard:** http://localhost:8265
+- **MongoDB Express UI:** http://localhost:8081 (admin/admin, optional with `--profile ui`)
 
 ## Running Examples
 

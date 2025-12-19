@@ -43,12 +43,6 @@ That's it! The Docker Compose setup will:
 ```bash
 # Include MongoDB Express UI
 docker-compose --profile ui up
-
-# Include Ray
-docker-compose --profile ray up
-
-# Include both
-docker-compose --profile ui --profile ray up
 ```
 
 **View logs:**
@@ -81,19 +75,12 @@ docker-compose -f docker-compose.yml -f docker-compose.prod.yml up -d
 **What gets started:**
 - ✅ **App Container** - Runs the hello_world example automatically
 - ✅ **MongoDB** - Database on port 27017
-- ✅ **MongoDB Express** - Web UI on http://localhost:8081
-- ✅ **Ray Head Node** - Optional, only with `--profile ray` flag
+- ✅ **MongoDB Express** - Web UI on http://localhost:8081 (optional, with `--profile ui`)
 
 **Access the services:**
 - 🌐 **Web Application**: http://localhost:8000 (login: demo@demo.com / password123)
 - MongoDB: `mongodb://admin:password@localhost:27017/?authSource=admin`
-- MongoDB Express UI: http://localhost:8081 (login: admin/admin)
-- Ray Dashboard: http://localhost:8265 (if Ray is started)
-
-**Run with Ray:**
-```bash
-docker-compose --profile ray up
-```
+- MongoDB Express UI: http://localhost:8081 (login: admin/admin, optional)
 
 **Run in detached mode:**
 ```bash
@@ -289,12 +276,6 @@ The `docker-compose.yml` file includes:
 - **Credentials:** admin/admin
 - **Purpose:** Browse and manage your MongoDB data visually
 
-### Ray Head Node (Optional)
-- **Dashboard:** http://localhost:8265
-- **Port:** 6379 (GCS), 10001 (Client)
-- **Purpose:** Distributed computing
-- **Note:** Only starts with `--profile ray` flag
-
 ### Environment Variables
 
 Environment variables are set in `docker-compose.yml`. You can override them:
@@ -424,7 +405,6 @@ See [DOCKER_BEST_PRACTICES.md](./DOCKER_BEST_PRACTICES.md) for a comprehensive g
 - Add indexes to the manifest
 - Check out the FastAPI example for building a real API
 - Explore MongoDB Express UI: `docker-compose --profile ui up` then http://localhost:8081
-- Check Ray Dashboard: `docker-compose --profile ray up` then http://localhost:8265
 - Review [DOCKER_BEST_PRACTICES.md](./DOCKER_BEST_PRACTICES.md) for production deployment
 
 ---

@@ -1,7 +1,7 @@
 """
 Actor management.
 
-Handles Ray actor lifecycle, registry, and monitoring.
+This module is reserved for future actor/concurrent component management features.
 """
 
 __all__ = []

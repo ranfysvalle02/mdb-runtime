@@ -122,10 +122,10 @@ networks:
 
 ```yaml
 profiles:
-  - ray  # Only start with: docker-compose --profile ray up
+  - ui  # Only start with: docker-compose --profile ui up
 ```
 
-- MongoDB Express and Ray are optional
+- MongoDB Express is optional
 - Start only what you need
 - Reduces resource usage
 
@@ -210,7 +210,6 @@ LABEL org.opencontainers.image.title="MDB_RUNTIME Hello World"
 Every service should have a health check:
 - App: Python process check
 - MongoDB: Database ping
-- Ray: Ray health check
 
 ### Resource Monitoring
 

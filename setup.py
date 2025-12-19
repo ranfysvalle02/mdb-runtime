@@ -31,11 +31,9 @@ setup(
         "bcrypt>=4.0.0",
     ],
     extras_require={
-        "ray": ["ray>=2.0.0"],
         "casbin": ["casbin>=1.0.0", "casbin-motor-adapter>=0.1.0"],
         "oso": ["oso>=0.27.0"],
         "all": [
-            "ray>=2.0.0",
             "casbin>=1.0.0",
             "casbin-motor-adapter>=0.1.0",
             "oso>=0.27.0",
