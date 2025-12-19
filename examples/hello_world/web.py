@@ -58,54 +58,9 @@ templates = Jinja2Templates(directory="/app/templates")
 engine: Optional[RuntimeEngine] = None
 db = None
 
-# WebSocket connection manager
-class ConnectionManager:
-    def __init__(self):
-        self.active_connections: List[WebSocket] = []
-        self._lock = asyncio.Lock()
-    
-    async def connect(self, websocket: WebSocket):
-        """Accept and register a WebSocket connection"""
-        await websocket.accept()
-        async with self._lock:
-            if websocket not in self.active_connections:
-                self.active_connections.append(websocket)
-        print(f"✅ WebSocket connected. Total connections: {len(self.active_connections)}")
-    
-    def disconnect(self, websocket: WebSocket):
-        async def _disconnect():
-            async with self._lock:
-                if websocket in self.active_connections:
-                    self.active_connections.remove(websocket)
-            print(f"🔌 WebSocket disconnected. Total connections: {len(self.active_connections)}")
-        asyncio.create_task(_disconnect())
-    
-    async def broadcast(self, message: Dict[str, Any]):
-        """Broadcast a message to all connected clients"""
-        if not self.active_connections:
-            return
-        
-        message_json = json.dumps(message)
-        disconnected = []
-        
-        async with self._lock:
-            connections = list(self.active_connections)
-        
-        for connection in connections:
-            try:
-                await connection.send_text(message_json)
-            except Exception as e:
-                print(f"⚠️  Error sending to client: {e}")
-                disconnected.append(connection)
-        
-        # Clean up disconnected clients
-        if disconnected:
-            async with self._lock:
-                for conn in disconnected:
-                    if conn in self.active_connections:
-                        self.active_connections.remove(conn)
-
-manager = ConnectionManager()
+# WebSocket connection manager - now using runtime's WebSocket support
+# The manager will be initialized after engine is ready
+ws_manager = None
 
 # Secret key for JWT (should match what's in dependencies)
 SECRET_KEY = os.environ.get("FLASK_SECRET_KEY", "a_very_bad_dev_secret_key_12345")
@@ -121,7 +76,10 @@ async def periodic_metrics_broadcast():
     
     while True:
         try:
-            if engine and len(manager.active_connections) > 0:
+            # Check if there are any WebSocket connections
+            from mdb_runtime.routing.websockets import get_websocket_manager
+            manager = await get_websocket_manager("hello_world")
+            if engine and manager.get_connection_count() > 0:
                 # Get health status
                 health = await engine.get_health_status()
                 engine_check = next((c for c in health['checks'] if c.get('name') == 'engine'), None)
@@ -167,8 +125,8 @@ async def periodic_metrics_broadcast():
                 except Exception:
                     pass
                 
-                # Broadcast metrics update
-                await manager.broadcast({
+                # Broadcast metrics update using runtime's convenience function
+                await broadcast_to_app("hello_world", {
                     "type": "metrics_update",
                     "data": {
                         "health": {
@@ -191,7 +149,7 @@ async def periodic_metrics_broadcast():
 async def startup_event():
     # Log all registered routes for debugging
     print("=" * 50)
-    print("📋 Registered Routes:")
+    print("📋 Registered Routes (BEFORE WebSocket registration):")
     for route in app.routes:
         if hasattr(route, 'path'):
             route_type = "WebSocket" if hasattr(route, 'endpoint') and 'websocket' in str(type(route)).lower() else "HTTP"
@@ -236,6 +194,13 @@ async def startup_event():
     # Get scoped database and store globally
     db = engine.get_scoped_db("hello_world")
     
+    # Register message handlers FIRST (before route registration)
+    # This ensures handlers are available when routes are created
+    register_websocket_message_handlers()
+    
+    # Register WebSocket routes from manifest (handlers are now available)
+    register_websocket_routes_from_manifest()
+    
     # Ensure demo user exists
     try:
         from motor.motor_asyncio import AsyncIOMotorClient
@@ -279,6 +244,60 @@ async def startup_event():
             print(f"✅ Seeded {len(greetings)} initial greetings")
     except Exception as e:
         print(f"⚠️  Could not seed data: {e}")
+    
+    # Log all registered routes AFTER WebSocket registration
+    print("=" * 50)
+    print("📋 Registered Routes (AFTER WebSocket registration):")
+    ws_routes = []
+    for route in app.routes:
+        if hasattr(route, 'path'):
+            # Check if it's a WebSocket route
+            is_ws = False
+            route_type_name = type(route).__name__
+            
+            try:
+                from fastapi.routing import WebSocketRoute
+                
+                # Check if it's a WebSocketRoute instance
+                if isinstance(route, WebSocketRoute):
+                    is_ws = True
+                # HTTP routes have 'methods' attribute, WebSocket routes don't
+                elif hasattr(route, 'methods'):
+                    is_ws = False
+                # Check route_class attribute
+                elif hasattr(route, 'route_class'):
+                    route_class_name = route.route_class.__name__ if hasattr(route.route_class, '__name__') else str(route.route_class)
+                    is_ws = 'WebSocket' in route_class_name
+                # Check the type string
+                else:
+                    route_type_str = str(type(route))
+                    is_ws = 'websocket' in route_type_str.lower() or 'WebSocket' in route_type_str or 'WebSocketRoute' in route_type_str
+                
+                # Special check for /ws path - inspect route details
+                if route.path == '/ws' and not is_ws:
+                    print(f"   🔍 DEBUG: /ws route type: {route_type_name}, has methods: {hasattr(route, 'methods')}, route_class: {getattr(route, 'route_class', 'N/A')}")
+                    # If it doesn't have methods, it's likely a WebSocket route
+                    if not hasattr(route, 'methods'):
+                        is_ws = True
+                        print(f"   ✅ Detected /ws as WebSocket (no methods attribute)")
+            except Exception as e:
+                # If detection fails, check type string as fallback
+                try:
+                    route_type_str = str(type(route))
+                    is_ws = 'websocket' in route_type_str.lower() or 'WebSocketRoute' in route_type_str
+                except:
+                    pass
+            
+            route_type = "WebSocket" if is_ws else "HTTP"
+            print(f"  {route_type}: {route.path}")
+            if is_ws:
+                ws_routes.append(route.path)
+    print("=" * 50)
+    if '/ws' in ws_routes:
+        print("✅ WebSocket route '/ws' is registered!")
+    else:
+        print("❌ WebSocket route '/ws' is NOT registered!")
+        print(f"   Found WebSocket routes: {ws_routes}")
     
     print("✅ Web application ready!")
     
@@ -400,6 +419,16 @@ async def login(
             samesite="lax",
             max_age=86400  # 24 hours
         )
+        # Also set a non-httponly cookie for WebSocket access (same domain, so relatively safe)
+        # This allows JavaScript to read it for WebSocket authentication
+        response.set_cookie(
+            key="ws_token",
+            value=token,
+            httponly=False,  # Allow JS access for WebSocket
+            secure=False,
+            samesite="lax",
+            max_age=86400
+        )
         return response
         
     except Exception as e:
@@ -415,6 +444,7 @@ async def logout():
     """Handle logout"""
     response = RedirectResponse(url="/login", status_code=status.HTTP_302_FOUND)
     response.delete_cookie(key="token")
+    response.delete_cookie(key="ws_token")
     return response
 
 
@@ -643,8 +673,9 @@ async def create_greeting(
     # Fetch the created greeting for broadcast
     created_greeting = await db.greetings.find_one({"_id": result.inserted_id})
     
-    # Broadcast to all WebSocket clients
-    await manager.broadcast({
+    # Broadcast to all WebSocket clients using runtime's convenience function
+    # This automatically scopes the message to this app
+    await broadcast_to_app("hello_world", {
         "type": "greeting_created",
         "data": {
             "_id": str(created_greeting["_id"]),
@@ -657,7 +688,7 @@ async def create_greeting(
     
     # Also update metrics
     total_count = await db.greetings.count_documents({})
-    await manager.broadcast({
+    await broadcast_to_app("hello_world", {
         "type": "metrics_updated",
         "data": {
             "total_greetings": total_count
@@ -697,8 +728,8 @@ async def update_greeting(
         # Fetch updated greeting for broadcast
         updated_greeting = await db.greetings.find_one({"_id": ObjectId(greeting_id)})
         
-        # Broadcast to all WebSocket clients
-        await manager.broadcast({
+        # Broadcast to all WebSocket clients using runtime's manager
+        await broadcast_to_app("hello_world", {
             "type": "greeting_updated",
             "data": {
                 "_id": str(updated_greeting["_id"]),
@@ -727,8 +758,8 @@ async def delete_greeting(
     result = await db.greetings.delete_one({"_id": ObjectId(greeting_id)})
     
     if result.deleted_count > 0:
-        # Broadcast to all WebSocket clients
-        await manager.broadcast({
+        # Broadcast to all WebSocket clients using runtime's manager
+        await broadcast_to_app("hello_world", {
             "type": "greeting_deleted",
             "data": {
                 "_id": greeting_id
@@ -737,7 +768,7 @@ async def delete_greeting(
         
         # Update metrics
         total_count = await db.greetings.count_documents({})
-        await manager.broadcast({
+        await broadcast_to_app("hello_world", {
             "type": "metrics_updated",
             "data": {
                 "total_greetings": total_count
@@ -852,7 +883,26 @@ async def metrics_api(user: Optional[Dict[str, Any]] = Depends(get_current_user)
 @app.get("/ws-test")
 async def websocket_test():
     """Test endpoint to verify WebSocket route is accessible"""
-    return {"message": "WebSocket endpoint is accessible", "path": "/ws", "routes": [str(r.path) for r in app.routes if hasattr(r, 'path')]}
+    ws_routes = []
+    all_routes = []
+    for route in app.routes:
+        if hasattr(route, 'path'):
+            all_routes.append(str(route.path))
+            # Check if it's a WebSocket route
+            try:
+                if hasattr(route, 'route_class'):
+                    route_class_name = route.route_class.__name__ if hasattr(route.route_class, '__name__') else str(route.route_class)
+                    if 'WebSocket' in route_class_name:
+                        ws_routes.append(str(route.path))
+            except:
+                pass
+    return {
+        "message": "WebSocket endpoint check",
+        "path": "/ws",
+        "ws_route_exists": "/ws" in ws_routes,
+        "all_ws_routes": ws_routes,
+        "all_routes": all_routes[:20]  # Limit to first 20
+    }
 
 @app.get("/routes")
 async def list_routes():
@@ -865,100 +915,160 @@ async def list_routes():
             routes.append({"path": route.path, "type": "WebSocket"})
     return {"routes": routes}
 
-@app.websocket("/ws")
-async def websocket_endpoint(websocket: WebSocket):
-    """WebSocket endpoint for real-time updates"""
-    # Log immediately when endpoint is hit - this should print if route is reached
-    import sys
-    print("=" * 50, file=sys.stderr, flush=True)
-    print("🔌 WebSocket endpoint hit - connection attempt", file=sys.stderr, flush=True)
-    print("=" * 50, file=sys.stderr, flush=True)
-    
-    try:
-        # Accept the WebSocket connection first - this must happen before anything else
-        print("🔌 Attempting to accept WebSocket...", file=sys.stderr, flush=True)
-        await websocket.accept()
-        print("✅ WebSocket connection accepted", file=sys.stderr, flush=True)
-        
-        # Then add to manager
-        async with manager._lock:
-            if websocket not in manager.active_connections:
-                manager.active_connections.append(websocket)
-        print(f"✅ WebSocket added to manager. Total connections: {len(manager.active_connections)}")
-        
-        # Send initial connection confirmation
+# Register WebSocket routes from manifest
+# The runtime engine will handle WebSocket registration automatically
+# For now, we'll use the runtime's WebSocket support
+from mdb_runtime.routing.websockets import (
+    get_websocket_manager_sync, 
+    broadcast_to_app,
+    register_message_handler
+)
+
+# Use runtime's WebSocket support - register routes from manifest after engine is initialized
+# This will be called in the startup event after engine.register_app()
+def register_websocket_routes_from_manifest():
+    """Register WebSocket routes from manifest configuration."""
+    global ws_manager
+    if engine:
+        print(f"🔌 Registering WebSocket routes for app 'hello_world'...")
         try:
-            await websocket.send_json({
-                "type": "connected",
-                "message": "WebSocket connected successfully"
-            })
-            print(f"✅ Sent connection confirmation")
-        except Exception as send_error:
-            print(f"⚠️  Error sending connection confirmation: {send_error}")
-            raise
+            # Check if WebSocket config exists
+            ws_config = engine.get_websocket_config("hello_world")
+            if not ws_config:
+                print(f"⚠️  No WebSocket configuration found in manifest for 'hello_world'")
+                return
+            
+            print(f"📋 WebSocket config found: {ws_config}")
+            
+            # Register routes automatically from manifest
+            engine.register_websocket_routes(app, "hello_world")
+            print(f"✅ WebSocket routes registered successfully")
+            
+            # Verify route was registered - check ALL routes
+            print(f"📋 Checking all registered routes...")
+            all_routes = []
+            ws_routes = []
+            for route in app.routes:
+                if hasattr(route, 'path'):
+                    route_type = type(route).__name__
+                    all_routes.append(f"{route.path} ({route_type})")
+                    if '/ws' in str(route.path) or 'WebSocket' in route_type:
+                        ws_routes.append(route)
+            
+            print(f"📋 All routes ({len(all_routes)}): {all_routes[:10]}...")  # Show first 10
+            print(f"📋 WebSocket routes found: {len(ws_routes)}")
+            for route in ws_routes:
+                print(f"   ✅ {route.path} (type: {type(route).__name__})")
+            
+            if not ws_routes:
+                print(f"❌ WARNING: No WebSocket routes found! Route registration may have failed.")
+            
+            # Get the WebSocket manager for this app (sync version for startup)
+            ws_manager = get_websocket_manager_sync("hello_world")
+            print(f"✅ WebSocket manager initialized")
+        except Exception as e:
+            print(f"❌ Error registering WebSocket routes: {e}")
+            import traceback
+            traceback.print_exc()
+    else:
+        print(f"⚠️  Engine not initialized, cannot register WebSocket routes")
+
+
+# Global counter for demo purposes
+_websocket_demo_counter = 0
+
+
+def register_websocket_message_handlers():
+    """Register message handlers for bi-directional WebSocket communication demo."""
+    
+    async def handle_realtime_messages(websocket, message):
+        """Handle incoming messages from WebSocket clients."""
+        global _websocket_demo_counter
         
-        # Keep connection alive and handle client messages
-        while True:
-            try:
-                # Wait for client messages with a timeout
-                message = await asyncio.wait_for(websocket.receive(), timeout=30.0)
-                
-                if message.get("type") == "websocket.disconnect":
-                    print("🔌 WebSocket client disconnected (disconnect message)")
-                    break
-                elif message.get("type") == "websocket.receive":
-                    # Handle text messages if needed
-                    if "text" in message:
-                        try:
-                            data = json.loads(message["text"])
-                            if data.get("type") == "pong":
-                                print("🏓 Received pong from client")
-                        except json.JSONDecodeError:
-                            pass
-                            
-            except asyncio.TimeoutError:
-                # Send a ping to keep connection alive
-                try:
-                    await websocket.send_json({
-                        "type": "ping",
-                        "timestamp": datetime.utcnow().isoformat()
-                    })
-                except Exception as ping_error:
-                    print(f"🔌 Connection dead (ping failed): {ping_error}")
-                    break
-                    
-            except WebSocketDisconnect:
-                print("🔌 WebSocket disconnected (WebSocketDisconnect exception)")
-                break
-            except Exception as e:
-                error_msg = str(e).lower()
-                error_type = type(e).__name__
-                if any(keyword in error_msg for keyword in ["disconnect", "closed", "connection", "broken", "reset"]):
-                    print(f"🔌 WebSocket disconnected: {error_type}: {e}")
-                    break
-                print(f"⚠️  WebSocket receive error (continuing): {error_type}: {e}")
-                await asyncio.sleep(0.1)
-                
-    except WebSocketDisconnect:
-        print("🔌 WebSocket disconnected (outer WebSocketDisconnect)")
+        msg_type = message.get("type")
+        logger.info(f"📨 Received WebSocket message: {msg_type} for app 'hello_world'")
+        
+        if msg_type == "echo_test":
+            # Echo test - respond directly to the client
+            from mdb_runtime.routing.websockets import get_websocket_manager
+            manager = await get_websocket_manager("hello_world")
+            await manager.send_to_connection(websocket, {
+                "type": "echo_response",
+                "original_message": message.get("message", ""),
+                "timestamp": datetime.utcnow().isoformat(),
+                "server_message": f"Echo: {message.get('message', 'Hello!')}"
+            })
+        
+        elif msg_type == "request_server_time":
+            # Request server time - broadcast to all clients
+            await broadcast_to_app("hello_world", {
+                "type": "server_time_response",
+                "server_time": datetime.utcnow().isoformat(),
+                "requested_by": message.get("user_id", "unknown")
+            })
+        
+        elif msg_type == "increment_counter":
+            # Increment global counter and broadcast to all clients
+            _websocket_demo_counter += 1
+            await broadcast_to_app("hello_world", {
+                "type": "counter_updated",
+                "counter": _websocket_demo_counter,
+                "incremented_by": message.get("user_id", "unknown"),
+                "timestamp": datetime.utcnow().isoformat()
+            })
+        
+        elif msg_type == "reset_counter":
+            # Reset counter and broadcast
+            _websocket_demo_counter = 0
+            await broadcast_to_app("hello_world", {
+                "type": "counter_reset",
+                "counter": 0,
+                "reset_by": message.get("user_id", "unknown"),
+                "timestamp": datetime.utcnow().isoformat()
+            })
+        
+        elif msg_type == "request_greetings_count":
+            # Request current greetings count - respond with broadcast
+            global db
+            if db is not None:
+                count = await db.greetings.count_documents({})
+                await broadcast_to_app("hello_world", {
+                    "type": "greetings_count_response",
+                    "count": count,
+                    "timestamp": datetime.utcnow().isoformat()
+                })
+        
+        elif msg_type == "ping":
+            # Custom ping (different from keepalive ping)
+            from mdb_runtime.routing.websockets import get_websocket_manager
+            manager = await get_websocket_manager("hello_world")
+            await manager.send_to_connection(websocket, {
+                "type": "pong_response",
+                "message": "Pong! Server is alive and responding.",
+                "timestamp": datetime.utcnow().isoformat()
+            })
+    
+    # Register handler for the "realtime" endpoint
+    register_message_handler("hello_world", "realtime", handle_realtime_messages)
+    print("✅ Registered WebSocket message handlers for bi-directional communication")
+
+# Note: The WebSocket endpoint is automatically registered by the runtime from manifest.json
+# No need for a custom @app.websocket("/ws") endpoint - the runtime handles it via register_websocket_routes()
+
+# TEMPORARY DEBUG: Add a simple test WebSocket to verify FastAPI WebSocket works at all
+@app.websocket("/ws-debug")
+async def websocket_debug(websocket: WebSocket):
+    """Simple debug WebSocket to test if FastAPI WebSocket works"""
+    print("🔌 [DEBUG WS] Connection attempt to /ws-debug")
+    try:
+        await websocket.accept()
+        print("✅ [DEBUG WS] Connection accepted")
+        await websocket.send_json({"type": "connected", "message": "Debug WebSocket works!"})
+        await websocket.close()
     except Exception as e:
-        print(f"⚠️  WebSocket connection error: {type(e).__name__}: {e}")
+        print(f"❌ [DEBUG WS] Error: {e}")
         import traceback
         traceback.print_exc()
-        # Try to send error to client if connection is still open
-        try:
-            await websocket.close(code=1011, reason="Internal server error")
-        except:
-            pass
-    finally:
-        # Remove from manager
-        try:
-            async with manager._lock:
-                if websocket in manager.active_connections:
-                    manager.active_connections.remove(websocket)
-            print(f"🔌 WebSocket cleanup complete. Remaining connections: {len(manager.active_connections)}")
-        except Exception as cleanup_error:
-            print(f"⚠️  Error during cleanup: {cleanup_error}")
 
 
 if __name__ == "__main__":

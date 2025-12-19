@@ -604,6 +604,383 @@
             transition: all 0.3s;
         }
         
+        /* WebSocket Demo Styles - Compact & Modern */
+        .websocket-demo-container {
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+            margin-top: 12px;
+        }
+        
+        .websocket-demo-top {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 16px;
+        }
+        
+        @media (max-width: 1024px) {
+            .websocket-demo-top {
+                grid-template-columns: 1fr;
+            }
+        }
+        
+        .websocket-demo-responses {
+            width: 100%;
+        }
+        
+        .websocket-demo-card {
+            background: var(--mongodb-bg-secondary);
+            border: 1px solid var(--mongodb-border);
+            border-radius: 10px;
+            padding: 16px;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .websocket-demo-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 3px;
+            background: linear-gradient(90deg, var(--mongodb-green), transparent);
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+        
+        .websocket-demo-card:hover::before {
+            opacity: 1;
+        }
+        
+        .websocket-demo-card h4 {
+            margin: 0 0 12px 0;
+            color: var(--mongodb-green);
+            font-size: 14px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        
+        .demo-buttons {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 8px;
+        }
+        
+        .demo-btn {
+            background: var(--mongodb-bg-tertiary);
+            border: 1px solid var(--mongodb-border);
+            color: var(--mongodb-text);
+            padding: 10px 12px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 13px;
+            font-weight: 500;
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+            display: flex;
+            align-items: center;
+            justify-content: flex-start;
+            gap: 8px;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .demo-btn::after {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 0;
+            height: 0;
+            border-radius: 50%;
+            background: rgba(0, 237, 100, 0.1);
+            transform: translate(-50%, -50%);
+            transition: width 0.4s, height 0.4s;
+        }
+        
+        .demo-btn:hover::after {
+            width: 200px;
+            height: 200px;
+        }
+        
+        .demo-btn:hover {
+            border-color: var(--mongodb-green);
+            background: var(--mongodb-bg-secondary);
+            transform: translateY(-1px);
+            box-shadow: 0 2px 8px rgba(0, 237, 100, 0.15);
+        }
+        
+        .demo-btn:active {
+            transform: translateY(0);
+            transition: transform 0.1s;
+        }
+        
+        .demo-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+        
+        .demo-btn.loading {
+            position: relative;
+            color: transparent;
+        }
+        
+        .demo-btn.loading::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 14px;
+            height: 14px;
+            margin: -7px 0 0 -7px;
+            border: 2px solid var(--mongodb-green);
+            border-top-color: transparent;
+            border-radius: 50%;
+            animation: spin 0.6s linear infinite;
+        }
+        
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        
+        .btn-icon {
+            font-size: 16px;
+            flex-shrink: 0;
+        }
+        
+        .response-container {
+            background: var(--mongodb-bg-tertiary);
+            border: 1px solid var(--mongodb-border);
+            border-radius: 8px;
+            padding: 8px 12px;
+            max-height: 200px;
+            overflow-y: auto;
+            min-height: 60px;
+            scrollbar-width: thin;
+            scrollbar-color: var(--mongodb-border) transparent;
+        }
+        
+        .response-container::-webkit-scrollbar {
+            width: 6px;
+        }
+        
+        .response-container::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        
+        .response-container::-webkit-scrollbar-thumb {
+            background: var(--mongodb-border);
+            border-radius: 3px;
+        }
+        
+        .response-container::-webkit-scrollbar-thumb:hover {
+            background: var(--mongodb-green);
+        }
+        
+        .response-placeholder {
+            color: var(--mongodb-text-secondary);
+            text-align: center;
+            padding: 12px;
+            font-style: italic;
+            font-size: 12px;
+        }
+        
+        .response-item {
+            background: var(--mongodb-bg-secondary);
+            border-left: 2px solid var(--mongodb-green);
+            padding: 6px 12px;
+            margin-bottom: 4px;
+            border-radius: 4px;
+            animation: slideInRight 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            min-height: 32px;
+        }
+        
+        .response-item:hover {
+            transform: translateX(2px);
+            box-shadow: 0 2px 8px rgba(0, 237, 100, 0.1);
+            background: var(--mongodb-bg-tertiary);
+        }
+        
+        .response-item.error {
+            border-left-color: #F85149;
+        }
+        
+        .response-item.info {
+            border-left-color: #58A6FF;
+        }
+        
+        .response-item.success {
+            border-left-color: var(--mongodb-green);
+        }
+        
+        .response-item-content {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            flex: 1;
+            min-width: 0;
+        }
+        
+        .response-item .response-type {
+            font-weight: 600;
+            color: var(--mongodb-green);
+            font-size: 10px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            white-space: nowrap;
+            flex-shrink: 0;
+            min-width: 80px;
+        }
+        
+        .response-item.error .response-type {
+            color: #F85149;
+        }
+        
+        .response-item.info .response-type {
+            color: #58A6FF;
+        }
+        
+        .response-item .response-message {
+            color: var(--mongodb-text);
+            font-size: 12px;
+            line-height: 1.3;
+            flex: 1;
+            min-width: 0;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+        
+        .response-item .response-time {
+            color: var(--mongodb-text-secondary);
+            font-size: 10px;
+            opacity: 0.7;
+            white-space: nowrap;
+            flex-shrink: 0;
+            margin-left: auto;
+        }
+        
+        @keyframes slideInRight {
+            from {
+                opacity: 0;
+                transform: translateX(-8px);
+            }
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+        
+        @keyframes fadeOut {
+            from {
+                opacity: 1;
+            }
+            to {
+                opacity: 0;
+            }
+        }
+        
+        .counter-display {
+            text-align: center;
+            padding: 20px 16px;
+            background: linear-gradient(135deg, var(--mongodb-bg-secondary) 0%, var(--mongodb-bg-tertiary) 100%);
+            border: 1px solid var(--mongodb-border);
+            border-radius: 10px;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .counter-display::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: radial-gradient(circle, rgba(0, 237, 100, 0.05) 0%, transparent 70%);
+            animation: pulse 3s ease-in-out infinite;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); opacity: 0.5; }
+            50% { transform: scale(1.1); opacity: 0.8; }
+        }
+        
+        .counter-value {
+            font-size: 48px;
+            font-weight: 700;
+            color: var(--mongodb-green);
+            margin: 8px 0;
+            text-shadow: 0 0 16px rgba(0, 237, 100, 0.3);
+            transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+            position: relative;
+            z-index: 1;
+            font-variant-numeric: tabular-nums;
+        }
+        
+        .counter-value.updated {
+            transform: scale(1.15) rotate(2deg);
+            color: #00FF88;
+            text-shadow: 0 0 24px rgba(0, 255, 136, 0.5);
+        }
+        
+        .counter-label {
+            color: var(--mongodb-text-secondary);
+            font-size: 12px;
+            margin-top: 6px;
+            opacity: 0.8;
+            position: relative;
+            z-index: 1;
+        }
+        
+        .ws-status-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 4px 10px;
+            background: var(--mongodb-bg-tertiary);
+            border: 1px solid var(--mongodb-border);
+            border-radius: 12px;
+            font-size: 11px;
+            font-weight: 500;
+            margin-bottom: 12px;
+        }
+        
+        .ws-status-badge.connected {
+            background: rgba(0, 237, 100, 0.1);
+            border-color: var(--mongodb-green);
+            color: var(--mongodb-green);
+        }
+        
+        .ws-status-dot {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: var(--mongodb-text-secondary);
+            animation: pulse-dot 2s ease-in-out infinite;
+        }
+        
+        .ws-status-badge.connected .ws-status-dot {
+            background: var(--mongodb-green);
+            box-shadow: 0 0 8px rgba(0, 237, 100, 0.6);
+        }
+        
+        @keyframes pulse-dot {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.7; transform: scale(1.2); }
+        }
+        
         .stats-grid .stat-card.updating {
             opacity: 0.7;
         }
@@ -734,6 +1111,7 @@
             <div class="card-body">
                 <div class="tabs">
                     <button class="tab active" onclick="showTab('crud')">CRUD Operations</button>
+                    <button class="tab" onclick="showTab('websocket-demo')">🔄 WebSocket Demo</button>
                     <button class="tab" onclick="showTab('indexes')">Indexes</button>
                     <button class="tab" onclick="showTab('collections')">Collections</button>
                     <button class="tab" onclick="showTab('metrics')">Metrics</button>
@@ -881,6 +1259,76 @@
                         {% endif %}
                     </div>
                     
+                </div>
+                
+                <!-- WebSocket Demo Tab -->
+                <div id="websocket-demo" class="tab-content">
+                    <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; flex-wrap: wrap; gap: 12px;">
+                        <div>
+                            <h3 style="margin: 0 0 4px 0; color: var(--mongodb-green); font-size: 18px;">🔄 Real-Time Communication</h3>
+                            <p style="margin: 0; color: var(--mongodb-text-secondary); font-size: 12px; line-height: 1.4;">
+                                Bi-directional WebSocket demo • Open multiple tabs to see broadcasts
+                            </p>
+                        </div>
+                        <div class="ws-status-badge" id="ws-status-badge">
+                            <span class="ws-status-dot"></span>
+                            <span id="ws-status-text">Connecting...</span>
+                        </div>
+                    </div>
+                    
+                    <div class="websocket-demo-container">
+                        <!-- Top Row: Actions & Counter -->
+                        <div class="websocket-demo-top">
+                            <div class="websocket-demo-card">
+                                <h4>📤 Actions</h4>
+                                <div class="demo-buttons">
+                                    <button class="demo-btn" onclick="sendEchoTest()" id="btn-echo">
+                                        <span class="btn-icon">📢</span>
+                                        <span>Echo</span>
+                                    </button>
+                                    <button class="demo-btn" onclick="requestServerTime()" id="btn-time">
+                                        <span class="btn-icon">⏰</span>
+                                        <span>Time</span>
+                                    </button>
+                                    <button class="demo-btn" onclick="incrementCounter()" id="btn-increment">
+                                        <span class="btn-icon">➕</span>
+                                        <span>Increment</span>
+                                    </button>
+                                    <button class="demo-btn" onclick="resetCounter()" id="btn-reset">
+                                        <span class="btn-icon">🔄</span>
+                                        <span>Reset</span>
+                                    </button>
+                                    <button class="demo-btn" onclick="requestGreetingsCount()" id="btn-count">
+                                        <span class="btn-icon">📊</span>
+                                        <span>Count</span>
+                                    </button>
+                                    <button class="demo-btn" onclick="sendCustomPing()" id="btn-ping">
+                                        <span class="btn-icon">🏓</span>
+                                        <span>Ping</span>
+                                    </button>
+                                </div>
+                            </div>
+                            
+                            <!-- Right Column: Live Counter -->
+                            <div class="websocket-demo-card">
+                                <h4>📈 Live Counter</h4>
+                                <div class="counter-display">
+                                    <div class="counter-value" id="live-counter">0</div>
+                                    <p class="counter-label">Global counter • Real-time updates</p>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Full Width: Responses -->
+                        <div class="websocket-demo-card websocket-demo-responses">
+                            <h4>📥 Server Responses</h4>
+                            <div id="websocket-responses" class="response-container">
+                                <div class="response-placeholder">
+                                    Server responses will appear here...
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
                 
                 <!-- Indexes Tab -->
@@ -1345,7 +1793,33 @@
             }
             
             const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-            const wsUrl = `${protocol}//${window.location.host}/ws`;
+            
+            // Get authentication token from cookies
+            function getCookie(name) {
+                const value = `; ${document.cookie}`;
+                const parts = value.split(`; ${name}=`);
+                if (parts.length === 2) return parts.pop().split(';').shift();
+                return null;
+            }
+            
+            // Try to get token from ws_token cookie (non-httponly, set for WebSocket)
+            // Fallback to regular token cookie if ws_token not available
+            let token = getCookie('ws_token') || getCookie('token');
+            let wsUrl = `${protocol}//${window.location.host}/ws`;
+            
+            // Debug: Log all cookies
+            console.log('🍪 All cookies:', document.cookie);
+            console.log('🔑 Token from ws_token cookie:', getCookie('ws_token') ? 'FOUND' : 'NOT FOUND');
+            console.log('🔑 Token from token cookie:', getCookie('token') ? 'FOUND' : 'NOT FOUND');
+            
+            // Add token as query parameter if available
+            if (token) {
+                wsUrl += `?token=${encodeURIComponent(token)}`;
+                console.log('🔑 Using authentication token for WebSocket connection (token length:', token.length, ')');
+            } else {
+                console.error('❌ No authentication token found - WebSocket will fail!');
+                console.error('   Available cookies:', document.cookie || 'NONE');
+            }
             
             console.log(`🔌 Attempting to connect to ${wsUrl}...`);
             
@@ -1385,6 +1859,26 @@
                 
                 ws.onerror = (error) => {
                     console.error('❌ WebSocket error:', error);
+                    console.error('   Error details:', {
+                        readyState: ws?.readyState,
+                        url: wsUrl,
+                        hasToken: !!token
+                    });
+                    updateConnectionStatus(false);
+                };
+                
+                ws.onclose = (event) => {
+                    console.log('🔌 WebSocket closed:', {
+                        code: event.code,
+                        reason: event.reason,
+                        wasClean: event.wasClean,
+                        url: wsUrl
+                    });
+                    if (event.code === 1008) {
+                        console.error('❌ WebSocket closed with code 1008 (Policy Violation) - Authentication failed!');
+                        console.error('   This usually means the token was missing or invalid.');
+                        console.error('   Token was:', token ? `present (length: ${token.length})` : 'MISSING');
+                    }
                     updateConnectionStatus(false);
                 };
                 
@@ -1438,6 +1932,9 @@
             // If explicitly told we're connected AND WebSocket is open, show connected
             // OR if WebSocket is open regardless of what we're told, show connected
             const shouldShowConnected = (connected && isActuallyOpen) || isActuallyOpen;
+            
+            // Update WebSocket status badge
+            updateWebSocketStatus(shouldShowConnected);
             
             indicators.forEach(indicator => {
                 const icon = indicator.querySelector('.connection-status-icon');
@@ -1600,6 +2097,37 @@
                     if (message.data.total_greetings !== undefined) {
                         updateStatCard('Documents', message.data.total_greetings);
                     }
+                    break;
+                
+                // Bi-directional WebSocket demo responses
+                case 'echo_response':
+                    addResponse('success', 'Echo Response', message.server_message || message.original_message, message.timestamp);
+                    break;
+                
+                case 'server_time_response':
+                    addResponse('success', 'Server Time', `Server time: ${new Date(message.server_time).toLocaleString()}`, message.timestamp);
+                    break;
+                
+                case 'counter_updated':
+                    updateLiveCounter(message.counter);
+                    addResponse('success', 'Counter Updated', `Counter incremented to ${message.counter} by ${message.incremented_by}`, message.timestamp);
+                    break;
+                
+                case 'counter_reset':
+                    updateLiveCounter(0);
+                    addResponse('success', 'Counter Reset', `Counter reset to 0 by ${message.reset_by}`, message.timestamp);
+                    break;
+                
+                case 'greetings_count_response':
+                    addResponse('success', 'Greetings Count', `Total greetings in database: ${message.count}`, message.timestamp);
+                    break;
+                
+                case 'pong_response':
+                    addResponse('success', 'Pong Response', message.message, message.timestamp);
+                    break;
+                
+                case 'error':
+                    addResponse('error', 'Error', message.message || 'An error occurred', message.timestamp);
                     break;
                     
                 case 'metrics_update':
@@ -1822,6 +2350,192 @@
                 }
             }
         }, 1000); // Check every 1 second - more aggressive
+        
+        // WebSocket demo functions with loading states
+        function setButtonLoading(buttonId, loading) {
+            const btn = document.getElementById(buttonId);
+            if (btn) {
+                if (loading) {
+                    btn.classList.add('loading');
+                    btn.disabled = true;
+                } else {
+                    btn.classList.remove('loading');
+                    btn.disabled = false;
+                }
+            }
+        }
+        
+        function sendEchoTest() {
+            if (ws && ws.readyState === WebSocket.OPEN) {
+                const message = prompt('Enter a message to echo:', 'Hello from client!');
+                if (message) {
+                    setButtonLoading('btn-echo', true);
+                    ws.send(JSON.stringify({
+                        type: 'echo_test',
+                        message: message
+                    }));
+                    addResponse('info', 'Sent', `Echo test: "${message}"`, new Date().toISOString());
+                    setTimeout(() => setButtonLoading('btn-echo', false), 500);
+                }
+            } else {
+                showConnectionError();
+            }
+        }
+        
+        function requestServerTime() {
+            if (ws && ws.readyState === WebSocket.OPEN) {
+                setButtonLoading('btn-time', true);
+                ws.send(JSON.stringify({
+                    type: 'request_server_time'
+                }));
+                addResponse('info', 'Sent', 'Requested server time...', new Date().toISOString());
+                setTimeout(() => setButtonLoading('btn-time', false), 500);
+            } else {
+                showConnectionError();
+            }
+        }
+        
+        function incrementCounter() {
+            if (ws && ws.readyState === WebSocket.OPEN) {
+                setButtonLoading('btn-increment', true);
+                ws.send(JSON.stringify({
+                    type: 'increment_counter'
+                }));
+                addResponse('info', 'Sent', 'Incrementing counter...', new Date().toISOString());
+                setTimeout(() => setButtonLoading('btn-increment', false), 500);
+            } else {
+                showConnectionError();
+            }
+        }
+        
+        function resetCounter() {
+            if (ws && ws.readyState === WebSocket.OPEN) {
+                if (confirm('Reset the global counter to 0?')) {
+                    setButtonLoading('btn-reset', true);
+                    ws.send(JSON.stringify({
+                        type: 'reset_counter'
+                    }));
+                    addResponse('info', 'Sent', 'Resetting counter...', new Date().toISOString());
+                    setTimeout(() => setButtonLoading('btn-reset', false), 500);
+                }
+            } else {
+                showConnectionError();
+            }
+        }
+        
+        function requestGreetingsCount() {
+            if (ws && ws.readyState === WebSocket.OPEN) {
+                setButtonLoading('btn-count', true);
+                ws.send(JSON.stringify({
+                    type: 'request_greetings_count'
+                }));
+                addResponse('info', 'Sent', 'Requesting greetings count...', new Date().toISOString());
+                setTimeout(() => setButtonLoading('btn-count', false), 500);
+            } else {
+                showConnectionError();
+            }
+        }
+        
+        function sendCustomPing() {
+            if (ws && ws.readyState === WebSocket.OPEN) {
+                setButtonLoading('btn-ping', true);
+                ws.send(JSON.stringify({
+                    type: 'ping',
+                    timestamp: new Date().toISOString()
+                }));
+                addResponse('info', 'Sent', 'Sent custom ping to server...', new Date().toISOString());
+                setTimeout(() => setButtonLoading('btn-ping', false), 500);
+            } else {
+                showConnectionError();
+            }
+        }
+        
+        function showConnectionError() {
+            addResponse('error', 'Error', 'WebSocket not connected. Please wait for connection.', new Date().toISOString());
+        }
+        
+        function addResponse(type, title, message, timestamp) {
+            const container = document.getElementById('websocket-responses');
+            if (!container) return;
+            
+            // Remove placeholder if it exists
+            const placeholder = container.querySelector('.response-placeholder');
+            if (placeholder) {
+                placeholder.style.animation = 'fadeOut 0.2s ease-out';
+                setTimeout(() => placeholder.remove(), 200);
+            }
+            
+            const responseItem = document.createElement('div');
+            responseItem.className = `response-item ${type}`;
+            responseItem.style.opacity = '0';
+            responseItem.style.transform = 'translateX(-8px)';
+            responseItem.innerHTML = `
+                <div class="response-item-content">
+                    <div class="response-type">${title}</div>
+                    <div class="response-message">${message}</div>
+                </div>
+                <div class="response-time">${new Date(timestamp).toLocaleTimeString()}</div>
+            `;
+            
+            container.insertBefore(responseItem, container.firstChild);
+            
+            // Animate in
+            requestAnimationFrame(() => {
+                responseItem.style.transition = 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)';
+                responseItem.style.opacity = '1';
+                responseItem.style.transform = 'translateX(0)';
+            });
+            
+            // Keep only last 15 responses
+            while (container.children.length > 15) {
+                const lastChild = container.lastChild;
+                lastChild.style.transition = 'all 0.2s ease-out';
+                lastChild.style.opacity = '0';
+                lastChild.style.transform = 'translateX(8px)';
+                setTimeout(() => lastChild.remove(), 200);
+            }
+        }
+        
+        function updateLiveCounter(value) {
+            const counterEl = document.getElementById('live-counter');
+            if (counterEl) {
+                const oldValue = parseInt(counterEl.textContent) || 0;
+                const newValue = parseInt(value) || 0;
+                
+                // Animate number change
+                if (oldValue !== newValue) {
+                    counterEl.style.transition = 'none';
+                    counterEl.style.transform = 'scale(0.8)';
+                    counterEl.style.opacity = '0.5';
+                    
+                    requestAnimationFrame(() => {
+                        counterEl.textContent = newValue;
+                        counterEl.style.transition = 'all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1)';
+                        counterEl.classList.add('updated');
+                        counterEl.style.transform = 'scale(1)';
+                        counterEl.style.opacity = '1';
+                        
+                        setTimeout(() => {
+                            counterEl.classList.remove('updated');
+                        }, 600);
+                    });
+                }
+            }
+        }
+        
+        function updateWebSocketStatus(connected) {
+            const badge = document.getElementById('ws-status-badge');
+            const text = document.getElementById('ws-status-text');
+            if (badge && text) {
+                if (connected) {
+                    badge.classList.add('connected');
+                    text.textContent = 'Connected';
+                } else {
+                    badge.classList.remove('connected');
+                    text.textContent = 'Disconnected';
+                }
+            }
+        }
         
         // Connect WebSocket when page loads
         if (document.readyState === 'loading') {

@@ -155,7 +155,7 @@ After running `docker-compose up`, the app automatically runs and tests itself. 
    # In mongosh:
    use hello_world_db
    db.greetings.find()
-   ```
+```
 
 ## What This Example Does
 
@@ -426,4 +426,543 @@ See [DOCKER_BEST_PRACTICES.md](./DOCKER_BEST_PRACTICES.md) for a comprehensive g
 - Explore MongoDB Express UI: `docker-compose --profile ui up` then http://localhost:8081
 - Check Ray Dashboard: `docker-compose --profile ray up` then http://localhost:8265
 - Review [DOCKER_BEST_PRACTICES.md](./DOCKER_BEST_PRACTICES.md) for production deployment
+
+---
+
+## Forking & Expanding: From Hello World to Real Applications
+
+The hello_world example is designed as a **starting point** for real-world applications. Here's how to transform it into production-ready apps.
+
+### Quick Start: Forking the Example
+
+1. **Copy the example:**
+   ```bash
+   cp -r examples/hello_world my_new_app
+   cd my_new_app
+   ```
+
+2. **Update the manifest:**
+   - Change `slug` to your app name
+   - Update `name` and `description`
+   - Modify `developer_id` to your email
+   - Add your collections to `managed_indexes`
+
+3. **Rename files:**
+   ```bash
+   mv web.py app.py  # Or your preferred name
+   ```
+
+4. **Update Docker Compose:**
+   - Change service names
+   - Update environment variables
+   - Adjust ports if needed
+
+5. **Start building:**
+   ```bash
+   docker-compose up --build
+   ```
+
+### Real-World Application Ideas
+
+#### 1. **Task Management / Project Management App**
+
+**What to Change:**
+- Replace `greetings` collection with `tasks`, `projects`, `users`
+- Add status workflows (todo → in_progress → done)
+- Implement user assignments and due dates
+
+**Collections:**
+```json
+{
+  "managed_indexes": {
+    "tasks": [
+      {"keys": {"project_id": 1, "status": 1, "due_date": 1}},
+      {"keys": {"assigned_to": 1, "status": 1}}
+    ],
+    "projects": [
+      {"keys": {"owner_id": 1, "created_at": -1}}
+    ]
+  }
+}
+```
+
+**WebSocket Use Cases:**
+- Real-time task updates when team members change status
+- Live notifications for new assignments
+- Collaborative editing indicators
+
+**Example Expansion:**
+```python
+# Add to web.py
+@app.post("/api/tasks")
+async def create_task(task_data: dict, user: dict = Depends(get_current_user)):
+    db = get_db()
+    task = {
+        **task_data,
+        "created_by": user["email"],
+        "created_at": datetime.utcnow(),
+        "status": "todo"
+    }
+    result = await db.tasks.insert_one(task)
+    
+    # Broadcast via WebSocket
+    await broadcast_to_app("task_manager", {
+        "type": "task_created",
+        "data": {**task, "_id": str(result.inserted_id)}
+    })
+    return {"id": str(result.inserted_id)}
+```
+
+#### 2. **E-Commerce / Product Catalog**
+
+**What to Change:**
+- Replace `greetings` with `products`, `categories`, `orders`, `cart`
+- Add inventory management
+- Implement search with MongoDB Atlas Search
+
+**Collections:**
+```json
+{
+  "managed_indexes": {
+    "products": [
+      {"keys": {"category": 1, "price": 1}},
+      {"keys": {"name": "text", "description": "text"}},
+      {"keys": {"in_stock": 1, "created_at": -1}}
+    ],
+    "orders": [
+      {"keys": {"user_id": 1, "status": 1, "created_at": -1}},
+      {"keys": {"status": 1, "payment_status": 1}}
+    ]
+  }
+}
+```
+
+**WebSocket Use Cases:**
+- Real-time inventory updates
+- Order status notifications
+- Live cart synchronization across devices
+
+**Example Expansion:**
+```python
+@app.post("/api/orders")
+async def create_order(order_data: dict, user: dict = Depends(get_current_user)):
+    db = get_db()
+    
+    # Create order
+    order = {
+        **order_data,
+        "user_id": user["user_id"],
+        "status": "pending",
+        "created_at": datetime.utcnow()
+    }
+    result = await db.orders.insert_one(order)
+    
+    # Update inventory
+    for item in order_data["items"]:
+        await db.products.update_one(
+            {"_id": ObjectId(item["product_id"])},
+            {"$inc": {"in_stock": -item["quantity"]}}
+        )
+    
+    # Broadcast to user
+    await broadcast_to_app("ecommerce", {
+        "type": "order_created",
+        "data": {**order, "_id": str(result.inserted_id)}
+    }, user_id=user["user_id"])
+    
+    return {"id": str(result.inserted_id)}
+```
+
+#### 3. **Social Media / Content Platform**
+
+**What to Change:**
+- Replace `greetings` with `posts`, `comments`, `users`, `follows`
+- Add feed algorithms
+- Implement real-time engagement metrics
+
+**Collections:**
+```json
+{
+  "managed_indexes": {
+    "posts": [
+      {"keys": {"author_id": 1, "created_at": -1}},
+      {"keys": {"tags": 1, "created_at": -1}},
+      {"keys": {"likes_count": -1, "created_at": -1}}
+    ],
+    "comments": [
+      {"keys": {"post_id": 1, "created_at": 1}},
+      {"keys": {"author_id": 1, "created_at": -1}}
+    ],
+    "follows": [
+      {"keys": {"follower_id": 1, "following_id": 1}, "unique": true}
+    ]
+  }
+}
+```
+
+**WebSocket Use Cases:**
+- Real-time feed updates
+- Live comment threads
+- Instant like/engagement notifications
+- Online presence indicators
+
+**Example Expansion:**
+```python
+@app.post("/api/posts/{post_id}/like")
+async def like_post(post_id: str, user: dict = Depends(get_current_user)):
+    db = get_db()
+    
+    # Toggle like
+    like = await db.likes.find_one({
+        "post_id": ObjectId(post_id),
+        "user_id": user["user_id"]
+    })
+    
+    if like:
+        await db.likes.delete_one({"_id": like["_id"]})
+        action = "unliked"
+    else:
+        await db.likes.insert_one({
+            "post_id": ObjectId(post_id),
+            "user_id": user["user_id"],
+            "created_at": datetime.utcnow()
+        })
+        action = "liked"
+    
+    # Update post like count
+    count = await db.likes.count_documents({"post_id": ObjectId(post_id)})
+    await db.posts.update_one(
+        {"_id": ObjectId(post_id)},
+        {"$set": {"likes_count": count}}
+    )
+    
+    # Broadcast to all viewers
+    await broadcast_to_app("social_platform", {
+        "type": "post_liked",
+        "data": {
+            "post_id": post_id,
+            "user_id": user["user_id"],
+            "action": action,
+            "likes_count": count
+        }
+    })
+    
+    return {"action": action, "likes_count": count}
+```
+
+#### 4. **Chat / Messaging Application**
+
+**What to Change:**
+- Replace `greetings` with `conversations`, `messages`, `users`
+- Add typing indicators
+- Implement message delivery status
+
+**Collections:**
+```json
+{
+  "managed_indexes": {
+    "conversations": [
+      {"keys": {"participants": 1, "last_message_at": -1}},
+      {"keys": {"type": 1, "created_at": -1}}
+    ],
+    "messages": [
+      {"keys": {"conversation_id": 1, "created_at": 1}},
+      {"keys": {"sender_id": 1, "created_at": -1}}
+    ]
+  }
+}
+```
+
+**WebSocket Use Cases:**
+- Real-time message delivery
+- Typing indicators
+- Read receipts
+- Online/offline status
+- Message reactions
+
+**Example Expansion:**
+```python
+# Register message handler for chat
+register_message_handler("chat_app", "realtime", handle_chat_message)
+
+async def handle_chat_message(websocket, message):
+    msg_type = message.get("type")
+    
+    if msg_type == "send_message":
+        db = engine.get_scoped_db("chat_app")
+        
+        # Save message
+        msg = {
+            "conversation_id": ObjectId(message["conversation_id"]),
+            "sender_id": message["sender_id"],
+            "content": message["content"],
+            "created_at": datetime.utcnow(),
+            "status": "sent"
+        }
+        result = await db.messages.insert_one(msg)
+        
+        # Get conversation participants
+        conv = await db.conversations.find_one({
+            "_id": ObjectId(message["conversation_id"])
+        })
+        
+        # Broadcast to all participants
+        for participant_id in conv["participants"]:
+            await broadcast_to_app("chat_app", {
+                "type": "new_message",
+                "data": {**msg, "_id": str(result.inserted_id)}
+            }, user_id=participant_id)
+    
+    elif msg_type == "typing":
+        # Broadcast typing indicator
+        await broadcast_to_app("chat_app", {
+            "type": "user_typing",
+            "data": {
+                "conversation_id": message["conversation_id"],
+                "user_id": message["user_id"],
+                "is_typing": message.get("is_typing", True)
+            }
+        })
+```
+
+#### 5. **Analytics / Dashboard Platform**
+
+**What to Change:**
+- Replace `greetings` with `events`, `metrics`, `dashboards`, `widgets`
+- Add time-series data aggregation
+- Implement real-time metric streaming
+
+**Collections:**
+```json
+{
+  "managed_indexes": {
+    "events": [
+      {"keys": {"event_type": 1, "timestamp": -1}},
+      {"keys": {"user_id": 1, "timestamp": -1}}
+    ],
+    "metrics": [
+      {"keys": {"metric_name": 1, "timestamp": -1}},
+      {"keys": {"dashboard_id": 1, "updated_at": -1}}
+    ]
+  }
+}
+```
+
+**WebSocket Use Cases:**
+- Real-time metric updates
+- Live dashboard refreshes
+- Alert notifications
+
+### Common Patterns to Implement
+
+#### Pattern 1: User Management
+
+```python
+# Add user registration
+@app.post("/api/users/register")
+async def register_user(user_data: dict):
+    db = get_db()
+    
+    # Check if user exists
+    existing = await db.users.find_one({"email": user_data["email"]})
+    if existing:
+        raise HTTPException(400, "User already exists")
+    
+    # Hash password
+    password_hash = bcrypt.hashpw(
+        user_data["password"].encode("utf-8"),
+        bcrypt.gensalt()
+    )
+    
+    user = {
+        "email": user_data["email"],
+        "password_hash": password_hash,
+        "full_name": user_data.get("full_name"),
+        "role": "user",
+        "created_at": datetime.utcnow()
+    }
+    
+    result = await db.users.insert_one(user)
+    return {"id": str(result.inserted_id)}
+```
+
+#### Pattern 2: Pagination
+
+```python
+@app.get("/api/items")
+async def list_items(
+    page: int = 1,
+    limit: int = 20,
+    sort_by: str = "created_at",
+    order: str = "desc"
+):
+    db = get_db()
+    
+    skip = (page - 1) * limit
+    sort_direction = -1 if order == "desc" else 1
+    
+    items = await db.items.find({}) \
+        .sort(sort_by, sort_direction) \
+        .skip(skip) \
+        .limit(limit) \
+        .to_list(length=limit)
+    
+    total = await db.items.count_documents({})
+    
+    return {
+        "items": items,
+        "pagination": {
+            "page": page,
+            "limit": limit,
+            "total": total,
+            "pages": (total + limit - 1) // limit
+        }
+    }
+```
+
+#### Pattern 3: Search with Filters
+
+```python
+@app.get("/api/products/search")
+async def search_products(
+    q: str = None,
+    category: str = None,
+    min_price: float = None,
+    max_price: float = None
+):
+    db = get_db()
+    
+    query = {}
+    
+    if q:
+        query["$text"] = {"$search": q}
+    
+    if category:
+        query["category"] = category
+    
+    if min_price is not None or max_price is not None:
+        query["price"] = {}
+        if min_price is not None:
+            query["price"]["$gte"] = min_price
+        if max_price is not None:
+            query["price"]["$lte"] = max_price
+    
+    products = await db.products.find(query).to_list(length=50)
+    return {"products": products}
+```
+
+#### Pattern 4: Soft Deletes
+
+```python
+@app.delete("/api/items/{item_id}")
+async def delete_item(item_id: str, user: dict = Depends(get_current_user)):
+    db = get_db()
+    
+    # Soft delete instead of hard delete
+    result = await db.items.update_one(
+        {"_id": ObjectId(item_id)},
+        {
+            "$set": {
+                "deleted_at": datetime.utcnow(),
+                "deleted_by": user["user_id"]
+            }
+        }
+    )
+    
+    if result.matched_count == 0:
+        raise HTTPException(404, "Item not found")
+    
+    # Broadcast deletion
+    await broadcast_to_app("my_app", {
+        "type": "item_deleted",
+        "data": {"item_id": item_id}
+    })
+    
+    return {"deleted": True}
+```
+
+### Migration Checklist
+
+When expanding hello_world to a real app:
+
+- [ ] **Update manifest.json**
+  - [ ] Change `slug` to your app name
+  - [ ] Update `name` and `description`
+  - [ ] Add all collections to `managed_indexes`
+  - [ ] Configure `websockets` endpoints if needed
+  - [ ] Set up `auth_policy` requirements
+
+- [ ] **Modify Data Model**
+  - [ ] Replace `greetings` collection with your domain collections
+  - [ ] Add relationships between collections
+  - [ ] Define proper indexes for your query patterns
+
+- [ ] **Update API Endpoints**
+  - [ ] Replace greeting CRUD with your domain operations
+  - [ ] Add business logic and validation
+  - [ ] Implement proper error handling
+  - [ ] Add pagination, filtering, search
+
+- [ ] **Enhance Authentication**
+  - [ ] Add user registration
+  - [ ] Implement password reset
+  - [ ] Add role-based access control
+  - [ ] Configure session management
+
+- [ ] **Add WebSocket Features**
+  - [ ] Register message handlers for your use cases
+  - [ ] Implement broadcasting for real-time updates
+  - [ ] Add connection status indicators
+  - [ ] Handle reconnection logic
+
+- [ ] **Update UI**
+  - [ ] Replace greeting UI with your domain UI
+  - [ ] Add forms for creating/editing entities
+  - [ ] Implement real-time updates display
+  - [ ] Add proper error messages and loading states
+
+- [ ] **Production Readiness**
+  - [ ] Update environment variables
+  - [ ] Configure production database
+  - [ ] Set up proper secrets management
+  - [ ] Add monitoring and alerting
+  - [ ] Review [DOCKER_BEST_PRACTICES.md](./DOCKER_BEST_PRACTICES.md)
+
+### Architecture Recommendations
+
+**For Small Apps (< 10K users):**
+- Single FastAPI application
+- Direct MongoDB connection
+- WebSocket for real-time features
+- Simple file-based configuration
+
+**For Medium Apps (10K - 100K users):**
+- Add Redis for caching
+- Implement background task queue (Celery/RQ)
+- Add CDN for static assets
+- Use MongoDB replica set
+
+**For Large Apps (100K+ users):**
+- Microservices architecture
+- Message queue (RabbitMQ/Kafka)
+- MongoDB sharding
+- Load balancer with multiple app instances
+- Separate WebSocket service if needed
+
+### Getting Help
+
+- **Documentation**: See main [README.md](../../README.md) for full API reference
+- **Examples**: Check other examples in `examples/` directory
+- **Issues**: Open an issue on GitHub for bugs or questions
+- **WebSocket Guide**: See [WebSocket Appendix](../../README.md#appendix-websocket-support) in main README
+
+### Next Steps After Forking
+
+1. **Start Small**: Implement one feature at a time
+2. **Test Incrementally**: Add tests as you build
+3. **Iterate**: Use the manifest-driven approach to evolve your schema
+4. **Monitor**: Use built-in observability to track performance
+5. **Scale**: Add more apps when ready - the infrastructure is already there!
+
+**Remember**: The hello_world example gives you production-ready infrastructure. Focus on your business logic, and MDB_RUNTIME handles the rest.
 

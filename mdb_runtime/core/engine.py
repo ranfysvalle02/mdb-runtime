@@ -422,18 +422,195 @@ class RuntimeEngine:
                 await self._create_app_indexes(slug, manifest)
             
             duration_ms = (time.time() - start_time) * 1000
+            # Register WebSocket endpoints if configured
+            websockets_config = manifest.get("websockets")
+            if websockets_config:
+                await self._register_websockets(slug, websockets_config)
+            
             record_operation("engine.register_app", duration_ms, success=True, app_slug=slug)
             contextual_logger.info(
                 "App registered successfully",
                 extra={
                     "app_slug": slug,
                     "create_indexes": create_indexes,
+                    "websockets_configured": bool(websockets_config),
                     "duration_ms": round(duration_ms, 2),
                 }
             )
             return True
         finally:
             clear_app_context()
+    
+    async def _register_websockets(
+        self,
+        slug: str,
+        websockets_config: Dict[str, Any]
+    ) -> None:
+        """
+        Register WebSocket endpoints for an app.
+        
+        WebSocket support is OPTIONAL - only processes if dependencies are available.
+        
+        Args:
+            slug: App slug
+            websockets_config: WebSocket configuration from manifest
+        """
+        # Try to import WebSocket support (optional dependency)
+        try:
+            from ..routing.websockets import create_websocket_endpoint, get_websocket_manager
+        except ImportError as e:
+            contextual_logger.warning(
+                f"WebSocket configuration found for app '{slug}' but dependencies are not available: {e}. "
+                f"WebSocket support will be disabled for this app. Install FastAPI with WebSocket support."
+            )
+            return
+        
+        contextual_logger.info(
+            f"Registering WebSocket endpoints for app '{slug}'",
+            extra={"app_slug": slug, "endpoint_count": len(websockets_config)}
+        )
+        
+        # Store WebSocket configuration for later route registration
+        # Note: Actual FastAPI route registration happens when the app is mounted
+        # This method just validates and stores the configuration
+        if not hasattr(self, '_websocket_configs'):
+            self._websocket_configs = {}
+        
+        self._websocket_configs[slug] = websockets_config
+        
+        # Pre-initialize WebSocket managers
+        for endpoint_name, endpoint_config in websockets_config.items():
+            path = endpoint_config.get("path", f"/{endpoint_name}")
+            manager = get_websocket_manager(slug)
+            contextual_logger.debug(
+                f"Configured WebSocket endpoint '{endpoint_name}' at path '{path}'",
+                extra={"app_slug": slug, "endpoint": endpoint_name, "path": path}
+            )
+    
+    def get_websocket_config(self, slug: str) -> Optional[Dict[str, Any]]:
+        """
+        Get WebSocket configuration for an app.
+        
+        Args:
+            slug: App slug
+            
+        Returns:
+            WebSocket configuration dict or None if not configured
+        """
+        if hasattr(self, '_websocket_configs'):
+            return self._websocket_configs.get(slug)
+        return None
+    
+    def register_websocket_routes(self, app: Any, slug: str) -> None:
+        """
+        Register WebSocket routes with a FastAPI app.
+        
+        WebSocket support is OPTIONAL - only enabled if:
+        1. App defines "websockets" in manifest.json
+        2. WebSocket dependencies are available
+        
+        This should be called after the FastAPI app is created to actually
+        mount the WebSocket endpoints.
+        
+        Args:
+            app: FastAPI application instance
+            slug: App slug
+        """
+        # Check if WebSockets are configured for this app
+        websockets_config = self.get_websocket_config(slug)
+        if not websockets_config:
+            contextual_logger.debug(f"No WebSocket configuration found for app '{slug}' - WebSocket support disabled")
+            return
+        
+        # Try to import WebSocket support (optional dependency)
+        try:
+            from ..routing.websockets import create_websocket_endpoint
+        except ImportError as e:
+            contextual_logger.warning(
+                f"WebSocket support requested for app '{slug}' but dependencies are not available: {e}. "
+                f"WebSocket routes will not be registered. Install FastAPI with WebSocket support."
+            )
+            return
+        
+        for endpoint_name, endpoint_config in websockets_config.items():
+            path = endpoint_config.get("path", f"/{endpoint_name}")
+            
+            # Handle auth configuration - use app's auth_policy as default
+            # Support both new nested format and old top-level format for backward compatibility
+            auth_config = endpoint_config.get("auth", {})
+            if isinstance(auth_config, dict) and "required" in auth_config:
+                require_auth = auth_config.get("required", True)
+            elif "require_auth" in endpoint_config:
+                # Backward compatibility: if "require_auth" is at top level
+                require_auth = endpoint_config.get("require_auth", True)
+            else:
+                # Default: use app's auth_policy if available, otherwise require auth
+                app_config = self.get_app(slug)
+                if app_config and "auth_policy" in app_config:
+                    require_auth = app_config["auth_policy"].get("required", True)
+                else:
+                    require_auth = True  # Secure default
+            
+            ping_interval = endpoint_config.get("ping_interval", 30)
+            
+            # Create the endpoint handler with app isolation
+            # Note: Apps can register message handlers later using register_message_handler()
+            try:
+                handler = create_websocket_endpoint(
+                    app_slug=slug,
+                    path=path,
+                    endpoint_name=endpoint_name,  # Pass endpoint name for handler lookup
+                    handler=None,  # Handlers registered via register_message_handler()
+                    require_auth=require_auth,
+                    ping_interval=ping_interval
+                )
+                print(f"✅ Created WebSocket handler for '{path}' (type: {type(handler).__name__}, callable: {callable(handler)})")
+            except Exception as e:
+                print(f"❌ Failed to create WebSocket handler for '{path}': {e}")
+                import traceback
+                traceback.print_exc()
+                raise
+            
+            # Register with FastAPI - automatically scoped to this app
+            try:
+                # FastAPI WebSocket registration - use APIRouter approach (most reliable)
+                from fastapi import APIRouter
+                
+                # Create a router for this WebSocket route
+                ws_router = APIRouter()
+                ws_router.websocket(path)(handler)
+                
+                # Include the router in the app
+                app.include_router(ws_router)
+                
+                print(f"✅ Registered WebSocket route '{path}' for app '{slug}' using APIRouter")
+                print(f"   Handler type: {type(handler).__name__}, Callable: {callable(handler)}")
+                print(f"   Route name: {slug}_{endpoint_name}, Auth required: {require_auth}")
+                print(f"   Route path: {path}, Full route count: {len(app.routes)}")
+                contextual_logger.info(
+                    f"✅ Registered WebSocket route '{path}' for app '{slug}' (auth: {require_auth})",
+                    extra={
+                        "app_slug": slug, 
+                        "path": path, 
+                        "endpoint": endpoint_name,
+                        "require_auth": require_auth
+                    }
+                )
+            except Exception as e:
+                contextual_logger.error(
+                    f"❌ Failed to register WebSocket route '{path}' for app '{slug}': {e}",
+                    exc_info=True,
+                    extra={
+                        "app_slug": slug,
+                        "path": path,
+                        "endpoint": endpoint_name,
+                        "error": str(e)
+                    }
+                )
+                print(f"❌ Failed to register WebSocket route '{path}' for app '{slug}': {e}")
+                import traceback
+                traceback.print_exc()
+                raise
     
     async def _create_app_indexes(
         self,

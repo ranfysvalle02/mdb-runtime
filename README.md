@@ -66,7 +66,9 @@ docs = await db.users.find({"status": "active"}).to_list(length=10)
 
 **Observability Built-In** - Structured logging with correlation IDs, metrics collection, and health checks. Everything you need to debug and monitor in production.
 
-**Manifest-Driven Configuration** - Define your app's configuration, indexes, and auth rules in a JSON manifest. Version it, validate it, and deploy it.
+**Manifest-Driven Configuration** - Define your app's configuration, indexes, auth rules, and WebSocket endpoints in a JSON manifest. Version it, validate it, and deploy it.
+
+**Real-Time WebSocket Support** - Built-in WebSocket support for bi-directional communication. Define endpoints in your manifest, and the runtime handles connection management, authentication, and message routing automatically.
 
 ## Quick Start
 
@@ -145,6 +147,12 @@ Create a `manifest.json` file that defines your app configuration:
         "background": true
       }
     ]
+  },
+  "websockets": {
+    "realtime": {
+      "path": "/ws",
+      "description": "Real-time updates for task changes"
+    }
   }
 }
 ```
@@ -581,6 +589,414 @@ For issues and questions, please open an issue on the repository.
 ---
 
 **Stop writing boilerplate. Start building features.**
+
+---
+
+## Appendix: WebSocket Support
+
+MDB_RUNTIME includes built-in WebSocket support for real-time, bi-directional communication. WebSocket endpoints are defined in your manifest.json and automatically registered with your FastAPI application.
+
+### Quick Start
+
+Add WebSocket configuration to your `manifest.json`:
+
+```json
+{
+  "version": "2.0",
+  "slug": "my_app",
+  "websockets": {
+    "realtime": {
+      "path": "/ws",
+      "description": "Real-time updates endpoint"
+    }
+  }
+}
+```
+
+Then register WebSocket routes in your FastAPI app:
+
+```python
+from fastapi import FastAPI
+from mdb_runtime import RuntimeEngine
+
+app = FastAPI()
+engine = RuntimeEngine(mongo_uri="...", db_name="...")
+await engine.initialize()
+
+# Load manifest and register app
+manifest = await engine.load_manifest("manifest.json")
+await engine.register_app(manifest)
+
+# Register WebSocket routes automatically
+engine.register_websocket_routes(app, "my_app")
+```
+
+That's it! Your WebSocket endpoint is now available at `/ws` with automatic authentication and connection management.
+
+### Features
+
+- **Automatic Route Registration** - WebSocket endpoints defined in manifest are automatically registered
+- **Built-in Authentication** - Integrates with MDB_RUNTIME's auth system (JWT tokens via query params or cookies)
+- **App-Level Isolation** - Each app has its own WebSocket connection manager
+- **Message Handlers** - Register handlers for incoming client messages
+- **Broadcasting** - Broadcast messages to all connected clients or specific users
+- **Automatic Ping/Pong** - Keeps connections alive automatically
+- **Connection Metadata** - Tracks user_id, user_email, and connection time for each connection
+
+### Manifest Configuration
+
+WebSocket endpoints are configured in the `websockets` section of your manifest:
+
+```json
+{
+  "websockets": {
+    "endpoint_name": {
+      "path": "/ws",
+      "description": "Optional description",
+      "auth": {
+        "required": true
+      },
+      "ping_interval": 30
+    }
+  }
+}
+```
+
+**Configuration Options:**
+- `path` (required): The WebSocket endpoint path (e.g., "/ws", "/events")
+- `description` (optional): Human-readable description
+- `auth.required` (optional): Whether authentication is required (default: uses app's `auth_policy`)
+- `ping_interval` (optional): Ping interval in seconds (default: 30)
+
+### Client Connection
+
+Clients connect with authentication tokens:
+
+**JavaScript Example:**
+```javascript
+// Get token from cookie (set by your auth system)
+function getCookie(name) {
+    const value = `; ${document.cookie}`;
+    const parts = value.split(`; ${name}=`);
+    if (parts.length === 2) return parts.pop().split(';').shift();
+    return null;
+}
+
+const token = getCookie('ws_token') || getCookie('token');
+const ws = new WebSocket(`ws://localhost:8000/ws?token=${encodeURIComponent(token)}`);
+
+ws.onopen = () => {
+    console.log('Connected!');
+};
+
+ws.onmessage = (event) => {
+    const message = JSON.parse(event.data);
+    console.log('Received:', message);
+};
+```
+
+**Python Example:**
+```python
+import asyncio
+import websockets
+import json
+
+async def connect():
+    token = "your_jwt_token_here"
+    uri = f"ws://localhost:8000/ws?token={token}"
+    
+    async with websockets.connect(uri) as websocket:
+        # Send a message
+        await websocket.send(json.dumps({
+            "type": "echo_test",
+            "message": "Hello from Python!"
+        }))
+        
+        # Receive response
+        response = await websocket.recv()
+        print(f"Received: {response}")
+
+asyncio.run(connect())
+```
+
+### Server-Side: Broadcasting Messages
+
+Broadcast messages to all connected clients:
+
+```python
+from mdb_runtime.routing.websockets import broadcast_to_app
+
+# Broadcast to all clients
+await broadcast_to_app("my_app", {
+    "type": "task_created",
+    "data": {
+        "task_id": "123",
+        "title": "New Task",
+        "created_by": "user@example.com"
+    }
+})
+
+# Broadcast to specific user only
+await broadcast_to_app("my_app", {
+    "type": "notification",
+    "data": {"message": "You have a new task"}
+}, user_id="user123")
+```
+
+### Server-Side: Handling Client Messages
+
+Register message handlers to process incoming client messages:
+
+```python
+from mdb_runtime.routing.websockets import register_message_handler
+
+async def handle_client_message(websocket, message):
+    """Handle incoming WebSocket messages from clients"""
+    msg_type = message.get("type")
+    
+    if msg_type == "subscribe":
+        # Handle subscription request
+        channel = message.get("channel")
+        await broadcast_to_app("my_app", {
+            "type": "subscribed",
+            "channel": channel
+        })
+    
+    elif msg_type == "update_status":
+        # Update database and broadcast
+        task_id = message.get("task_id")
+        status = message.get("status")
+        
+        # Update in database
+        db = engine.get_scoped_db("my_app")
+        await db.tasks.update_one(
+            {"_id": ObjectId(task_id)},
+            {"$set": {"status": status}}
+        )
+        
+        # Broadcast update to all clients
+        await broadcast_to_app("my_app", {
+            "type": "task_updated",
+            "data": {"task_id": task_id, "status": status}
+        })
+
+# Register handler (call this during app startup)
+register_message_handler("my_app", "realtime", handle_client_message)
+```
+
+### Complete Example: Real-Time Task Updates
+
+Here's a complete example showing real-time task updates:
+
+**manifest.json:**
+```json
+{
+  "version": "2.0",
+  "slug": "task_manager",
+  "websockets": {
+    "realtime": {
+      "path": "/ws",
+      "description": "Real-time task updates"
+    }
+  }
+}
+```
+
+**app.py:**
+```python
+from fastapi import FastAPI
+from mdb_runtime import RuntimeEngine
+from mdb_runtime.routing.websockets import (
+    register_message_handler,
+    broadcast_to_app
+)
+from bson import ObjectId
+
+app = FastAPI()
+engine = RuntimeEngine(mongo_uri="...", db_name="...")
+
+@app.on_event("startup")
+async def startup():
+    await engine.initialize()
+    manifest = await engine.load_manifest("manifest.json")
+    await engine.register_app(manifest)
+    
+    # Register WebSocket routes
+    engine.register_websocket_routes(app, "task_manager")
+    
+    # Register message handler
+    register_message_handler("task_manager", "realtime", handle_task_message)
+
+async def handle_task_message(websocket, message):
+    """Handle task-related WebSocket messages"""
+    msg_type = message.get("type")
+    
+    if msg_type == "create_task":
+        # Create task in database
+        db = engine.get_scoped_db("task_manager")
+        result = await db.tasks.insert_one({
+            "title": message.get("title"),
+            "status": "todo",
+            "created_at": datetime.utcnow()
+        })
+        
+        # Broadcast to all clients
+        await broadcast_to_app("task_manager", {
+            "type": "task_created",
+            "data": {
+                "_id": str(result.inserted_id),
+                "title": message.get("title"),
+                "status": "todo"
+            }
+        })
+
+@app.post("/api/tasks")
+async def create_task(task_data: dict):
+    """Create a task via HTTP API"""
+    db = engine.get_scoped_db("task_manager")
+    result = await db.tasks.insert_one(task_data)
+    
+    # Broadcast via WebSocket
+    await broadcast_to_app("task_manager", {
+        "type": "task_created",
+        "data": {**task_data, "_id": str(result.inserted_id)}
+    })
+    
+    return {"id": str(result.inserted_id)}
+```
+
+**Client (JavaScript):**
+```javascript
+const ws = new WebSocket(`ws://localhost:8000/ws?token=${token}`);
+
+ws.onmessage = (event) => {
+    const message = JSON.parse(event.data);
+    
+    if (message.type === "task_created") {
+        // Add new task to UI
+        addTaskToUI(message.data);
+    }
+};
+
+// Send message to server
+function createTask(title) {
+    ws.send(JSON.stringify({
+        type: "create_task",
+        title: title
+    }));
+}
+```
+
+### Message Format
+
+All WebSocket messages follow a consistent format:
+
+**Server to Client:**
+```json
+{
+  "type": "message_type",
+  "data": { /* message-specific data */ },
+  "app_slug": "my_app",
+  "timestamp": "2024-01-15T10:00:00Z"
+}
+```
+
+**Client to Server:**
+```json
+{
+  "type": "message_type",
+  /* message-specific fields */
+}
+```
+
+### Connection Lifecycle
+
+1. **Client connects** with authentication token (query param or cookie)
+2. **Server authenticates** using MDB_RUNTIME's auth system
+3. **Connection accepted** and registered in app's connection manager
+4. **Initial message sent** confirming connection
+5. **Ping/pong** keeps connection alive (automatic)
+6. **Messages exchanged** bi-directionally
+7. **Connection closed** (client disconnect, server shutdown, or error)
+
+### Authentication
+
+WebSocket connections use the same authentication system as HTTP endpoints:
+
+- **Token in query parameter**: `ws://host/ws?token=JWT_TOKEN`
+- **Token in cookie**: Set `ws_token` or `token` cookie (non-httponly for JS access)
+- **Authentication required**: Controlled by `auth.required` in manifest or app's `auth_policy`
+
+If authentication fails, the connection is closed with code `1008` (Policy Violation).
+
+### Connection Management
+
+Each app has its own `WebSocketConnectionManager` instance, ensuring complete isolation:
+
+- Connections are tracked per app
+- Broadcasting is scoped to the app
+- Message handlers are app-specific
+- No cross-app data leakage
+
+### FAQ
+
+**Q: Do I need to install additional dependencies for WebSockets?**  
+A: No! WebSocket support uses FastAPI's built-in WebSocket support. If you're using FastAPI, it's already available.
+
+**Q: Can I have multiple WebSocket endpoints per app?**  
+A: Yes! Define multiple endpoints in your manifest:
+
+```json
+{
+  "websockets": {
+    "realtime": {"path": "/ws"},
+    "notifications": {"path": "/notifications"},
+    "chat": {"path": "/chat"}
+  }
+}
+```
+
+**Q: How do I handle reconnections?**  
+A: The client should implement reconnection logic. The server automatically handles re-authentication on reconnect.
+
+**Q: Can I send binary data?**  
+A: Currently, the implementation uses JSON text messages. Binary support can be added if needed.
+
+**Q: How many connections can I handle?**  
+A: This depends on your server resources. Each connection is lightweight, and MongoDB connection pooling is shared across all WebSocket connections.
+
+**Q: Are WebSocket connections secure?**  
+A: Yes! Use `wss://` (WebSocket Secure) in production, and authentication tokens are validated on every connection.
+
+**Q: Can I filter broadcasts by user?**  
+A: Yes! Use the `user_id` parameter:
+
+```python
+await broadcast_to_app("my_app", message, user_id="specific_user_id")
+```
+
+**Q: How do I test WebSocket endpoints?**  
+A: Use tools like `websocat`, `wscat`, or browser DevTools. You can also use the WebSocket demo in the hello_world example.
+
+**Q: What happens if the server restarts?**  
+A: Clients will need to reconnect. Implement reconnection logic in your client code.
+
+**Q: Can I use WebSockets without authentication?**  
+A: Yes, set `auth.required: false` in your endpoint configuration:
+
+```json
+{
+  "websockets": {
+    "public": {
+      "path": "/public-ws",
+      "auth": {"required": false}
+    }
+  }
+}
+```
+
+**Q: How do I debug WebSocket issues?**  
+A: Check server logs for connection attempts and authentication failures. The runtime logs all WebSocket events with app context.
 
 ---
 

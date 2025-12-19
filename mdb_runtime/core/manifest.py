@@ -345,6 +345,53 @@ MANIFEST_SCHEMA_V2 = {
             },
             "description": "Collection name -> collection settings"
         },
+        "websockets": {
+            "type": "object",
+            "patternProperties": {
+                "^[a-zA-Z0-9_-]+$": {
+                    "type": "object",
+                    "properties": {
+                        "path": {
+                            "type": "string",
+                            "pattern": "^/[a-zA-Z0-9_/-]+$",
+                            "description": "WebSocket path (e.g., '/ws', '/events', '/realtime'). Must start with '/'. Routes are automatically registered."
+                        },
+                        "auth": {
+                            "type": "object",
+                            "properties": {
+                                "required": {
+                                    "type": "boolean",
+                                    "default": True,
+                                    "description": "Whether authentication is required (default: true). Uses app's auth_policy if not specified."
+                                },
+                                "allow_anonymous": {
+                                    "type": "boolean",
+                                    "default": False,
+                                    "description": "Allow anonymous connections even if auth is required (default: false)"
+                                }
+                            },
+                            "additionalProperties": False,
+                            "description": "Authentication configuration. If not specified, uses app's auth_policy settings."
+                        },
+                        "description": {
+                            "type": "string",
+                            "description": "Description of what this WebSocket endpoint is used for"
+                        },
+                        "ping_interval": {
+                            "type": "integer",
+                            "minimum": 5,
+                            "maximum": 300,
+                            "default": 30,
+                            "description": "Ping interval in seconds to keep connection alive (default: 30, min: 5, max: 300)"
+                        }
+                    },
+                    "required": ["path"],
+                    "additionalProperties": False,
+                    "description": "WebSocket endpoint configuration. Each endpoint is automatically isolated to this app. Only 'path' is required - all other settings have sensible defaults."
+                }
+            },
+            "description": "WebSocket endpoints configuration. Super simple setup - just specify the path! Each endpoint is automatically scoped and isolated to this app. Key is the endpoint name (e.g., 'realtime', 'events'), value contains path and optional settings. Routes are automatically registered with FastAPI during app registration."
+        },
         "developer_id": {
             "type": "string",
             "format": "email",
