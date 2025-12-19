@@ -1,1024 +1,180 @@
 # MDB_RUNTIME
 
-**The MongoDB Runtime Engine That Makes Multi-App Development Actually Bearable**
+**The Missing Engine for Your Python and MongoDB Projects.**
 
 [![Python 3.8+](https://img.shields.io/badge/python-3.8+-blue.svg)](https://www.python.org/downloads/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 ---
 
-## The Problem: MongoDB Development is a Nightmare (Even for One App)
+## The "Prototype Graveyard" Problem
 
-You're building an application with MongoDB. Maybe it's a single app, maybe you're planning for multiple apps later. Either way, you hit the same problems:
+If you are a builder, you know the feeling. You have a "digital garden" of scripts, tools, and prototypes. It's the data-entry tool for a friend, the internal dashboard, the AI chatbot.
 
-**You find yourself writing the same boilerplate over and over:**
+Each one was a great idea. Each one lives in its own isolated folder. And each one, slowly, becomes a maintenance burden.
 
-```python
-# Every. Single. Query.
-docs = await collection.find({
-    "$and": [
-        {"app_id": current_app_id},  # Don't forget this!
-        {"status": "active"}
-    ]
-}).to_list(length=10)
+**Why? Because 70% of your time is spent on the "Scaffolding":**
 
-# Every. Single. Insert.
-await collection.insert_one({
-    **document,
-    "app_id": current_app_id  # Hope you didn't forget...
-})
-```
+* Writing the same MongoDB connection boilerplate.
+* Manually creating indexes to prevent slow queries.
+* Building another login page and JWT handler.
+* Worrying about data leaks between your "dev" and "prod" logic.
 
-**You're constantly worried about data leaks** - one missing `app_id` filter and you're exposing data across apps. You write defensive code everywhere, add validation layers, and still wake up at 3 AM wondering if you missed a spot.
+**MDB_RUNTIME** is the engine that solves this. It is a "WordPress-like" platform for the modern Python/MongoDB stack, designed to minimize the friction between an idea and a live application.
 
-**Index management becomes a chore** - you need indexes on `app_id` for every collection, plus compound indexes for your actual queries. You're manually creating and managing dozens of indexes, and every schema change means updating index definitions.
+---
 
-**Authentication and authorization get messy** - each app might need different access rules, but you're building this from scratch every time. You're juggling JWT tokens, session cookies, role-based access, and permission checks across multiple apps.
+## How It Works
 
-**Observability is an afterthought** - you're adding logging and metrics manually, trying to trace requests across services, and debugging issues without proper context.
+**MDB_RUNTIME** acts as a hyper-intelligent proxy between your code and MongoDB. It handles the "boring" stuff so you can focus on the differentiation.
 
-**You're spending 70% of your time on infrastructure, 30% on features.**
+### 1. The Magic: Automatic Data Sandboxing 🛡️
 
-And if you're building a single app? You still need all of this - indexes, auth, observability, error handling. The only difference is you're not worried about data leaks (yet). But what happens when you need to add a second app? You're back to rewriting everything.
+The biggest pain point in multi-app (or even single-app) development is data isolation. MDB_RUNTIME solves this via a **two-layer scoping system** that requires zero effort from you.
 
-## The Solution: MDB_RUNTIME
-
-MDB_RUNTIME is a runtime engine that handles all the hard parts of MongoDB development - whether you're building one app or a hundred. It gives you production-ready infrastructure from day one, so you can focus on building features instead of boilerplate.
-
-**Single app?** You get automatic index management, built-in observability, and manifest-driven configuration.  
-**Multiple apps?** You get all that plus automatic data isolation and multi-app auth.  
-**Starting with one, planning for more?** You're already set up for scale.
-
-### What It Does
-
-**Automatic Data Isolation** - Every query is automatically scoped to the current app. No more manual `app_id` filters. No more data leaks. (Even with one app, this gives you a clean data model and makes it trivial to add more apps later.)
+* **Layer 1 (Physical Scoping):** All collection access is prefixed. When your app writes to `db.users`, the engine actually writes to `db.my_app_users`.
+* **Layer 2 (Logical Scoping):** All writes are automatically tagged with `{"app_id": "my_app"}`. All reads are automatically filtered by this ID.
 
 ```python
-# That's it. Seriously.
-db = engine.get_scoped_db("my_app")
-docs = await db.users.find({"status": "active"}).to_list(length=10)
-# Automatically filtered by app_id - you never even see it
+# YOU WRITE THIS (Clean, Naive Code):
+await db.tasks.find({}).to_list(length=10)
+
+# THE ENGINE EXECUTES THIS (Secure, Scoped Query):
+# Collection: task_manager_tasks
+# Query: {"app_id": "task_manager"}
+
 ```
 
-**Automatic Index Management** - Indexes are created automatically based on your query patterns. The `app_id` index? Handled. Compound indexes for your queries? Created in the background.
+### 2. Manifest-Driven "DNA" 🧬
 
-**Built-in Authentication & Authorization** - Support for multiple auth strategies, role-based access control, and app-specific user management. All configured through simple manifests.
+Your application's configuration lives in a simple `manifest.json`. This is the "genome" of your project. It defines your indexes, authentication rules, and WebSocket endpoints declaratively.
 
-**Observability Built-In** - Structured logging with correlation IDs, metrics collection, and health checks. Everything you need to debug and monitor in production.
+### 3. Automatic Index Management ⚙️
 
-**Manifest-Driven Configuration** - Define your app's configuration, indexes, auth rules, and WebSocket endpoints in a JSON manifest. Version it, validate it, and deploy it.
+Stop manually running `createIndex` in the Mongo shell. Define your indexes in your manifest, and MDB_RUNTIME ensures they exist on startup.
 
-**Real-Time WebSocket Support** - Built-in WebSocket support for bi-directional communication. Define endpoints in your manifest, and the runtime handles connection management, authentication, and message routing automatically.
+```json
+"managed_indexes": {
+  "tasks": [
+    { "keys": {"status": 1, "created_at": -1}, "name": "status_sort" }
+  ]
+}
+
+```
+
+---
 
 ## Quick Start
 
 ```bash
 pip install mdb-runtime
+
 ```
 
-### Single App? Just as Easy
+### 1. Define Your Manifest
 
-```python
-from mdb_runtime import RuntimeEngine
-
-# Initialize once
-engine = RuntimeEngine(
-    mongo_uri="mongodb://localhost:27017",
-    db_name="my_database"
-)
-await engine.initialize()
-
-# Get a scoped database - works perfectly for a single app
-db = engine.get_scoped_db("my_app")
-
-# Use it like normal MongoDB - all the infrastructure is handled
-doc = await db.users.find_one({"email": "user@example.com"})
-await db.users.insert_one({"name": "John", "email": "john@example.com"})
-
-# Register your app from a manifest (optional but recommended)
-manifest = await engine.load_manifest("path/to/manifest.json")
-await engine.register_app(manifest)
-
-# Health checks and metrics are built-in
-health = await engine.get_health_status()
-```
-
-**That's it.** Even with one app, you get automatic index management, structured logging, metrics, and health checks. When you're ready to add more apps, you're already set up.
-
-## Building Your First App: A Complete Guide
-
-Let's build a simple task management app from scratch. This guide assumes you're building a single-app application (the most common starting point).
-
-### Step 1: Install and Setup
-
-```bash
-pip install mdb-runtime
-```
-
-Create a new directory for your project:
-
-```bash
-mkdir my-task-app
-cd my-task-app
-```
-
-### Step 2: Create Your App Manifest
-
-Create a `manifest.json` file that defines your app configuration:
+Create `manifest.json` in your project root.
 
 ```json
 {
-  "version": "2.0",
   "slug": "task_manager",
-  "name": "Task Manager",
-  "description": "A simple task management application",
-  "status": "active",
-  "developer_id": "you@example.com",
+  "name": "My Task App",
   "auth_required": true,
-  "auth_policy": {
-    "roles": ["admin", "user"],
-    "owner_can_access": true
-  },
   "managed_indexes": {
-    "tasks": [
-      {
-        "keys": {"status": 1, "created_at": -1},
-        "name": "status_created_idx",
-        "background": true
-      }
-    ]
-  },
-  "websockets": {
-    "realtime": {
-      "path": "/ws",
-      "description": "Real-time updates for task changes"
-    }
+    "tasks": [{ "keys": {"priority": -1}, "name": "priority_idx" }]
   }
 }
+
 ```
 
-This manifest tells MDB_RUNTIME:
-- Your app slug is `task_manager`
-- It requires authentication
-- Users with "admin" or "user" roles can access it
-- You want an index on the `tasks` collection for status and created_at
+### 2. Initialize the Engine
 
-### Step 3: Initialize the Runtime Engine
-
-Create `main.py`:
+In your `main.py` (FastAPI example):
 
 ```python
-import asyncio
+from fastapi import FastAPI, Depends
 from mdb_runtime import RuntimeEngine
-from pathlib import Path
-
-async def main():
-    # Initialize the engine
-    engine = RuntimeEngine(
-        mongo_uri="mongodb://localhost:27017",
-        db_name="task_app_db"
-    )
-    
-    # Connect to MongoDB
-    await engine.initialize()
-    
-    # Load and register your app manifest
-    manifest_path = Path("manifest.json")
-    manifest = await engine.load_manifest(manifest_path)
-    await engine.register_app(manifest)
-    
-    print("✅ App registered successfully!")
-    
-    # Get a scoped database for your app
-    db = engine.get_scoped_db("task_manager")
-    
-    # Now you can use it like normal MongoDB
-    # All queries are automatically scoped to "task_manager"
-    
-    # Create a task
-    result = await db.tasks.insert_one({
-        "title": "Learn MDB_RUNTIME",
-        "description": "Read the docs and build something",
-        "status": "todo",
-        "created_at": "2024-01-15T10:00:00Z"
-    })
-    print(f"✅ Created task with ID: {result.inserted_id}")
-    
-    # Find tasks
-    tasks = await db.tasks.find({"status": "todo"}).to_list(length=10)
-    print(f"✅ Found {len(tasks)} todo tasks")
-    
-    # Update a task
-    await db.tasks.update_one(
-        {"_id": result.inserted_id},
-        {"$set": {"status": "in_progress"}}
-    )
-    print("✅ Updated task status")
-    
-    # Check health
-    health = await engine.get_health_status()
-    print(f"✅ Engine health: {health['status']}")
-    
-    # Cleanup
-    await engine.shutdown()
-
-if __name__ == "__main__":
-    asyncio.run(main())
-```
-
-### Step 4: Run Your App
-
-Make sure MongoDB is running, then:
-
-```bash
-python main.py
-```
-
-You should see:
-```
-✅ App registered successfully!
-✅ Created task with ID: 507f1f77bcf86cd799439011
-✅ Found 1 todo tasks
-✅ Updated task status
-✅ Engine health: connected
-```
-
-### Step 5: Understanding What Happened
-
-**Automatic App Scoping:**
-- When you called `db.tasks.insert_one()`, MDB_RUNTIME automatically added `"app_id": "task_manager"` to your document
-- When you called `db.tasks.find()`, it automatically filtered by `{"app_id": {"$in": ["task_manager"]}}`
-- You never had to think about it - it just works
-
-**Automatic Index Management:**
-- The index defined in your manifest (`status_created_idx`) was created automatically
-- The `app_id` index was also created automatically (required for all queries)
-- All indexes are created in the background, so your queries are fast
-
-**What's in the Database:**
-Your task document actually looks like this:
-```json
-{
-  "_id": "507f1f77bcf86cd799439011",
-  "title": "Learn MDB_RUNTIME",
-  "description": "Read the docs and build something",
-  "status": "todo",
-  "created_at": "2024-01-15T10:00:00Z",
-  "app_id": "task_manager"  // ← Added automatically
-}
-```
-
-### Step 6: Building a Real API
-
-Let's create a FastAPI application:
-
-```python
-from fastapi import FastAPI, HTTPException
-from mdb_runtime import RuntimeEngine
-from mdb_runtime.database import AppDB, get_app_db
-from pathlib import Path
-import asyncio
+from mdb_runtime.database import AppDB
 
 app = FastAPI()
-engine = None
+engine = RuntimeEngine(mongo_uri="mongodb://localhost:27017", db_name="cluster0")
 
 @app.on_event("startup")
 async def startup():
-    global engine
-    engine = RuntimeEngine(
-        mongo_uri="mongodb://localhost:27017",
-        db_name="task_app_db"
-    )
     await engine.initialize()
-    
-    # Register app from manifest
-    manifest = await engine.load_manifest(Path("manifest.json"))
-    await engine.register_app(manifest)
+    # Auto-discovers manifest, creates indexes, sets up auth
+    await engine.register_app("manifest.json")
 
-@app.on_event("shutdown")
-async def shutdown():
-    if engine:
-        await engine.shutdown()
-
-def get_scoped_db():
-    """Helper to get scoped database for FastAPI dependency"""
-    return engine.get_scoped_db("task_manager")
-
-@app.get("/tasks")
-async def list_tasks(db: AppDB = None):
-    """List all tasks"""
-    if db is None:
-        db = AppDB(engine.get_scoped_db("task_manager"))
-    
-    tasks = await db.tasks.find({}).to_list(length=100)
-    return {"tasks": tasks}
-
+# 3. Use the Scoped Database
 @app.post("/tasks")
-async def create_task(task: dict, db: AppDB = None):
-    """Create a new task"""
-    if db is None:
-        db = AppDB(engine.get_scoped_db("task_manager"))
-    
-    result = await db.tasks.insert_one(task)
-    return {"id": str(result.inserted_id), "task": task}
-
-@app.get("/tasks/{task_id}")
-async def get_task(task_id: str, db: AppDB = None):
-    """Get a specific task"""
-    if db is None:
-        db = AppDB(engine.get_scoped_db("task_manager"))
-    
-    from bson import ObjectId
-    task = await db.tasks.find_one({"_id": ObjectId(task_id)})
-    if not task:
-        raise HTTPException(status_code=404, detail="Task not found")
-    return task
-
-@app.put("/tasks/{task_id}")
-async def update_task(task_id: str, updates: dict, db: AppDB = None):
-    """Update a task"""
-    if db is None:
-        db = AppDB(engine.get_scoped_db("task_manager"))
-    
-    from bson import ObjectId
-    result = await db.tasks.update_one(
-        {"_id": ObjectId(task_id)},
-        {"$set": updates}
-    )
-    if result.matched_count == 0:
-        raise HTTPException(status_code=404, detail="Task not found")
-    return {"updated": True}
-
-if __name__ == "__main__":
-    import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8000)
-```
-
-Now you have a fully functional API where:
-- Every query is automatically scoped to your app
-- Indexes are managed automatically
-- You can add authentication later without changing your code
-- All operations are logged and monitored
-
-### Step 7: Adding Authentication (Optional)
-
-If you want to add authentication, update your manifest:
-
-```json
-{
-  "slug": "task_manager",
-  "sub_auth": {
-    "enabled": true,
-    "strategy": "app_users",
-    "users_collection": "users",
-    "session_cookie_name": "task_manager_session",
-    "session_ttl_seconds": 86400
-  }
-}
-```
-
-Then in your FastAPI routes:
-
-```python
-from mdb_runtime.auth import get_app_sub_user
-
-@app.get("/tasks")
-async def list_tasks(request: Request):
-    # Get authenticated user
+async def create_task(task: dict):
+    # This DB instance is physically and logically sandboxed to 'task_manager'
     db = engine.get_scoped_db("task_manager")
-    user = await get_app_sub_user(request, "task_manager", db)
     
-    if not user:
-        raise HTTPException(status_code=401, detail="Not authenticated")
-    
-    # User is authenticated, proceed with query
-    tasks = await db.tasks.find({}).to_list(length=100)
-    return {"tasks": tasks}
+    # Auto-tagged with app_id; indexes auto-managed
+    result = await db.tasks.insert_one(task)
+    return {"id": str(result.inserted_id)}
+
 ```
 
-### What You've Built
+---
 
-You now have:
-- ✅ A MongoDB-backed application with automatic data scoping
-- ✅ Automatic index management
-- ✅ A clean data model ready for scaling
-- ✅ Production-ready error handling and observability
-- ✅ A foundation that makes adding more apps trivial
-
-**Next Steps:**
-- Add more collections (users, projects, etc.) - they all get automatic scoping
-- Add more indexes in your manifest - they're created automatically
-- Add authentication using the built-in auth system
-- When you're ready for multiple apps, just use different app slugs - no code changes needed
-
-### Using Context Manager
-
-```python
-async with RuntimeEngine(mongo_uri, db_name) as engine:
-    await engine.reload_apps()
-    db = engine.get_scoped_db("my_app")
-    # ... use engine
-    # Automatic cleanup on exit
-```
-
-## Core Features
-
-### 🎯 Automatic App Isolation
-
-Every query is automatically scoped. Every insert gets `app_id` added. You can't accidentally leak data between apps.
-
-**Single app scenario?** The `app_id` is still there, giving you a clean data model. When you need to add a second app, you don't need to change any code - just use a different app slug.
-
-```python
-db = engine.get_scoped_db("my_app")
-
-# This query automatically includes: {"app_id": {"$in": ["my_app"]}}
-docs = await db.users.find({"status": "active"}).to_list(length=10)
-
-# Inserts automatically get app_id added
-await db.users.insert_one({"name": "John", "status": "active"})
-# Document stored as: {"name": "John", "status": "active", "app_id": "my_app"}
-```
+## Core Features Breakdown
 
 ### 🔐 Authentication & Authorization
 
-Built-in support for multiple auth strategies, role-based access control, and app-specific user management. Configure it all through manifests.
+Stop rewriting auth. The engine provides built-in support for multiple strategies (JWT, Session) and Role-Based Access Control (RBAC).
 
-```python
-# App-specific authentication
-from mdb_runtime.auth import get_app_sub_user
+* **Manifest Config:** Set `"auth_required": true` and define roles in JSON.
+* **Runtime Check:** `await get_app_sub_user(request, "app_slug", db)` handles the validation.
 
-user = await get_app_sub_user(request, app_slug, db, config)
-if user:
-    # User authenticated for this app
-    pass
+### 📡 Built-in WebSockets
+
+Real-time features usually require a lot of setup. MDB_RUNTIME makes it configuration-based.
+
+1. **Define:** Add `"websockets": {"realtime": {"path": "/ws"}}` to your manifest.
+2. **Register:** `engine.register_websocket_routes(app, "my_app")`.
+3. **Broadcast:** `await broadcast_to_app("my_app", {"type": "update", "data": ...})`.
+
+### 📊 Observability (The "Black Box" Recorder)
+
+You shouldn't have to add logging manually to every function.
+
+* **Contextual Logs:** Every log entry is automatically tagged with the active `app_id`.
+* **Metrics:** Record operation durations and success rates automatically.
+* **Health Checks:** Built-in endpoints to monitor DB connectivity.
+
+---
+
+## No Lock-In: The Graduation Path 🎓
+
+MDB_RUNTIME is an incubator, not a cage. Because all data is tagged with `app_id`, "graduating" an app to its own dedicated infrastructure is a simple database operation.
+
+**To export your app:**
+
+1. **Dump:** Use `mongodump` with a query filter:
+```bash
+mongodump --query='{"app_id":"task_manager"}' --out=./export
+
 ```
 
-### ✅ Manifest Validation
 
-Define your app configuration in JSON. Validate it, version it, and deploy it. Schema validation with automatic migration support.
+2. **Restore:** Load it into a fresh MongoDB cluster.
+3. **Code:** Your code is already standard PyMongo/Motor code. Just remove the `engine.get_scoped_db` wrapper and replace it with a standard `AsyncIOMotorClient`.
 
-```python
-from mdb_runtime.core import ManifestValidator
-
-validator = ManifestValidator()
-is_valid, error, paths = await validator.validate(manifest)
-```
-
-### 📊 Automatic Index Management
-
-Indexes are created automatically based on query patterns. The `app_id` index is always there. Compound indexes are created in the background as you query.
-
-```python
-# Just query - indexes are created automatically
-docs = await db.products.find({"category": "electronics"}).sort("price").to_list(10)
-# Index on (app_id, category, price) created automatically
-```
-
-### 📈 Built-in Observability
-
-Structured logging with correlation IDs, metrics collection, and health checks. Everything you need to debug and monitor.
-
-```python
-from mdb_runtime.observability import (
-    set_app_context,
-    record_operation,
-    get_logger
-)
-
-# Set context for logging
-set_app_context(app_slug="my_app")
-logger = get_logger(__name__)
-logger.info("Operation completed")  # Automatically includes app context
-
-# Record metrics
-record_operation("db.query", duration_ms=45.2, success=True)
-```
+---
 
 ## Project Structure
 
-```
-mdb-runtime/
-├── mdb_runtime/          # Main package
-│   ├── core/             # RuntimeEngine, manifest validation
-│   ├── database/         # Scoped wrappers, connection pooling
-│   ├── auth/             # Authentication & authorization
-│   ├── indexes/          # Index management
-│   ├── observability/    # Metrics, logging, health checks
-│   ├── utils/            # Utility functions
-│   └── constants.py      # Shared constants
-├── tests/                # Test suite
-│   ├── unit/             # Unit tests
-│   └── integration/      # Integration tests
-├── docs/                 # Documentation
-└── scripts/              # Utility scripts
+```text
+.
+├── main.py                  # Your FastAPI entry point
+├── manifest.json            # The DNA of your app
+└── mdb_runtime/             # The Engine
+    ├── core/                # Manifest validation & registration
+    ├── database/            # ScopedMongoWrapper (The Proxy)
+    ├── auth/                # JWT & RBAC logic
+    └── indexes/             # Auto-index management
+
 ```
 
-## Documentation
-
-- **[Quick Start Guide](docs/QUICK_START.md)** - Get started in 5 minutes
-- **[Project Structure](PROJECT_STRUCTURE.md)** - Detailed project organization
-- **[Test Documentation](tests/README.md)** - Testing guide
-
-## Testing
-
-```bash
-# Install test dependencies
-pip install -e ".[test]"
-
-# Run all tests
-pytest
-
-# Run with coverage
-pytest --cov=mdb_runtime --cov-report=html
-
-# Run specific test
-pytest tests/unit/test_engine.py
-```
-
-## Code Quality
-
-This isn't a side project. It's production-ready:
-
-- ✅ **Comprehensive test suite** - 40+ unit tests with fixtures
-- ✅ **Type hints** - 85%+ coverage for better IDE support
-- ✅ **Error handling** - Context-rich exceptions with debugging info
-- ✅ **Constants** - No magic numbers, everything is configurable
-- ✅ **Observability** - Metrics, structured logging, health checks built-in
-- ✅ **Documentation** - Comprehensive docstrings and examples
-
-## Requirements
-
-- Python 3.8+
-- MongoDB 4.4+
-- Motor 3.0+
-- PyMongo 4.0+
-
-### Optional Dependencies
-
-- `pydantic>=2.0.0` - Enhanced configuration validation
-- `casbin>=1.0.0` - Casbin authorization provider
-- `oso>=0.27.0` - OSO authorization provider
-- `ray>=2.0.0` - Ray actor support
-
-## Installation
-
-```bash
-# Basic installation
-pip install mdb-runtime
-
-# With test dependencies
-pip install -e ".[test]"
-
-# With all optional dependencies
-pip install -e ".[all]"
-```
-
-## License
-
-MIT License - Use it however you want.
-
-## Contributing
-
-See [PROJECT_STRUCTURE.md](PROJECT_STRUCTURE.md) for project organization guidelines.
-
-## Support
-
-For issues and questions, please open an issue on the repository.
-
----
-
-**Stop writing boilerplate. Start building features.**
-
----
-
-## Appendix: WebSocket Support
-
-MDB_RUNTIME includes built-in WebSocket support for real-time, bi-directional communication. WebSocket endpoints are defined in your manifest.json and automatically registered with your FastAPI application.
-
-### Quick Start
-
-Add WebSocket configuration to your `manifest.json`:
-
-```json
-{
-  "version": "2.0",
-  "slug": "my_app",
-  "websockets": {
-    "realtime": {
-      "path": "/ws",
-      "description": "Real-time updates endpoint"
-    }
-  }
-}
-```
-
-Then register WebSocket routes in your FastAPI app:
-
-```python
-from fastapi import FastAPI
-from mdb_runtime import RuntimeEngine
-
-app = FastAPI()
-engine = RuntimeEngine(mongo_uri="...", db_name="...")
-await engine.initialize()
-
-# Load manifest and register app
-manifest = await engine.load_manifest("manifest.json")
-await engine.register_app(manifest)
-
-# Register WebSocket routes automatically
-engine.register_websocket_routes(app, "my_app")
-```
-
-That's it! Your WebSocket endpoint is now available at `/ws` with automatic authentication and connection management.
-
-### Features
-
-- **Automatic Route Registration** - WebSocket endpoints defined in manifest are automatically registered
-- **Built-in Authentication** - Integrates with MDB_RUNTIME's auth system (JWT tokens via query params or cookies)
-- **App-Level Isolation** - Each app has its own WebSocket connection manager
-- **Message Handlers** - Register handlers for incoming client messages
-- **Broadcasting** - Broadcast messages to all connected clients or specific users
-- **Automatic Ping/Pong** - Keeps connections alive automatically
-- **Connection Metadata** - Tracks user_id, user_email, and connection time for each connection
-
-### Manifest Configuration
-
-WebSocket endpoints are configured in the `websockets` section of your manifest:
-
-```json
-{
-  "websockets": {
-    "endpoint_name": {
-      "path": "/ws",
-      "description": "Optional description",
-      "auth": {
-        "required": true
-      },
-      "ping_interval": 30
-    }
-  }
-}
-```
-
-**Configuration Options:**
-- `path` (required): The WebSocket endpoint path (e.g., "/ws", "/events")
-- `description` (optional): Human-readable description
-- `auth.required` (optional): Whether authentication is required (default: uses app's `auth_policy`)
-- `ping_interval` (optional): Ping interval in seconds (default: 30)
-
-### Client Connection
-
-Clients connect with authentication tokens:
-
-**JavaScript Example:**
-```javascript
-// Get token from cookie (set by your auth system)
-function getCookie(name) {
-    const value = `; ${document.cookie}`;
-    const parts = value.split(`; ${name}=`);
-    if (parts.length === 2) return parts.pop().split(';').shift();
-    return null;
-}
-
-const token = getCookie('ws_token') || getCookie('token');
-const ws = new WebSocket(`ws://localhost:8000/ws?token=${encodeURIComponent(token)}`);
-
-ws.onopen = () => {
-    console.log('Connected!');
-};
-
-ws.onmessage = (event) => {
-    const message = JSON.parse(event.data);
-    console.log('Received:', message);
-};
-```
-
-**Python Example:**
-```python
-import asyncio
-import websockets
-import json
-
-async def connect():
-    token = "your_jwt_token_here"
-    uri = f"ws://localhost:8000/ws?token={token}"
-    
-    async with websockets.connect(uri) as websocket:
-        # Send a message
-        await websocket.send(json.dumps({
-            "type": "echo_test",
-            "message": "Hello from Python!"
-        }))
-        
-        # Receive response
-        response = await websocket.recv()
-        print(f"Received: {response}")
-
-asyncio.run(connect())
-```
-
-### Server-Side: Broadcasting Messages
-
-Broadcast messages to all connected clients:
-
-```python
-from mdb_runtime.routing.websockets import broadcast_to_app
-
-# Broadcast to all clients
-await broadcast_to_app("my_app", {
-    "type": "task_created",
-    "data": {
-        "task_id": "123",
-        "title": "New Task",
-        "created_by": "user@example.com"
-    }
-})
-
-# Broadcast to specific user only
-await broadcast_to_app("my_app", {
-    "type": "notification",
-    "data": {"message": "You have a new task"}
-}, user_id="user123")
-```
-
-### Server-Side: Handling Client Messages
-
-Register message handlers to process incoming client messages:
-
-```python
-from mdb_runtime.routing.websockets import register_message_handler
-
-async def handle_client_message(websocket, message):
-    """Handle incoming WebSocket messages from clients"""
-    msg_type = message.get("type")
-    
-    if msg_type == "subscribe":
-        # Handle subscription request
-        channel = message.get("channel")
-        await broadcast_to_app("my_app", {
-            "type": "subscribed",
-            "channel": channel
-        })
-    
-    elif msg_type == "update_status":
-        # Update database and broadcast
-        task_id = message.get("task_id")
-        status = message.get("status")
-        
-        # Update in database
-        db = engine.get_scoped_db("my_app")
-        await db.tasks.update_one(
-            {"_id": ObjectId(task_id)},
-            {"$set": {"status": status}}
-        )
-        
-        # Broadcast update to all clients
-        await broadcast_to_app("my_app", {
-            "type": "task_updated",
-            "data": {"task_id": task_id, "status": status}
-        })
-
-# Register handler (call this during app startup)
-register_message_handler("my_app", "realtime", handle_client_message)
-```
-
-### Complete Example: Real-Time Task Updates
-
-Here's a complete example showing real-time task updates:
-
-**manifest.json:**
-```json
-{
-  "version": "2.0",
-  "slug": "task_manager",
-  "websockets": {
-    "realtime": {
-      "path": "/ws",
-      "description": "Real-time task updates"
-    }
-  }
-}
-```
-
-**app.py:**
-```python
-from fastapi import FastAPI
-from mdb_runtime import RuntimeEngine
-from mdb_runtime.routing.websockets import (
-    register_message_handler,
-    broadcast_to_app
-)
-from bson import ObjectId
-
-app = FastAPI()
-engine = RuntimeEngine(mongo_uri="...", db_name="...")
-
-@app.on_event("startup")
-async def startup():
-    await engine.initialize()
-    manifest = await engine.load_manifest("manifest.json")
-    await engine.register_app(manifest)
-    
-    # Register WebSocket routes
-    engine.register_websocket_routes(app, "task_manager")
-    
-    # Register message handler
-    register_message_handler("task_manager", "realtime", handle_task_message)
-
-async def handle_task_message(websocket, message):
-    """Handle task-related WebSocket messages"""
-    msg_type = message.get("type")
-    
-    if msg_type == "create_task":
-        # Create task in database
-        db = engine.get_scoped_db("task_manager")
-        result = await db.tasks.insert_one({
-            "title": message.get("title"),
-            "status": "todo",
-            "created_at": datetime.utcnow()
-        })
-        
-        # Broadcast to all clients
-        await broadcast_to_app("task_manager", {
-            "type": "task_created",
-            "data": {
-                "_id": str(result.inserted_id),
-                "title": message.get("title"),
-                "status": "todo"
-            }
-        })
-
-@app.post("/api/tasks")
-async def create_task(task_data: dict):
-    """Create a task via HTTP API"""
-    db = engine.get_scoped_db("task_manager")
-    result = await db.tasks.insert_one(task_data)
-    
-    # Broadcast via WebSocket
-    await broadcast_to_app("task_manager", {
-        "type": "task_created",
-        "data": {**task_data, "_id": str(result.inserted_id)}
-    })
-    
-    return {"id": str(result.inserted_id)}
-```
-
-**Client (JavaScript):**
-```javascript
-const ws = new WebSocket(`ws://localhost:8000/ws?token=${token}`);
-
-ws.onmessage = (event) => {
-    const message = JSON.parse(event.data);
-    
-    if (message.type === "task_created") {
-        // Add new task to UI
-        addTaskToUI(message.data);
-    }
-};
-
-// Send message to server
-function createTask(title) {
-    ws.send(JSON.stringify({
-        type: "create_task",
-        title: title
-    }));
-}
-```
-
-### Message Format
-
-All WebSocket messages follow a consistent format:
-
-**Server to Client:**
-```json
-{
-  "type": "message_type",
-  "data": { /* message-specific data */ },
-  "app_slug": "my_app",
-  "timestamp": "2024-01-15T10:00:00Z"
-}
-```
-
-**Client to Server:**
-```json
-{
-  "type": "message_type",
-  /* message-specific fields */
-}
-```
-
-### Connection Lifecycle
-
-1. **Client connects** with authentication token (query param or cookie)
-2. **Server authenticates** using MDB_RUNTIME's auth system
-3. **Connection accepted** and registered in app's connection manager
-4. **Initial message sent** confirming connection
-5. **Ping/pong** keeps connection alive (automatic)
-6. **Messages exchanged** bi-directionally
-7. **Connection closed** (client disconnect, server shutdown, or error)
-
-### Authentication
-
-WebSocket connections use the same authentication system as HTTP endpoints:
-
-- **Token in query parameter**: `ws://host/ws?token=JWT_TOKEN`
-- **Token in cookie**: Set `ws_token` or `token` cookie (non-httponly for JS access)
-- **Authentication required**: Controlled by `auth.required` in manifest or app's `auth_policy`
-
-If authentication fails, the connection is closed with code `1008` (Policy Violation).
-
-### Connection Management
-
-Each app has its own `WebSocketConnectionManager` instance, ensuring complete isolation:
-
-- Connections are tracked per app
-- Broadcasting is scoped to the app
-- Message handlers are app-specific
-- No cross-app data leakage
-
-### FAQ
-
-**Q: Do I need to install additional dependencies for WebSockets?**  
-A: No! WebSocket support uses FastAPI's built-in WebSocket support. If you're using FastAPI, it's already available.
-
-**Q: Can I have multiple WebSocket endpoints per app?**  
-A: Yes! Define multiple endpoints in your manifest:
-
-```json
-{
-  "websockets": {
-    "realtime": {"path": "/ws"},
-    "notifications": {"path": "/notifications"},
-    "chat": {"path": "/chat"}
-  }
-}
-```
-
-**Q: How do I handle reconnections?**  
-A: The client should implement reconnection logic. The server automatically handles re-authentication on reconnect.
-
-**Q: Can I send binary data?**  
-A: Currently, the implementation uses JSON text messages. Binary support can be added if needed.
-
-**Q: How many connections can I handle?**  
-A: This depends on your server resources. Each connection is lightweight, and MongoDB connection pooling is shared across all WebSocket connections.
-
-**Q: Are WebSocket connections secure?**  
-A: Yes! Use `wss://` (WebSocket Secure) in production, and authentication tokens are validated on every connection.
-
-**Q: Can I filter broadcasts by user?**  
-A: Yes! Use the `user_id` parameter:
-
-```python
-await broadcast_to_app("my_app", message, user_id="specific_user_id")
-```
-
-**Q: How do I test WebSocket endpoints?**  
-A: Use tools like `websocat`, `wscat`, or browser DevTools. You can also use the WebSocket demo in the hello_world example.
-
-**Q: What happens if the server restarts?**  
-A: Clients will need to reconnect. Implement reconnection logic in your client code.
-
-**Q: Can I use WebSockets without authentication?**  
-A: Yes, set `auth.required: false` in your endpoint configuration:
-
-```json
-{
-  "websockets": {
-    "public": {
-      "path": "/public-ws",
-      "auth": {"required": false}
-    }
-  }
-}
-```
-
-**Q: How do I debug WebSocket issues?**  
-A: Check server logs for connection attempts and authentication failures. The runtime logs all WebSocket events with app context.
-
----
-
-## FAQ
-
-### Can I use this for a single app?
-
-**Absolutely.** MDB_RUNTIME works great for single-app scenarios. You get all the benefits:
-- Automatic index management
-- Built-in observability (metrics, logging, health checks)
-- Manifest-driven configuration
-- Production-ready error handling
-
-The `app_id` field is still added to your documents, which gives you a clean data model and makes it trivial to add more apps later if needed. You're not paying any performance penalty - it's just a field in your documents.
-
-### Do I need multiple apps to benefit?
-
-**No.** Even with one app, you're getting:
-- **Automatic index management** - No more manually creating and maintaining indexes
-- **Observability** - Structured logging, metrics, and health checks out of the box
-- **Manifest validation** - Version-controlled, validated configuration
-- **Type safety** - Comprehensive type hints for better IDE support
-- **Error handling** - Context-rich exceptions with debugging information
-
-The multi-app isolation is a bonus feature that doesn't cost anything if you're only using one app.
