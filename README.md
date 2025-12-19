@@ -103,6 +103,306 @@ health = await engine.get_health_status()
 
 **That's it.** Even with one app, you get automatic index management, structured logging, metrics, and health checks. When you're ready to add more apps, you're already set up.
 
+## Building Your First App: A Complete Guide
+
+Let's build a simple task management app from scratch. This guide assumes you're building a single-app application (the most common starting point).
+
+### Step 1: Install and Setup
+
+```bash
+pip install mdb-runtime
+```
+
+Create a new directory for your project:
+
+```bash
+mkdir my-task-app
+cd my-task-app
+```
+
+### Step 2: Create Your App Manifest
+
+Create a `manifest.json` file that defines your app configuration:
+
+```json
+{
+  "version": "2.0",
+  "slug": "task_manager",
+  "name": "Task Manager",
+  "description": "A simple task management application",
+  "status": "active",
+  "developer_id": "you@example.com",
+  "auth_required": true,
+  "auth_policy": {
+    "roles": ["admin", "user"],
+    "owner_can_access": true
+  },
+  "managed_indexes": {
+    "tasks": [
+      {
+        "keys": {"status": 1, "created_at": -1},
+        "name": "status_created_idx",
+        "background": true
+      }
+    ]
+  }
+}
+```
+
+This manifest tells MDB_RUNTIME:
+- Your app slug is `task_manager`
+- It requires authentication
+- Users with "admin" or "user" roles can access it
+- You want an index on the `tasks` collection for status and created_at
+
+### Step 3: Initialize the Runtime Engine
+
+Create `main.py`:
+
+```python
+import asyncio
+from mdb_runtime import RuntimeEngine
+from pathlib import Path
+
+async def main():
+    # Initialize the engine
+    engine = RuntimeEngine(
+        mongo_uri="mongodb://localhost:27017",
+        db_name="task_app_db"
+    )
+    
+    # Connect to MongoDB
+    await engine.initialize()
+    
+    # Load and register your app manifest
+    manifest_path = Path("manifest.json")
+    manifest = await engine.load_manifest(manifest_path)
+    await engine.register_app(manifest)
+    
+    print("✅ App registered successfully!")
+    
+    # Get a scoped database for your app
+    db = engine.get_scoped_db("task_manager")
+    
+    # Now you can use it like normal MongoDB
+    # All queries are automatically scoped to "task_manager"
+    
+    # Create a task
+    result = await db.tasks.insert_one({
+        "title": "Learn MDB_RUNTIME",
+        "description": "Read the docs and build something",
+        "status": "todo",
+        "created_at": "2024-01-15T10:00:00Z"
+    })
+    print(f"✅ Created task with ID: {result.inserted_id}")
+    
+    # Find tasks
+    tasks = await db.tasks.find({"status": "todo"}).to_list(length=10)
+    print(f"✅ Found {len(tasks)} todo tasks")
+    
+    # Update a task
+    await db.tasks.update_one(
+        {"_id": result.inserted_id},
+        {"$set": {"status": "in_progress"}}
+    )
+    print("✅ Updated task status")
+    
+    # Check health
+    health = await engine.get_health_status()
+    print(f"✅ Engine health: {health['status']}")
+    
+    # Cleanup
+    await engine.shutdown()
+
+if __name__ == "__main__":
+    asyncio.run(main())
+```
+
+### Step 4: Run Your App
+
+Make sure MongoDB is running, then:
+
+```bash
+python main.py
+```
+
+You should see:
+```
+✅ App registered successfully!
+✅ Created task with ID: 507f1f77bcf86cd799439011
+✅ Found 1 todo tasks
+✅ Updated task status
+✅ Engine health: connected
+```
+
+### Step 5: Understanding What Happened
+
+**Automatic App Scoping:**
+- When you called `db.tasks.insert_one()`, MDB_RUNTIME automatically added `"app_id": "task_manager"` to your document
+- When you called `db.tasks.find()`, it automatically filtered by `{"app_id": {"$in": ["task_manager"]}}`
+- You never had to think about it - it just works
+
+**Automatic Index Management:**
+- The index defined in your manifest (`status_created_idx`) was created automatically
+- The `app_id` index was also created automatically (required for all queries)
+- All indexes are created in the background, so your queries are fast
+
+**What's in the Database:**
+Your task document actually looks like this:
+```json
+{
+  "_id": "507f1f77bcf86cd799439011",
+  "title": "Learn MDB_RUNTIME",
+  "description": "Read the docs and build something",
+  "status": "todo",
+  "created_at": "2024-01-15T10:00:00Z",
+  "app_id": "task_manager"  // ← Added automatically
+}
+```
+
+### Step 6: Building a Real API
+
+Let's create a FastAPI application:
+
+```python
+from fastapi import FastAPI, HTTPException
+from mdb_runtime import RuntimeEngine
+from mdb_runtime.database import AppDB, get_app_db
+from pathlib import Path
+import asyncio
+
+app = FastAPI()
+engine = None
+
+@app.on_event("startup")
+async def startup():
+    global engine
+    engine = RuntimeEngine(
+        mongo_uri="mongodb://localhost:27017",
+        db_name="task_app_db"
+    )
+    await engine.initialize()
+    
+    # Register app from manifest
+    manifest = await engine.load_manifest(Path("manifest.json"))
+    await engine.register_app(manifest)
+
+@app.on_event("shutdown")
+async def shutdown():
+    if engine:
+        await engine.shutdown()
+
+def get_scoped_db():
+    """Helper to get scoped database for FastAPI dependency"""
+    return engine.get_scoped_db("task_manager")
+
+@app.get("/tasks")
+async def list_tasks(db: AppDB = None):
+    """List all tasks"""
+    if db is None:
+        db = AppDB(engine.get_scoped_db("task_manager"))
+    
+    tasks = await db.tasks.find({}).to_list(length=100)
+    return {"tasks": tasks}
+
+@app.post("/tasks")
+async def create_task(task: dict, db: AppDB = None):
+    """Create a new task"""
+    if db is None:
+        db = AppDB(engine.get_scoped_db("task_manager"))
+    
+    result = await db.tasks.insert_one(task)
+    return {"id": str(result.inserted_id), "task": task}
+
+@app.get("/tasks/{task_id}")
+async def get_task(task_id: str, db: AppDB = None):
+    """Get a specific task"""
+    if db is None:
+        db = AppDB(engine.get_scoped_db("task_manager"))
+    
+    from bson import ObjectId
+    task = await db.tasks.find_one({"_id": ObjectId(task_id)})
+    if not task:
+        raise HTTPException(status_code=404, detail="Task not found")
+    return task
+
+@app.put("/tasks/{task_id}")
+async def update_task(task_id: str, updates: dict, db: AppDB = None):
+    """Update a task"""
+    if db is None:
+        db = AppDB(engine.get_scoped_db("task_manager"))
+    
+    from bson import ObjectId
+    result = await db.tasks.update_one(
+        {"_id": ObjectId(task_id)},
+        {"$set": updates}
+    )
+    if result.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Task not found")
+    return {"updated": True}
+
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run(app, host="0.0.0.0", port=8000)
+```
+
+Now you have a fully functional API where:
+- Every query is automatically scoped to your app
+- Indexes are managed automatically
+- You can add authentication later without changing your code
+- All operations are logged and monitored
+
+### Step 7: Adding Authentication (Optional)
+
+If you want to add authentication, update your manifest:
+
+```json
+{
+  "slug": "task_manager",
+  "sub_auth": {
+    "enabled": true,
+    "strategy": "app_users",
+    "users_collection": "users",
+    "session_cookie_name": "task_manager_session",
+    "session_ttl_seconds": 86400
+  }
+}
+```
+
+Then in your FastAPI routes:
+
+```python
+from mdb_runtime.auth import get_app_sub_user
+
+@app.get("/tasks")
+async def list_tasks(request: Request):
+    # Get authenticated user
+    db = engine.get_scoped_db("task_manager")
+    user = await get_app_sub_user(request, "task_manager", db)
+    
+    if not user:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+    
+    # User is authenticated, proceed with query
+    tasks = await db.tasks.find({}).to_list(length=100)
+    return {"tasks": tasks}
+```
+
+### What You've Built
+
+You now have:
+- ✅ A MongoDB-backed application with automatic data scoping
+- ✅ Automatic index management
+- ✅ A clean data model ready for scaling
+- ✅ Production-ready error handling and observability
+- ✅ A foundation that makes adding more apps trivial
+
+**Next Steps:**
+- Add more collections (users, projects, etc.) - they all get automatic scoping
+- Add more indexes in your manifest - they're created automatically
+- Add authentication using the built-in auth system
+- When you're ready for multiple apps, just use different app slugs - no code changes needed
+
 ### Using Context Manager
 
 ```python

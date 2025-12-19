@@ -23,7 +23,7 @@ from functools import wraps
 logger = logging.getLogger(__name__)
 
 # Import demo configuration
-from config import DEMO_EMAIL_DEFAULT
+from ..config import DEMO_EMAIL_DEFAULT
 
 # Import user detection utility
 from .sub_auth import get_app_sub_user

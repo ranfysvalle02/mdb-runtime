@@ -38,6 +38,7 @@ from ..observability import (
     record_operation,
     get_logger as get_contextual_logger,
     set_app_context,
+    clear_app_context,
     check_mongodb_health,
     check_engine_health,
     check_pool_health,
@@ -148,6 +149,13 @@ class RuntimeEngine:
             # Verify connection
             await self._mongo_client.admin.command("ping")
             self._mongo_db = self._mongo_client[self.db_name]
+            
+            # Register client for pool metrics monitoring (best practice: track all clients)
+            try:
+                from ..database.connection import register_client_for_metrics
+                register_client_for_metrics(self._mongo_client)
+            except ImportError:
+                pass  # Optional feature
             
             self._initialized = True
             duration_ms = (time.time() - start_time) * 1000
@@ -439,10 +447,8 @@ class RuntimeEngine:
             slug: App slug
             manifest: App manifest
         """
-        try:
-            from ..indexes import validate_managed_indexes
-        except ImportError:
-            from mdb_runtime.indexes import validate_managed_indexes
+        # Import validate_managed_indexes from manifest module
+        from .manifest import validate_managed_indexes
         
         managed_indexes = manifest.get("managed_indexes", {})
         if not managed_indexes:
@@ -676,12 +682,39 @@ class RuntimeEngine:
             lambda: check_mongodb_health(self._mongo_client)
         )
         
-        # Add pool health check if available
+        # Add pool health check if available (but don't fail overall health if it's just a warning)
         try:
             from ..database.connection import get_pool_metrics
-            health_checker.register_check(
-                lambda: check_pool_health(get_pool_metrics)
-            )
+            async def pool_check_wrapper():
+                # Pass RuntimeEngine's client and pool config to get_pool_metrics for accurate monitoring
+                # This follows MongoDB best practice: monitor the actual client being used
+                async def get_metrics():
+                    metrics = await get_pool_metrics(self._mongo_client)
+                    # Add RuntimeEngine's pool configuration if not already in metrics
+                    if metrics.get("status") == "connected":
+                        if "max_pool_size" not in metrics or metrics.get("max_pool_size") is None:
+                            metrics["max_pool_size"] = self.max_pool_size
+                        if "min_pool_size" not in metrics or metrics.get("min_pool_size") is None:
+                            metrics["min_pool_size"] = self.min_pool_size
+                    return metrics
+                result = await check_pool_health(get_metrics)
+                # Only treat pool issues as unhealthy if usage is critical (>90%)
+                # Otherwise treat as degraded or healthy
+                if result.status.value == "unhealthy":
+                    # Check if it's a critical pool usage issue
+                    details = result.details or {}
+                    usage = details.get("pool_usage_percent", 0)
+                    if usage <= 90 and details.get("status") == "connected":
+                        # Not critical, downgrade to degraded
+                        from ..observability.health import HealthStatus, HealthCheckResult
+                        return HealthCheckResult(
+                            name=result.name,
+                            status=HealthStatus.DEGRADED,
+                            message=result.message,
+                            details=result.details
+                        )
+                return result
+            health_checker.register_check(pool_check_wrapper)
         except ImportError:
             pass
         

@@ -21,6 +21,7 @@ from .connection import (
     get_shared_mongo_client,
     verify_shared_client,
     get_pool_metrics,
+    register_client_for_metrics,
     close_shared_client,
 )
 
@@ -41,5 +42,6 @@ __all__ = [
     "get_shared_mongo_client",
     "verify_shared_client",
     "get_pool_metrics",
+    "register_client_for_metrics",
     "close_shared_client",
 ]

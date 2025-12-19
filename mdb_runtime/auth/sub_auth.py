@@ -227,7 +227,7 @@ async def _try_demo_mode(
     
     try:
         # Get or create demo user
-        from config import MONGO_URI, DB_NAME
+        from ..config import MONGO_URI, DB_NAME
         logger.info(
             f"Demo mode: Attempting to get/create demo user for '{slug_id}' "
             f"(MONGO_URI={MONGO_URI}, DB_NAME={DB_NAME})"
@@ -586,7 +586,7 @@ async def get_platform_demo_user(mongo_uri: str, db_name: str) -> Optional[Dict[
         Dict with demo user info (email, password from config, user_id) or None if not available
     """
     try:
-        from config import DEMO_ENABLED, DEMO_EMAIL_DEFAULT, DEMO_PASSWORD_DEFAULT
+        from ..config import DEMO_ENABLED, DEMO_EMAIL_DEFAULT, DEMO_PASSWORD_DEFAULT
         
         if not DEMO_ENABLED or not DEMO_EMAIL_DEFAULT:
             return None
@@ -881,7 +881,7 @@ async def get_or_create_demo_user_for_request(
         platform_user = await get_current_user_from_request(request)
         
         if platform_user:
-            from config import DEMO_EMAIL_DEFAULT
+            from ..config import DEMO_EMAIL_DEFAULT
             if platform_user.get("email") == DEMO_EMAIL_DEFAULT:
                 # Platform demo user accessing app - ensure app demo exists
                 if config is None:
@@ -910,7 +910,7 @@ async def get_or_create_demo_user_for_request(
                         
                         # Try to create it
                         try:
-                            from config import MONGO_URI, DB_NAME
+                            from ..config import MONGO_URI, DB_NAME
                             await ensure_demo_users_exist(db, slug_id, config, MONGO_URI, DB_NAME)
                             # Use getattr to access collection (works with ScopedMongoWrapper and AppDB)
                             collection = getattr(db, collection_name)
@@ -991,7 +991,7 @@ async def get_or_create_demo_user(
     # Fallback: Try to find any demo user in the collection
     # Look for users with "demo" in email or role
     try:
-        from config import DEMO_EMAIL_DEFAULT
+        from ..config import DEMO_EMAIL_DEFAULT
         # Use getattr to access collection (works with ScopedMongoWrapper and AppDB)
         collection = getattr(db, collection_name)
         demo_user = await collection.find_one({

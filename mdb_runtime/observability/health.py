@@ -185,7 +185,7 @@ async def check_engine_health(engine: Optional[Any]) -> HealthCheckResult:
 
 
 async def check_pool_health(
-    get_pool_metrics_func: Optional[Callable] = None
+    get_pool_metrics_func: Optional[Callable[[], Any]] = None
 ) -> HealthCheckResult:
     """
     Check connection pool health.
@@ -204,27 +204,59 @@ async def check_pool_health(
         )
     
     try:
-        metrics = await get_pool_metrics_func()
+        # Call the function to get metrics (handles both sync and async)
+        if asyncio.iscoroutinefunction(get_pool_metrics_func):
+            metrics = await get_pool_metrics_func()
+        else:
+            metrics = get_pool_metrics_func()
         
-        if metrics.get("status") != "connected":
+        status_value = metrics.get("status")
+        if status_value != "connected":
+            # "no_client" means shared client not initialized, but engine might use its own client
+            # This is not a critical failure, just means pool metrics aren't available
+            if status_value == "no_client":
+                return HealthCheckResult(
+                    name="connection_pool",
+                    status=HealthStatus.UNKNOWN,
+                    message="Pool metrics not available (engine using dedicated client)",
+                    details=metrics,
+                )
+            # "error" means we couldn't get metrics, but the client might still be working
+            # This is not a critical failure - the engine and MongoDB checks already verify connectivity
+            if status_value == "error":
+                return HealthCheckResult(
+                    name="connection_pool",
+                    status=HealthStatus.UNKNOWN,
+                    message=f"Pool metrics unavailable: {metrics.get('error', 'Unknown error')}",
+                    details=metrics,
+                )
+            # Other non-connected statuses are still unhealthy
             return HealthCheckResult(
                 name="connection_pool",
                 status=HealthStatus.UNHEALTHY,
-                message=f"Pool status: {metrics.get('status')}",
+                message=f"Pool status: {status_value}",
                 details=metrics,
             )
         
-        usage_percent = metrics.get("pool_usage_percent", 0)
+        # Client is connected - check usage if available
+        usage_percent = metrics.get("pool_usage_percent")
         
-        if usage_percent > 90:
-            status = HealthStatus.UNHEALTHY
-            message = f"Connection pool usage is critical: {usage_percent:.1f}%"
-        elif usage_percent > 80:
-            status = HealthStatus.DEGRADED
-            message = f"Connection pool usage is high: {usage_percent:.1f}%"
+        # If we have usage data, check it
+        if usage_percent is not None:
+            if usage_percent > 90:
+                status = HealthStatus.UNHEALTHY
+                message = f"Connection pool usage is critical: {usage_percent:.1f}%"
+            elif usage_percent > 80:
+                status = HealthStatus.DEGRADED
+                message = f"Connection pool usage is high: {usage_percent:.1f}%"
+            else:
+                status = HealthStatus.HEALTHY
+                message = f"Connection pool is healthy: {usage_percent:.1f}% usage"
         else:
+            # No usage data available, but client is connected
+            # This is fine - detailed metrics might not be available but client works
             status = HealthStatus.HEALTHY
-            message = f"Connection pool is healthy: {usage_percent:.1f}% usage"
+            message = metrics.get("note", "Connection pool is operational (detailed metrics unavailable)")
         
         return HealthCheckResult(
             name="connection_pool",

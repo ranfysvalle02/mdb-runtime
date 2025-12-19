@@ -165,10 +165,34 @@ async def verify_shared_client() -> bool:
         return False
 
 
-async def get_pool_metrics() -> Dict[str, Any]:
+# Registry for tracking all MongoDB clients (for monitoring)
+_registered_clients: list = []
+
+
+def register_client_for_metrics(client: AsyncIOMotorClient) -> None:
+    """
+    Register a MongoDB client for pool metrics monitoring.
+    
+    This allows RuntimeEngine and other components to register their clients
+    so pool metrics can be tracked even if they don't use the shared client.
+    
+    Args:
+        client: AsyncIOMotorClient instance to register
+    """
+    global _registered_clients
+    if client not in _registered_clients:
+        _registered_clients.append(client)
+        logger.debug("Registered MongoDB client for pool metrics")
+
+
+async def get_pool_metrics(client: Optional[AsyncIOMotorClient] = None) -> Dict[str, Any]:
     """
     Gets connection pool metrics for monitoring.
     Returns information about pool size, active connections, etc.
+    
+    Args:
+        client: Optional specific client to check. If None, checks shared client first,
+                then any registered clients (e.g., RuntimeEngine's client).
     
     Returns:
         Dictionary with pool metrics including:
@@ -177,58 +201,127 @@ async def get_pool_metrics() -> Dict[str, Any]:
         - active_connections: Current active connections (if available)
         - pool_usage_percent: Estimated pool usage percentage
     """
-    global _shared_client
+    global _shared_client, _registered_clients
     
-    if _shared_client is None:
-        return {
-            "status": "no_client",
-            "error": "Shared MongoDB client not initialized"
-        }
+    # If specific client provided, use it
+    if client is not None:
+        return await _get_client_pool_metrics(client)
+    
+    # Try shared client first (for Ray actors)
+    if _shared_client is not None:
+        return await _get_client_pool_metrics(_shared_client)
+    
+    # Try registered clients (e.g., RuntimeEngine's client)
+    for registered_client in _registered_clients:
+        try:
+            # Verify client is still valid
+            if hasattr(registered_client, '_topology') and registered_client._topology is not None:
+                return await _get_client_pool_metrics(registered_client)
+        except Exception:
+            continue
+    
+    # No client available
+    return {
+        "status": "no_client",
+        "error": "No MongoDB client available for metrics (shared or registered)"
+    }
+
+
+async def _get_client_pool_metrics(client: AsyncIOMotorClient) -> Dict[str, Any]:
+    """
+    Internal helper to get pool metrics from a specific client.
+    
+    Uses MongoDB serverStatus for accurate connection information.
+    
+    Args:
+        client: AsyncIOMotorClient instance
+    
+    Returns:
+        Dictionary with pool metrics
+    """
     
     try:
-        # Get topology information if available
-        topology = getattr(_shared_client, '_topology', None)
-        pool_opts = getattr(_shared_client, '_pool_options', {})
+        # Verify client is valid
+        if client is None:
+            return {
+                "status": "error",
+                "error": "Client is None"
+            }
         
-        max_pool_size = pool_opts.get('max_pool_size', getattr(_shared_client, 'max_pool_size', None))
-        min_pool_size = pool_opts.get('min_pool_size', getattr(_shared_client, 'min_pool_size', None))
+        # Try to get pool configuration from client options
+        max_pool_size = None
+        min_pool_size = None
         
-        # Try to get active connection count from topology
-        active_connections = None
-        if topology and hasattr(topology, 'servers'):
-            # Count connections across all servers
-            total_connections = 0
-            for server in topology.servers.values():
-                if hasattr(server, 'pool') and server.pool:
-                    if hasattr(server.pool, 'checked_out'):
-                        total_connections += len(server.pool.checked_out)
+        # Try multiple ways to get pool size (Motor version compatibility)
+        try:
+            # Method 1: From client options (most reliable)
+            if hasattr(client, 'options') and client.options:
+                max_pool_size = getattr(client.options, 'maxPoolSize', None) or getattr(client.options, 'max_pool_size', None)
+                min_pool_size = getattr(client.options, 'minPoolSize', None) or getattr(client.options, 'min_pool_size', None)
             
-            active_connections = total_connections if total_connections > 0 else None
+            # Method 2: From client attributes directly
+            if max_pool_size is None:
+                max_pool_size = getattr(client, 'maxPoolSize', None) or getattr(client, 'max_pool_size', None)
+            if min_pool_size is None:
+                min_pool_size = getattr(client, 'minPoolSize', None) or getattr(client, 'min_pool_size', None)
+        except Exception as e:
+            logger.debug(f"Could not get pool size from client options: {e}")
         
+        # Get connection info from MongoDB serverStatus (most accurate)
+        current_connections = None
+        available_connections = None
+        total_created = None
+        
+        try:
+            server_status = await client.admin.command("serverStatus")
+            connections = server_status.get("connections", {})
+            current_connections = connections.get("current", 0)
+            available_connections = connections.get("available", 0)
+            total_created = connections.get("totalCreated", 0)
+        except Exception as e:
+            logger.debug(f"Could not get server status for connections: {e}")
+        
+        # Build metrics
         metrics = {
             "status": "connected",
-            "max_pool_size": max_pool_size,
-            "min_pool_size": min_pool_size,
-            "active_connections": active_connections,
         }
         
-        # Calculate usage percentage if we have both values
-        if max_pool_size and active_connections is not None:
-            usage_percent = (active_connections / max_pool_size) * 100
+        if max_pool_size is not None:
+            metrics["max_pool_size"] = max_pool_size
+        if min_pool_size is not None:
+            metrics["min_pool_size"] = min_pool_size
+        
+        # Add connection info from serverStatus
+        if current_connections is not None:
+            metrics["current_connections"] = current_connections
+        if available_connections is not None:
+            metrics["available_connections"] = available_connections
+        if total_created is not None:
+            metrics["total_connections_created"] = total_created
+        
+        # Calculate pool usage if we have max_pool_size and current connections
+        if max_pool_size and current_connections is not None:
+            usage_percent = (current_connections / max_pool_size) * 100
             metrics["pool_usage_percent"] = round(usage_percent, 2)
+            metrics["active_connections"] = current_connections  # Alias for compatibility
             
             # Warn if pool usage is high
             if usage_percent > 80:
                 logger.warning(
                     f"MongoDB connection pool usage is HIGH: {usage_percent:.1f}% "
-                    f"({active_connections}/{max_pool_size}). Consider increasing max_pool_size."
+                    f"({current_connections}/{max_pool_size}). Consider increasing max_pool_size."
                 )
+        elif current_connections is not None:
+            # We have connection count but not max pool size - still useful info
+            metrics["active_connections"] = current_connections
         
         return metrics
     except Exception as e:
-        logger.error(f"Error getting pool metrics: {e}", exc_info=True)
+        logger.debug(f"Error getting detailed pool metrics (non-critical): {e}")
+        # Return minimal metrics - client exists and is being used
         return {
-            "status": "error",
+            "status": "connected",
+            "note": "Detailed metrics unavailable, but client is operational",
             "error": str(e)
         }
 

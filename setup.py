@@ -27,6 +27,8 @@ setup(
         "fastapi>=0.100.0",
         "pydantic>=2.0.0",
         "pyjwt>=2.8.0",
+        "jsonschema>=4.0.0",
+        "bcrypt>=4.0.0",
     ],
     extras_require={
         "ray": ["ray>=2.0.0"],

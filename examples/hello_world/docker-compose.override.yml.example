@@ -1,0 +1,31 @@
+# Example override file for custom configurations
+# Copy this to docker-compose.override.yml to customize
+
+version: '3.8'
+
+services:
+  mongodb:
+    # Override MongoDB version
+    # image: mongo:6.0
+    
+    # Add custom MongoDB configuration
+    # command: mongod --replSet rs0
+    
+    # Expose additional ports
+    # ports:
+    #   - "27017:27017"
+    #   - "27018:27018"  # Additional port for replica set
+    
+    # Mount custom MongoDB config
+    # volumes:
+    #   - ./mongod.conf:/etc/mongod.conf:ro
+
+  ray-head:
+    # Override Ray configuration
+    # command: ray start --head --port=6379 --dashboard-host=0.0.0.0 --dashboard-port=8265 --num-cpus=4 --num-gpus=0
+    
+    # Add environment variables
+    # environment:
+    #   - RAY_DISABLE_IMPORT_WARNING=1
+    #   - RAY_OBJECT_STORE_ALLOW_SLOW_STORAGE=1
+

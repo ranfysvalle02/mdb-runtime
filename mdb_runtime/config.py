@@ -135,3 +135,24 @@ if PYDANTIC_AVAILABLE:
             env_file = ".env"
             case_sensitive = False
 
+
+# ============================================================================
+# DEMO MODE CONSTANTS
+# ============================================================================
+
+DEMO_ENABLED: bool = os.getenv("DEMO_ENABLED", "false").lower() == "true"
+"""Whether demo mode is enabled."""
+
+DEMO_EMAIL_DEFAULT: str = os.getenv("DEMO_EMAIL_DEFAULT", "demo@example.com")
+"""Default email for demo user."""
+
+DEMO_PASSWORD_DEFAULT: str = os.getenv("DEMO_PASSWORD_DEFAULT", "demo123")
+"""Default password for demo user."""
+
+# MongoDB connection defaults (for backward compatibility)
+MONGO_URI: str = os.getenv("MONGO_URI", "")
+"""MongoDB connection URI (from environment variable)."""
+
+DB_NAME: str = os.getenv("DB_NAME", "")
+"""Database name (from environment variable)."""
+
