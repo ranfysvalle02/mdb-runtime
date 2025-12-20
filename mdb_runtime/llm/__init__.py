@@ -27,6 +27,7 @@ from .dependencies import (
     get_global_engine,
     get_llm_service_dependency,
 )
+from .embedding_service import EmbeddingService, EmbeddingServiceError, get_embedding_service
 
 __all__ = [
     "LLMService",
@@ -39,5 +40,8 @@ __all__ = [
     "set_global_engine",
     "get_global_engine",
     "get_llm_service_dependency",
+    "EmbeddingService",
+    "EmbeddingServiceError",
+    "get_embedding_service",
 ]
 

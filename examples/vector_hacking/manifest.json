@@ -23,6 +23,30 @@
           "background": true
         }
       }
+    ],
+    "voyage_embeddings": [
+      {
+        "type": "regular",
+        "keys": {"source_id": 1, "chunk_index": 1},
+        "name": "source_chunk_idx",
+        "options": {
+          "background": true
+        }
+      },
+      {
+        "type": "vectorSearch",
+        "name": "embedding_vector_idx",
+        "definition": {
+          "fields": [
+            {
+              "type": "vector",
+              "path": "embedding",
+              "numDimensions": 1024,
+              "similarity": "cosine"
+            }
+          ]
+        }
+      }
     ]
   },
   "websockets": {
@@ -37,6 +61,11 @@
     "default_embedding_model": "voyage/voyage-2",
     "default_temperature": 0.8,
     "max_retries": 4
+  },
+  "embedding_config": {
+    "enabled": true,
+    "max_tokens_per_chunk": 1000,
+    "default_embedding_model": "voyage/voyage-2"
   }
 }
 

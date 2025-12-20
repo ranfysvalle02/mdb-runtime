@@ -1,4 +1,4 @@
-# Requirements for Vector Hacking Example
+# Requirements for Interactive RAG Example
 # Install MDB_RUNTIME first: pip install mdb-runtime
 # Or install from source: pip install -e ../..
 
@@ -13,17 +13,19 @@ websockets
 # LLM and Embedding dependencies
 # Install with: pip install mdb-runtime[llm]
 # Or manually:
-litellm>=1.0.0
 instructor>=0.4.0
 pydantic>=2.0.0
 pydantic-settings>=2.0.0
 tenacity>=8.0.0
 semantic-text-splitter>=0.9.0
 
-# Vector hacking dependencies
-numpy
 
-# Optional: for standalone demo
-ollama
-langchain-ollama
+ddgs>=0.1.0
+docling>=1.0.0
+requests>=2.31.0
 
+langchain
+langchain-community
+langchain-litellm
+litellm
+langgraph

@@ -1,0 +1,74 @@
+{
+  "schema_version": "2.0",
+  "slug": "interactive_rag",
+  "name": "Interactive RAG Agent",
+  "description": "An interactive RAG (Retrieval Augmented Generation) system with knowledge base management, vector search, and AI-powered chat",
+  "status": "active",
+  "developer_id": "developer@example.com",
+  "auth_required": false,
+  "auth_policy": {
+    "required": false,
+    "allow_anonymous": true
+  },
+  "sub_auth": {
+    "enabled": false
+  },
+  "managed_indexes": {
+    "knowledge_base_sessions": [
+      {
+        "type": "vectorSearch",
+        "name": "embedding_vector_index",
+        "definition": {
+          "fields": [
+            {
+              "type": "vector",
+              "path": "embedding",
+              "numDimensions": 1024,
+              "similarity": "cosine"
+            },
+            {
+              "type": "filter",
+              "path": "metadata.session_id"
+            }
+          ]
+        }
+      },
+      {
+        "type": "regular",
+        "name": "session_source_idx",
+        "keys": {
+          "metadata.session_id": 1,
+          "metadata.source": 1
+        },
+        "options": {
+          "background": true
+        }
+      }
+    ]
+  },
+  "llm_config": {
+    "enabled": true,
+    "default_chat_model": "azure/gpt-4o",
+    "default_embedding_model": "voyage/voyage-2",
+    "default_temperature": 0.0,
+    "max_retries": 4
+  },
+  "embedding_config": {
+    "enabled": true,
+    "max_tokens_per_chunk": 1000,
+    "tokenizer_model": "gpt-3.5-turbo",
+    "default_embedding_model": "voyage/voyage-2"
+  },
+  "websockets": {
+    "realtime": {
+      "path": "/ws",
+      "description": "Real-time ingestion progress and updates",
+      "auth": {
+        "required": false,
+        "allow_anonymous": true
+      },
+      "ping_interval": 30
+    }
+  }
+}
+

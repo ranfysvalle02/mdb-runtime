@@ -1,8 +1,6 @@
 # Example override file for custom configurations
 # Copy this to docker-compose.override.yml to customize
 
-version: '3.8'
-
 services:
   mongodb:
     # Override MongoDB version

@@ -1,31 +1,39 @@
 # ============================================================================
-# Enterprise-Grade Docker Compose Configuration
+# Enterprise-Grade Docker Compose Configuration for Interactive RAG
 # Best practices: security, health checks, resource limits, networking
 # ============================================================================
 
 services:
-  # Vector Hacking Application
+  # Interactive RAG Application
   app:
     build:
       context: ../..
-      dockerfile: examples/vector_hacking/Dockerfile
+      dockerfile: examples/interactive_rag/Dockerfile
       args:
         APP_USER: appuser
         APP_UID: 1000
         APP_GID: 1000
-    container_name: vector_hacking_app
+    container_name: interactive_rag_app
     restart: unless-stopped
     ports:
-      - "${APP_PORT:-8000}:8000"
+      - "${APP_PORT:-5001}:5001"
     environment:
       - MONGO_URI=${MONGO_URI:-mongodb://admin:password@mongodb:27017/?authSource=admin}
-      - MONGO_DB_NAME=${MONGO_DB_NAME:-vector_hacking_db}
-      - APP_SLUG=${APP_SLUG:-vector_hacking}
+      - MONGO_DB_NAME=${MONGO_DB_NAME:-interactive_rag_db}
+      - APP_SLUG=${APP_SLUG:-interactive_rag}
       - LOG_LEVEL=${LOG_LEVEL:-INFO}
       - PYTHONUNBUFFERED=${PYTHONUNBUFFERED:-1}
-      # Vector hacking API keys (set these in production)
+      # LLM API Keys (set these in .env file)
       - OPENAI_API_KEY=${OPENAI_API_KEY:-}
       - VOYAGE_API_KEY=${VOYAGE_API_KEY:-}
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}
+      # Azure OpenAI Configuration
+      - AZURE_OPENAI_ENDPOINT=${AZURE_OPENAI_ENDPOINT:-}
+      - AZURE_OPENAI_API_KEY=${AZURE_OPENAI_API_KEY:-}
+      - AZURE_OPENAI_DEPLOYMENT_NAME=${AZURE_OPENAI_DEPLOYMENT_NAME:-}
+      - AZURE_OPENAI_MODEL_NAME=${AZURE_OPENAI_MODEL_NAME:-}
+      # Firecrawl for URL extraction
+      - FIRECRAWL_API_KEY=${FIRECRAWL_API_KEY:-}
     depends_on:
       mongodb:
         condition: service_healthy
@@ -53,14 +61,14 @@ services:
   # MongoDB Atlas Local (with Atlas Search and Vector Search support)
   mongodb:
     image: mongodb/mongodb-atlas-local:latest
-    container_name: vector_hacking_mongodb
+    container_name: interactive_rag_mongodb
     restart: unless-stopped
     ports:
       - "${MONGO_PORT:-27017}:27017"
     environment:
       MONGODB_INITDB_ROOT_USERNAME: ${MONGO_INITDB_ROOT_USERNAME:-admin}
       MONGODB_INITDB_ROOT_PASSWORD: ${MONGO_INITDB_ROOT_PASSWORD:-password}
-      MONGODB_INITDB_DATABASE: ${MONGO_INITDB_DATABASE:-vector_hacking_db}
+      MONGODB_INITDB_DATABASE: ${MONGO_INITDB_DATABASE:-interactive_rag_db}
       # Optional: Disable telemetry if desired
       # DO_NOT_TRACK: 1
     volumes:
@@ -87,7 +95,7 @@ services:
   # MongoDB Express (Optional - Web UI for MongoDB)
   mongo-express:
     image: mongo-express:latest
-    container_name: vector_hacking_mongo_express
+    container_name: interactive_rag_mongo_express
     restart: unless-stopped
     ports:
       - "${MONGO_EXPRESS_PORT:-8081}:8081"
@@ -111,7 +119,6 @@ services:
         reservations:
           cpus: '0.1'
           memory: 64M
-    # Security: mongo-express runs as non-root user by default
     profiles:
       - ui  # Only start when explicitly requested: docker-compose --profile ui up
 

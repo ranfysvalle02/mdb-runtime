@@ -1,6 +1,6 @@
 # MDB_RUNTIME Examples
 
-This directory contains example applications demonstrating how to use MDB_RUNTIME.
+This directory contains example applications demonstrating how to use MDB_RUNTIME. **All examples follow best practices and use mdb-runtime abstractions consistently.**
 
 ## Available Examples
 
@@ -9,9 +9,12 @@ This directory contains example applications demonstrating how to use MDB_RUNTIM
 A simple, beginner-friendly example that demonstrates:
 - Initializing the runtime engine
 - Creating and registering an app manifest
-- Basic CRUD operations
-- Automatic app scoping
-- Docker Compose setup with MongoDB
+- Basic CRUD operations with automatic app scoping
+- Using `engine.mongo_db` for top-level database access
+- Using `engine.get_scoped_db()` for app-scoped operations
+- Authentication with JWT
+- WebSocket support with real-time updates
+- Health checks and metrics
 
 **Perfect for:** Getting started with MDB_RUNTIME
 
@@ -20,6 +23,28 @@ A simple, beginner-friendly example that demonstrates:
 cd hello_world
 ./run_with_docker.sh
 ```
+
+### [Interactive RAG](./interactive_rag/)
+
+An advanced example demonstrating:
+- LLM service abstraction (`LLMService`, `EmbeddingService`)
+- Vector search with MongoDB Atlas Vector Search
+- Knowledge base management with sessions
+- Document processing and chunking
+- Semantic search and retrieval
+- Using `engine.get_llm_service()` for LLM operations
+
+**Perfect for:** Building RAG applications with vector search
+
+### [Vector Hacking](./vector_hacking/)
+
+A demonstration of:
+- Vector inversion attacks using LLM service abstraction
+- Real-time attack visualization
+- LLM service configuration via manifest.json
+- Using `engine.get_llm_service()` for embeddings and chat
+
+**Perfect for:** Understanding vector embeddings and LLM abstractions
 
 ## Docker Compose Setup
 
@@ -154,10 +179,106 @@ services:
    docker-compose ps
    ```
 
+## Best Practices: Using MDB_RUNTIME Abstractions
+
+**All examples in this directory follow these best practices.** When building your own applications, always use mdb-runtime abstractions:
+
+### ✅ DO: Use Runtime Engine Abstractions
+
+```python
+from mdb_runtime import RuntimeEngine
+
+# Initialize engine
+engine = RuntimeEngine(mongo_uri=mongo_uri, db_name=db_name)
+await engine.initialize()
+
+# For app-scoped data (recommended for most operations)
+db = engine.get_scoped_db("my_app")
+await db.my_collection.insert_one({"name": "Test"})
+
+# For top-level database access (e.g., shared collections like users)
+top_level_db = engine.mongo_db
+await top_level_db.users.find_one({"email": "user@example.com"})
+
+# For LLM operations (if configured in manifest.json)
+llm_service = engine.get_llm_service("my_app")
+response = await llm_service.chat("Hello, world!")
+```
+
+### ❌ DON'T: Create Direct MongoDB Clients
+
+```python
+# ❌ BAD: Creates new connection, bypasses pooling and observability
+from motor.motor_asyncio import AsyncIOMotorClient
+client = AsyncIOMotorClient(mongo_uri)
+db = client[db_name]
+await db.collection.find_one({})
+client.close()  # Manual cleanup needed
+
+# ✅ GOOD: Uses engine's managed connection
+db = engine.mongo_db
+await db.collection.find_one({})
+# No cleanup needed - engine manages connections
+```
+
+### Key Benefits of Using Abstractions
+
+1. **Connection Pooling**: Reuses managed connection pools automatically
+2. **Observability**: All operations tracked by runtime metrics
+3. **Resource Management**: Automatic cleanup, no manual client management
+4. **App Scoping**: Automatic data isolation with `get_scoped_db()`
+5. **Index Management**: Automatic index creation from manifest.json
+6. **Health Checks**: Built-in health monitoring via `engine.get_health_status()`
+7. **LLM Abstraction**: Unified interface for all LLM providers via manifest.json
+
+### Common Patterns
+
+#### Pattern 1: App-Scoped Data (Most Common)
+```python
+# All operations automatically scoped to "my_app"
+db = engine.get_scoped_db("my_app")
+await db.products.insert_one({"name": "Widget"})
+products = await db.products.find({}).to_list(length=10)
+```
+
+#### Pattern 2: Top-Level Collections (Shared Data)
+```python
+# For collections shared across apps (e.g., users, sessions)
+top_db = engine.mongo_db
+user = await top_db.users.find_one({"email": "user@example.com"})
+```
+
+#### Pattern 3: LLM Operations
+```python
+# Get LLM service configured via manifest.json
+llm_service = engine.get_llm_service("my_app")
+if llm_service:
+    response = await llm_service.chat("Hello!")
+    embeddings = await llm_service.embed(["text to embed"])
+```
+
+#### Pattern 4: FastAPI Dependencies
+```python
+from fastapi import Depends
+
+def get_db():
+    """FastAPI dependency for scoped database"""
+    return engine.get_scoped_db("my_app")
+
+@app.get("/items")
+async def get_items(db = Depends(get_db)):
+    items = await db.items.find({}).to_list(length=10)
+    return items
+```
+
 ## Contributing Examples
 
 If you've built something cool with MDB_RUNTIME, consider contributing an example! Examples should:
 
+- **Use mdb-runtime abstractions exclusively** - Never create direct MongoDB clients
+- Use `engine.mongo_db` for top-level database access (not `AsyncIOMotorClient`)
+- Use `engine.get_scoped_db()` for app-scoped operations
+- Use `engine.get_llm_service()` for LLM operations (if applicable)
 - Be self-contained and runnable
 - Include a README explaining what they demonstrate
 - Include a `docker-compose.yml` with all required services
@@ -165,6 +286,7 @@ If you've built something cool with MDB_RUNTIME, consider contributing an exampl
 - Focus on specific features or use cases
 - Include a manifest.json file
 - Include environment variable examples
+- Demonstrate best practices that others can follow
 
 ## Need Help?
 

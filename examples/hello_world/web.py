@@ -202,10 +202,10 @@ async def startup_event():
     register_websocket_routes_from_manifest()
     
     # Ensure demo user exists
+    # Use engine.mongo_db instead of creating new client - leverages runtime's connection pooling
     try:
-        from motor.motor_asyncio import AsyncIOMotorClient
-        client = AsyncIOMotorClient(mongo_uri)
-        top_level_db = client[db_name]
+        # Use the runtime engine's database connection (already pooled and managed)
+        top_level_db = engine.mongo_db
         
         # Check if demo user exists
         demo_user = await top_level_db.users.find_one({"email": DEMO_EMAIL})
@@ -223,8 +223,6 @@ async def startup_event():
             print(f"✅ Created demo user: {DEMO_EMAIL}")
         else:
             print(f"✅ Demo user already exists: {DEMO_EMAIL}")
-        
-        client.close()
     except Exception as e:
         print(f"⚠️  Could not create demo user: {e}")
     
@@ -351,19 +349,21 @@ async def login(
     password: str = Form(...),
 ):
     """Handle login"""
+    if not engine:
+        return templates.TemplateResponse(
+            "login.html",
+            {"request": request, "error": "Service not available. Please try again later."},
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE
+        )
+    
     try:
-        mongo_uri = os.getenv("MONGO_URI", "mongodb://admin:password@mongodb:27017/?authSource=admin")
-        db_name = os.getenv("MONGO_DB_NAME", "hello_world_db")
-        
-        from motor.motor_asyncio import AsyncIOMotorClient
-        client = AsyncIOMotorClient(mongo_uri)
-        top_level_db = client[db_name]
+        # Use engine.mongo_db instead of creating new client - leverages runtime's connection pooling
+        top_level_db = engine.mongo_db
         
         # Find user by email
         user = await top_level_db.users.find_one({"email": email})
         
         if not user:
-            client.close()
             return templates.TemplateResponse(
                 "login.html",
                 {"request": request, "error": "Invalid email or password"},
@@ -373,7 +373,6 @@ async def login(
         # Verify password
         password_hash = user.get("password_hash")
         if not password_hash:
-            client.close()
             return templates.TemplateResponse(
                 "login.html",
                 {"request": request, "error": "Invalid email or password"},
@@ -385,21 +384,17 @@ async def login(
             if isinstance(password_hash, str):
                 password_hash = password_hash.encode("utf-8")
             if not bcrypt.checkpw(password.encode("utf-8"), password_hash):
-                client.close()
                 return templates.TemplateResponse(
                     "login.html",
                     {"request": request, "error": "Invalid email or password"},
                     status_code=status.HTTP_401_UNAUTHORIZED
                 )
         except Exception as e:
-            client.close()
             return templates.TemplateResponse(
                 "login.html",
                 {"request": request, "error": "Invalid email or password"},
                 status_code=status.HTTP_401_UNAUTHORIZED
             )
-        
-        client.close()
         
         # Create JWT token
         payload = {

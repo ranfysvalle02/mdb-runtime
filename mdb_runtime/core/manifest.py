@@ -428,6 +428,35 @@ MANIFEST_SCHEMA_V2 = {
             "additionalProperties": False,
             "description": "LLM service configuration. Enables app-level LLM access with provider-agnostic interface (OpenAI, Anthropic, Gemini, VoyageAI via LiteLLM). When enabled, LLM service is available via dependency injection in FastAPI routes."
         },
+        "embedding_config": {
+            "type": "object",
+            "properties": {
+                "enabled": {
+                    "type": "boolean",
+                    "default": False,
+                    "description": "Enable semantic text splitting and embedding service. When enabled, EmbeddingService will be available for chunking text and generating embeddings."
+                },
+                "max_tokens_per_chunk": {
+                    "type": "integer",
+                    "minimum": 100,
+                    "maximum": 10000,
+                    "default": 1000,
+                    "description": "Maximum tokens per chunk when splitting text. The semantic-text-splitter ensures chunks never exceed this limit while preserving semantic boundaries."
+                },
+                "tokenizer_model": {
+                    "type": "string",
+                    "default": "gpt-3.5-turbo",
+                    "description": "Optional: Tokenizer model name for counting tokens during chunking (e.g., 'gpt-3.5-turbo', 'gpt-4', 'gpt-4o'). Must be a valid OpenAI model name. Defaults to 'gpt-3.5-turbo' (uses cl100k_base encoding internally, which works for GPT-3.5, GPT-4, and most models). This is ONLY for token counting, NOT for embeddings. You typically don't need to set this - the platform default works for most cases."
+                },
+                "default_embedding_model": {
+                    "type": "string",
+                    "default": "voyage/voyage-2",
+                    "description": "Default embedding model for chunk embeddings (e.g., 'voyage/voyage-2', 'text-embedding-3-small', 'cohere/embed-english-v3.0'). Uses LiteLLM model routing. If not specified, falls back to llm_config.default_embedding_model."
+                }
+            },
+            "additionalProperties": False,
+            "description": "Semantic text splitting and embedding configuration. Enables intelligent chunking with Rust-based semantic-text-splitter and provider-agnostic embeddings via LiteLLM. Perfect for RAG (Retrieval Augmented Generation) applications."
+        },
         "developer_id": {
             "type": "string",
             "format": "email",

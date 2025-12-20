@@ -3,6 +3,7 @@ LLM Service Implementation
 """
 
 import logging
+import os
 import time
 from typing import Type, TypeVar, Union, List, Dict, Optional, Any
 from functools import lru_cache
@@ -68,6 +69,12 @@ class LLMSettings(BaseSettings):
     voyage_api_key: Optional[str] = None
     cohere_api_key: Optional[str] = None
     
+    # Azure OpenAI Configuration
+    azure_openai_endpoint: Optional[str] = None
+    azure_openai_api_key: Optional[str] = None
+    azure_openai_deployment_name: Optional[str] = None
+    azure_openai_model_name: Optional[str] = None
+    
     # Defaults
     default_chat_model: str = "gpt-4o"
     default_embedding_model: str = "voyage/voyage-2"  # Prefixed for LiteLLM routing
@@ -125,6 +132,36 @@ class LLMService:
                 self.settings.default_temperature = float(config["default_temperature"])
             if "max_retries" in config:
                 self.settings.max_retries = int(config["max_retries"])
+        
+        # Configure Azure OpenAI for LiteLLM if settings are provided
+        # LiteLLM uses specific environment variable names for Azure OpenAI
+        if self.settings.azure_openai_api_key:
+            # Set LiteLLM Azure OpenAI environment variables
+            os.environ["AZURE_API_KEY"] = self.settings.azure_openai_api_key
+            os.environ["AZURE_OPENAI_API_KEY"] = self.settings.azure_openai_api_key
+            endpoint_base = None
+            if self.settings.azure_openai_endpoint:
+                # LiteLLM expects the base URL WITHOUT /openai/v1 - it adds that path automatically
+                # Remove trailing slash and any /openai/v1 or /openai paths
+                endpoint = self.settings.azure_openai_endpoint.rstrip('/')
+                # Remove /openai/v1 if present (LiteLLM will add it)
+                if endpoint.endswith('/openai/v1'):
+                    endpoint = endpoint[:-10]  # Remove '/openai/v1'
+                elif endpoint.endswith('/openai'):
+                    endpoint = endpoint[:-7]  # Remove '/openai'
+                # Ensure no trailing slash
+                endpoint = endpoint.rstrip('/')
+                endpoint_base = endpoint
+                os.environ["AZURE_API_BASE"] = endpoint
+                os.environ["AZURE_OPENAI_ENDPOINT"] = endpoint
+                logger.info(f"Azure OpenAI endpoint configured: {endpoint} (LiteLLM will add /openai/v1 automatically)")
+            # If deployment name is provided, update model name to use Azure format
+            if self.settings.azure_openai_deployment_name:
+                deployment = self.settings.azure_openai_deployment_name
+                # Use azure/<deployment-name> format for LiteLLM
+                if not self.settings.default_chat_model.startswith("azure/"):
+                    self.settings.default_chat_model = f"azure/{deployment}"
+                logger.info(f"Azure OpenAI configured: endpoint={endpoint_base or 'not set'}, deployment={deployment}, model={self.settings.default_chat_model}")
         
         # Initialize the Instructor Async Client wrapping LiteLLM for structured extraction.
         # For raw chat, we'll use LiteLLM directly.

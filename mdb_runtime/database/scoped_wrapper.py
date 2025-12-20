@@ -61,14 +61,10 @@ from ..observability import record_operation
 logger = logging.getLogger(__name__)
 # --- END FIX ---
 
-# --- ROBUST IMPORT FIX ---
-# Try to import GEO2DSPHERE, which fails in some environments.
-# If it fails, define it manually as it's a stable string constant.
-try:
-    from pymongo import GEO2DSPHERE
-except ImportError:
-    logger.warning("Could not import GEO2DSPHERE from pymongo. Defining manually.")
-    GEO2DSPHERE = "2dsphere"
+# --- PyMongo 4.x Compatibility ---
+# PyMongo 4.x removed the GEO2DSPHERE constant.
+# Use the string "2dsphere" directly (this is what PyMongo 4.x expects).
+GEO2DSPHERE = "2dsphere"
 # --- END FIX ---
 
 # --- TASK MANAGER IMPORT ---
@@ -440,15 +436,21 @@ class AsyncAtlasIndexManager:
         # Attempt to auto-generate the index name if not provided
         index_name = kwargs.get("name")
         if not index_name:
-            try:
-                # Use pymongo helper to generate the name PyMongo would use
-                from pymongo.helpers import _index_list
-                index_doc = MongoClient()._database._CommandBuilder._gen_index_doc(keys, kwargs)
-                index_name = _index_list(index_doc['key'].items())
-            except Exception:
-                # Fallback name generation
-                index_name = f"index_{'_'.join([k[0] for k in keys])}"
-                logger.warning(f"Could not auto-generate index name, using fallback: {index_name}")
+            # PyMongo 4.x: Generate index name from keys
+            # Use a simple fallback that works across all PyMongo versions
+            # Format: field1_1_field2_-1 (1 for ASCENDING, -1 for DESCENDING, "2dsphere" for geo)
+            name_parts = []
+            for key, direction in keys:
+                if isinstance(direction, str):
+                    # Handle string directions like "2dsphere", "text", etc.
+                    name_parts.append(f"{key}_{direction}")
+                elif direction == ASCENDING:
+                    name_parts.append(f"{key}_1")
+                elif direction == DESCENDING:
+                    name_parts.append(f"{key}_-1")
+                else:
+                    name_parts.append(f"{key}_{direction}")
+            index_name = "_".join(name_parts)
 
         try:
             # Check if index already exists

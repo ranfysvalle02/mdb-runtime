@@ -331,6 +331,20 @@ async def run_index_creation_for_collection(
                         f"Skipping this index definition."
                     )
                     continue
+                
+                # Automatically add app_id as a filter field for vector/search indexes
+                # since the scoped wrapper always injects app_id into queries
+                fields = definition.get("fields", [])
+                has_app_id_filter = any(
+                    isinstance(f, dict) and f.get("type") == "filter" and f.get("path") == "app_id"
+                    for f in fields
+                )
+                if not has_app_id_filter:
+                    # Add app_id filter at the beginning (before other filters for better performance)
+                    app_id_filter = {"type": "filter", "path": "app_id"}
+                    fields = [app_id_filter] + fields
+                    definition = {**definition, "fields": fields}
+                    logger.info(f"{log_prefix} Automatically added 'app_id' filter to {index_type} index '{index_name}' (required by scoped wrapper).")
                 existing_index = await index_manager.get_search_index(index_name)
                 if existing_index:
                     current_def = existing_index.get("latestDefinition", existing_index.get("definition"))

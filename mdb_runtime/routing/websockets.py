@@ -161,12 +161,28 @@ class WebSocketConnectionManager:
             # Filter by user if specified
             if filter_by_user and connection.user_id != filter_by_user:
                 continue
+            
+            # Check WebSocket state before attempting to send
+            try:
+                # Check if WebSocket is in a valid state for sending
+                if hasattr(connection.websocket, 'client_state'):
+                    state = connection.websocket.client_state.name
+                    if state not in ['CONNECTED']:
+                        # WebSocket is not in a connected state, mark for cleanup
+                        disconnected.append(connection.websocket)
+                        continue
+            except Exception:
+                # If we can't check state, try to send anyway (will be caught below)
+                pass
                 
             try:
                 await connection.websocket.send_text(message_json)
                 sent_count += 1
             except Exception as e:
-                logger.warning(f"Error sending WebSocket message to client: {e}")
+                # Only log if it's not a "closed" error (those are expected)
+                error_msg = str(e).lower()
+                if "close" not in error_msg and "disconnect" not in error_msg:
+                    logger.debug(f"Error sending WebSocket message to client: {e}")
                 disconnected.append(connection.websocket)
         
         # Clean up disconnected clients
@@ -184,6 +200,18 @@ class WebSocketConnectionManager:
             websocket: Target WebSocket instance
             message: Message dictionary to send
         """
+        # Check WebSocket state before attempting to send
+        try:
+            if hasattr(websocket, 'client_state'):
+                state = websocket.client_state.name
+                if state not in ['CONNECTED']:
+                    # WebSocket is not in a connected state, disconnect and return
+                    self.disconnect(websocket)
+                    return
+        except Exception:
+            # If we can't check state, try to send anyway (will be caught below)
+            pass
+        
         try:
             # Add app context for security
             message_with_context = {
@@ -194,7 +222,10 @@ class WebSocketConnectionManager:
             message_json = json.dumps(message_with_context)
             await websocket.send_text(message_json)
         except Exception as e:
-            logger.warning(f"Error sending message to specific WebSocket: {e}")
+            # Only log if it's not a "closed" error (those are expected)
+            error_msg = str(e).lower()
+            if "close" not in error_msg and "disconnect" not in error_msg:
+                logger.debug(f"Error sending message to specific WebSocket: {e}")
             self.disconnect(websocket)
     
     def get_connections_by_user(self, user_id: str) -> List[WebSocketConnection]:
