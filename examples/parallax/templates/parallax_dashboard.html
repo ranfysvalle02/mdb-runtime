@@ -1,0 +1,1282 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Parallax | Tech News Intelligence</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer">
+    <style>
+        :root {
+            --mouse-x: 0.5;
+            --mouse-y: 0.5;
+            --scroll-y: 0;
+        }
+
+        @keyframes float {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-10px); }
+        }
+        @keyframes pulse-glow {
+            0%, 100% { box-shadow: 0 0 20px rgba(96, 165, 250, 0.3); }
+            50% { box-shadow: 0 0 30px rgba(96, 165, 250, 0.6); }
+        }
+        @keyframes slide-in {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        .float { animation: float 3s ease-in-out infinite; }
+        .pulse-glow { animation: pulse-glow 2s ease-in-out infinite; }
+        .slide-in { animation: slide-in 0.5s ease-out; }
+        
+        .glass { 
+            background: rgba(30, 41, 59, 0.7); 
+            backdrop-filter: blur(10px); 
+            border: 1px solid rgba(148, 163, 184, 0.1);
+        }
+        
+        .gradient-text { 
+            background: linear-gradient(to right, #60a5fa, #c084fc, #f472b6); 
+            -webkit-background-clip: text; 
+            background-clip: text;
+            color: transparent;
+        }
+        
+        .tag-input:focus {
+            transform: scale(1.02);
+            box-shadow: 0 0 0 3px rgba(96, 165, 250, 0.2);
+        }
+        
+        /* Sort Selector Styles */
+        #sortSelector {
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23cbd5e1' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: right 0.75rem center;
+            background-size: 16px;
+            padding-right: 2.5rem;
+        }
+        
+        #sortSelector:hover {
+            background-color: rgba(30, 41, 59, 0.9);
+            border-color: rgba(96, 165, 250, 0.5);
+        }
+        
+        #sortSelector:focus {
+            background-color: rgba(30, 41, 59, 0.95);
+            border-color: rgba(96, 165, 250, 1);
+            box-shadow: 0 0 0 3px rgba(96, 165, 250, 0.2);
+        }
+        
+        /* NEW Badge Animation */
+        @keyframes pulse-glow-green {
+            0%, 100% { 
+                box-shadow: 0 0 10px rgba(16, 185, 129, 0.3);
+            }
+            50% { 
+                box-shadow: 0 0 20px rgba(16, 185, 129, 0.6);
+            }
+        }
+        
+        .new-badge {
+            animation: pulse-glow-green 2s ease-in-out infinite;
+        }
+        
+        
+        .lens-card {
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }
+        .lens-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+        }
+
+        /* Parallax Background Layer */
+        body::before {
+            content: '';
+            position: fixed;
+            top: -10%;
+            left: -10%;
+            width: 120%;
+            height: 120%;
+            background: 
+                radial-gradient(circle at 20% 30%, rgba(96, 165, 250, 0.1) 0%, transparent 50%),
+                radial-gradient(circle at 80% 70%, rgba(192, 132, 252, 0.1) 0%, transparent 50%),
+                radial-gradient(circle at 50% 50%, rgba(244, 114, 182, 0.05) 0%, transparent 70%);
+            pointer-events: none;
+            z-index: -1;
+            transform: 
+                translateX(calc((var(--mouse-x) - 0.5) * 30px))
+                translateY(calc((var(--mouse-y) - 0.5) * 30px))
+                translateY(calc(var(--scroll-y) * 0.3px));
+            transition: transform 0.15s ease-out;
+        }
+
+        /* Parallax Report Cards */
+        .parallax-card {
+            opacity: 0;
+            transform: translateY(50px);
+            transition: opacity 0.5s ease-out, transform 0.5s ease-out;
+        }
+        
+        .parallax-card.visible {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        /* Subtle hover effect on cards */
+        .parallax-card:hover {
+            transform: translateY(-8px);
+            transition: transform 0.2s ease-out;
+        }
+
+        /* Grid overlay - subtle background structure */
+        .grid-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: -2;
+            opacity: 0.05;
+            background-image: 
+                linear-gradient(rgba(96, 165, 250, 0.04) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(96, 165, 250, 0.04) 1px, transparent 1px);
+            background-size: 60px 60px;
+        }
+
+        /* Enhanced glass effect */
+        .glass-enhanced {
+            background: rgba(30, 41, 59, 0.8);
+            backdrop-filter: blur(20px) saturate(180%);
+            border: 1px solid rgba(148, 163, 184, 0.2);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.1);
+        }
+        
+        /* Popover/Tooltip Styles */
+        .popover-trigger {
+            position: relative;
+            display: inline-flex;
+            align-items: center;
+            cursor: help;
+        }
+        
+        .popover-content {
+            position: absolute;
+            bottom: 100%;
+            left: 50%;
+            transform: translateX(-50%);
+            margin-bottom: 8px;
+            width: 280px;
+            padding: 12px;
+            background: rgba(15, 23, 42, 0.95);
+            border: 1px solid rgba(148, 163, 184, 0.2);
+            border-radius: 8px;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.2s ease, transform 0.2s ease;
+            transform: translateX(-50%) translateY(-4px);
+            z-index: 1000;
+            font-size: 12px;
+            line-height: 1.5;
+            color: #cbd5e1;
+        }
+        
+        .popover-trigger:hover .popover-content,
+        .popover-trigger.active .popover-content {
+            opacity: 1;
+            pointer-events: auto;
+            transform: translateX(-50%) translateY(0);
+        }
+        
+        .popover-content::after {
+            content: '';
+            position: absolute;
+            top: 100%;
+            left: 50%;
+            transform: translateX(-50%);
+            border: 6px solid transparent;
+            border-top-color: rgba(15, 23, 42, 0.95);
+        }
+        
+        .popover-content strong {
+            color: #60a5fa;
+            display: block;
+            margin-bottom: 4px;
+        }
+    </style>
+</head>
+<body class="bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 text-slate-200 min-h-screen font-sans">
+    
+    <!-- Subtle Background Effects -->
+    <div class="grid-overlay"></div>
+    
+    <nav class="glass-enhanced border-b border-slate-800 sticky top-0 z-50 backdrop-blur-md" id="mainNav">
+        <div class="max-w-7xl mx-auto px-6 py-4 flex justify-between items-center">
+            <div class="flex items-center gap-3">
+                <i class="fa-solid fa-layer-group text-blue-500 text-2xl float"></i>
+                <h1 class="text-2xl font-bold tracking-tight gradient-text">PARALLAX</h1>
+            </div>
+            <div class="flex items-center gap-3">
+                <button onclick="openSettings()" 
+                    class="bg-slate-800 hover:bg-slate-700 text-slate-200 px-4 py-2 rounded-lg text-sm font-semibold transition flex items-center gap-2 border border-slate-700 hover:border-slate-600">
+                    <i class="fa-solid fa-sliders-h"></i> Configure
+                </button>
+                <button onclick="refreshData()" id="refreshBtn" 
+                    class="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-500 hover:to-purple-500 text-white px-4 py-2 rounded-lg text-sm font-semibold transition flex items-center gap-2 shadow-lg pulse-glow">
+                    <i class="fa-solid fa-radar"></i> Scan
+                </button>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Settings Modal -->
+    <div id="settingsModal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
+        <div class="glass rounded-2xl p-6 max-w-4xl w-full mx-4 max-h-[90vh] overflow-hidden flex flex-col slide-in border border-slate-700 shadow-2xl">
+            <!-- Header -->
+            <div class="flex justify-between items-center mb-4 pb-4 border-b border-slate-700">
+                <h2 class="text-2xl font-bold gradient-text">Configuration</h2>
+                <button onclick="closeSettings()" class="text-slate-400 hover:text-white transition">
+                    <i class="fa-solid fa-times text-xl"></i>
+                </button>
+            </div>
+            
+            <!-- Main Tabs -->
+            <div class="flex gap-1 mb-4 border-b border-slate-700">
+                <button onclick="switchMainTab('watchlist')" id="mainTabWatchlist" 
+                    class="px-4 py-2 text-sm font-semibold border-b-2 border-blue-500 text-blue-400 transition">
+                    <i class="fa-solid fa-bullseye mr-2"></i>Watchlist
+                </button>
+                <button onclick="switchMainTab('lenses')" id="mainTabLenses" 
+                    class="px-4 py-2 text-sm font-semibold border-b-2 border-transparent text-slate-400 hover:text-slate-300 transition">
+                    <i class="fa-solid fa-eye mr-2"></i>Lenses
+                </button>
+            </div>
+            
+            <!-- Watchlist Tab Content -->
+            <div id="tabContentWatchlist" class="flex-1 overflow-y-auto">
+                <div class="space-y-4">
+                    <div>
+                        <div class="flex items-center gap-2 mb-4">
+                            <p class="text-sm text-slate-400">Keywords to monitor in Hacker News stories</p>
+                            <div class="popover-trigger">
+                                <i class="fa-solid fa-circle-question text-slate-500 hover:text-blue-400 transition text-sm"></i>
+                                <div class="popover-content">
+                                    <strong>Watchlist Keywords</strong>
+                                    Add keywords to monitor Hacker News stories. Stories containing these keywords will be analyzed. Examples: "MongoDB", "vector", "AI", "Python". Press Enter or click + to add.
+                                </div>
+                            </div>
+                        </div>
+                        <div id="watchlistTags" class="flex flex-wrap gap-2 min-h-[60px] p-3 bg-slate-800/50 rounded-lg border border-slate-700">
+                            <!-- Tags will be inserted here -->
+                        </div>
+                        <div class="flex gap-2 mt-2">
+                            <input 
+                                type="text" 
+                                id="newWatchlistItem" 
+                                placeholder="Add keyword (e.g., MongoDB, vector, voyageAI)"
+                                class="tag-input flex-1 bg-slate-800 border border-slate-700 rounded-lg px-4 py-2 text-white placeholder-slate-500 focus:outline-none focus:border-blue-500"
+                                onkeypress="if(event.key === 'Enter') addWatchlistItem()"
+                            >
+                            <button onclick="addWatchlistItem()" class="bg-blue-600 hover:bg-blue-500 px-4 py-2 rounded-lg transition">
+                                <i class="fa-solid fa-plus"></i>
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <div class="pt-4 border-t border-slate-700">
+                        <div class="flex items-center gap-2 mb-2">
+                            <label class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Scan Limit</label>
+                            <div class="popover-trigger">
+                                <i class="fa-solid fa-circle-question text-slate-500 hover:text-blue-400 transition text-xs"></i>
+                                <div class="popover-content">
+                                    <strong>Scan Limit</strong>
+                                    Controls how many top Hacker News stories to check per scan. Higher values = more coverage but slower scans. Recommended: 50-100 for balance.
+                                </div>
+                            </div>
+                        </div>
+                        <p class="text-xs text-slate-300 mb-2">Number of top Hacker News stories to check per scan (1-500)</p>
+                        <div class="flex items-center gap-3">
+                            <input 
+                                type="number" 
+                                id="scanLimit" 
+                                min="1" 
+                                max="500" 
+                                value="50"
+                                class="w-24 bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-200 focus:outline-none focus:border-blue-500"
+                            >
+                            <span class="text-xs text-slate-400">stories</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Lenses Tab Content -->
+            <div id="tabContentLenses" class="flex-1 overflow-y-auto hidden">
+                <!-- Lens Sub-Tabs -->
+                <div class="flex gap-1 mb-4 border-b border-slate-700">
+                    <button onclick="switchLensTab('Relevance')" id="tabRelevance" 
+                        class="px-4 py-2 text-sm font-semibold border-b-2 border-amber-500 text-amber-400 transition">
+                        Relevance
+                    </button>
+                    <button onclick="switchLensTab('Technical')" id="tabTechnical" 
+                        class="px-4 py-2 text-sm font-semibold border-b-2 border-transparent text-slate-400 hover:text-slate-300 transition">
+                        Technical
+                    </button>
+                </div>
+                
+                <!-- Relevance Lens Config -->
+                <div id="lensConfigRelevance" class="lens-config-panel">
+                    <div class="space-y-4">
+                        <div>
+                            <div class="flex items-center gap-2 mb-1">
+                                <label class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Prompt Template</label>
+                                <div class="popover-trigger">
+                                    <i class="fa-solid fa-circle-question text-slate-500 hover:text-amber-400 transition text-xs"></i>
+                                    <div class="popover-content">
+                                        <strong>Prompt Template</strong>
+                                        Customize the AI's analysis prompt. Use placeholders: {role} = lens name, {watchlist} = keywords, {format_instructions} = JSON schema. Advanced users only.
+                                    </div>
+                                </div>
+                            </div>
+                            <textarea 
+                                id="relevancePrompt" 
+                                rows="5"
+                                class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-xs text-slate-200 font-mono focus:outline-none focus:border-amber-500"
+                                placeholder="You are the {role} Specialist. Analyze this news title in context of watchlist: {watchlist}...\n\n{format_instructions}"
+                            ></textarea>
+                            <p class="text-xs text-slate-300 mt-1">Use {role}, {watchlist}, {format_instructions}</p>
+                        </div>
+                        
+                        <div>
+                            <div class="flex justify-between items-center mb-2">
+                                <div class="flex items-center gap-2">
+                                    <label class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Schema Fields</label>
+                                    <div class="popover-trigger">
+                                        <i class="fa-solid fa-circle-question text-slate-500 hover:text-amber-400 transition text-xs"></i>
+                                        <div class="popover-content">
+                                            <strong>Schema Fields</strong>
+                                            Define the data structure for this lens. Each field has: name, type (str/int/bool/Literal), description. Literal types allow specific values (e.g., Low/Medium/High). Fields marked as "badge" display as status badges in the UI.
+                                        </div>
+                                    </div>
+                                </div>
+                                <button onclick="addSchemaField('Relevance')" class="text-xs bg-amber-600 hover:bg-amber-500 px-2 py-1 rounded transition">
+                                    <i class="fa-solid fa-plus mr-1"></i>Add
+                                </button>
+                            </div>
+                            <div id="relevanceSchemaFields" class="space-y-2 max-h-64 overflow-y-auto">
+                                <!-- Schema fields will be inserted here -->
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Technical Lens Config -->
+                <div id="lensConfigTechnical" class="lens-config-panel hidden">
+                    <div class="space-y-4">
+                        <div>
+                            <div class="flex items-center gap-2 mb-1">
+                                <label class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Prompt Template</label>
+                                <div class="popover-trigger">
+                                    <i class="fa-solid fa-circle-question text-slate-500 hover:text-cyan-400 transition text-xs"></i>
+                                    <div class="popover-content">
+                                        <strong>Prompt Template</strong>
+                                        Customize the AI's analysis prompt. Use placeholders: {role} = lens name, {format_instructions} = JSON schema. Advanced users only.
+                                    </div>
+                                </div>
+                            </div>
+                            <textarea 
+                                id="technicalPrompt" 
+                                rows="5"
+                                class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-xs text-slate-200 font-mono focus:outline-none focus:border-cyan-500"
+                                placeholder="You are the {role} Specialist. Provide concise technical assessment...\n\n{format_instructions}"
+                            ></textarea>
+                            <p class="text-xs text-slate-300 mt-1">Use {role}, {format_instructions}</p>
+                        </div>
+                        
+                        <div>
+                            <div class="flex justify-between items-center mb-2">
+                                <div class="flex items-center gap-2">
+                                    <label class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Schema Fields</label>
+                                    <div class="popover-trigger">
+                                        <i class="fa-solid fa-circle-question text-slate-500 hover:text-cyan-400 transition text-xs"></i>
+                                        <div class="popover-content">
+                                            <strong>Schema Fields</strong>
+                                            Define the data structure for this lens. Each field has: name, type (str/int/bool/Literal), description. Literal types allow specific values (e.g., Low/Medium/High). Fields marked as "badge" display as status badges in the UI.
+                                        </div>
+                                    </div>
+                                </div>
+                                <button onclick="addSchemaField('Technical')" class="text-xs bg-cyan-600 hover:bg-cyan-500 px-2 py-1 rounded transition">
+                                    <i class="fa-solid fa-plus mr-1"></i>Add
+                                </button>
+                            </div>
+                            <div id="technicalSchemaFields" class="space-y-2 max-h-64 overflow-y-auto">
+                                <!-- Schema fields will be inserted here -->
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+            </div>
+
+            <!-- Footer Actions -->
+            <div class="flex gap-3 justify-end pt-4 mt-4 border-t border-slate-700">
+                <button onclick="closeSettings()" class="px-4 py-2 rounded-lg border border-slate-700 hover:bg-slate-800 transition text-sm">
+                    Cancel
+                </button>
+                <button onclick="saveSettings()" class="px-4 py-2 rounded-lg bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-500 hover:to-purple-500 text-white font-semibold transition text-sm">
+                    <i class="fa-solid fa-save mr-2"></i>Save
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <main class="max-w-7xl mx-auto px-6 py-10 space-y-12">
+        
+        <!-- Filters and Sort -->
+        <div class="mb-6 space-y-4">
+            <div class="flex items-center justify-between flex-wrap gap-4">
+                <!-- Keyword Filter -->
+                <div class="flex items-center gap-3">
+                    <span class="text-sm text-slate-400 font-semibold">Filter by keyword:</span>
+                    <div class="flex flex-wrap gap-2">
+                        <button onclick="filterByKeyword(null)" 
+                            class="px-3 py-1.5 text-xs font-semibold rounded-lg transition
+                            {% if not selected_keyword %} bg-blue-600 text-white {% else %} bg-slate-800 text-slate-400 hover:bg-slate-700 {% endif %}">
+                            All
+                        </button>
+                        {% for kw in watchlist %}
+                        <button onclick="filterByKeyword('{{ kw }}')" 
+                            class="px-3 py-1.5 text-xs font-semibold rounded-lg transition
+                            {% if selected_keyword == kw %} bg-green-600 text-white {% else %} bg-slate-800 text-slate-400 hover:bg-slate-700 {% endif %}">
+                            {{ kw }}
+                        </button>
+                        {% endfor %}
+                    </div>
+                </div>
+                
+                <!-- Sort Selector -->
+                <div class="flex items-center gap-3">
+                    <i class="fa-solid fa-arrow-down-wide-short text-slate-400 text-sm"></i>
+                    <select id="sortSelector" onchange="updateSort()" 
+                        class="px-4 py-2 bg-slate-800/70 border border-slate-700 rounded-lg text-sm text-slate-300 
+                        focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 
+                        hover:bg-slate-800 transition-colors cursor-pointer appearance-none
+                        bg-[url('data:image/svg+xml;charset=UTF-8,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22 fill=%22none%22 stroke=%22%23cbd5e1%22 stroke-width=%222%22 stroke-linecap=%22round%22 stroke-linejoin=%22round%22%3E%3Cpolyline points=%226 9 12 15 18 9%22%3E%3C/polyline%3E%3C/svg%3E')] 
+                        bg-no-repeat bg-right bg-[length:16px] pr-8">
+                        <option value="date_desc" {% if sort_by == 'date_desc' or not sort_by %}selected{% endif %}>Date (Newest First)</option>
+                        <option value="date_asc" {% if sort_by == 'date_asc' %}selected{% endif %}>Date (Oldest First)</option>
+                        <option value="relevance" {% if sort_by == 'relevance' %}selected{% endif %}>Relevance</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+        
+        {% if not reports %}
+        <div class="text-center py-20">
+            {% if selected_keyword %}
+            <div class="inline-block mb-4">
+                <i class="fa-solid fa-filter text-4xl text-slate-500"></i>
+            </div>
+            <h2 class="text-xl mb-2 gradient-text">No Results for "{{ selected_keyword }}"</h2>
+            <p class="text-sm text-slate-400 mb-4">No reports found matching this keyword.</p>
+            <button onclick="filterByKeyword(null)" class="mt-4 px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-lg transition">
+                <i class="fa-solid fa-times mr-2"></i>Clear Filter
+            </button>
+            {% else %}
+            <div class="inline-block mb-4">
+                <i class="fa-solid fa-circle-notch fa-spin text-4xl text-blue-500"></i>
+            </div>
+            <h2 class="text-xl mb-2 gradient-text">Scanning Hacker News...</h2>
+            <p class="text-sm text-slate-400 mb-4">Searching for <span id="watchlistDisplay" class="text-blue-400 font-mono">{{ watchlist|join(', ') }}</span></p>
+            <p class="text-xs text-slate-300">This may take 30-60 seconds. The page will auto-refresh when ready.</p>
+            <script>
+                // Auto-refresh every 5 seconds until we have reports (only if no filters applied)
+                setTimeout(() => location.reload(), 5000);
+            </script>
+            {% endif %}
+        </div>
+        {% endif %}
+
+        {% for r in reports %}
+        <div class="group relative glass-enhanced border border-slate-800 rounded-2xl overflow-hidden hover:border-slate-700 transition duration-500 shadow-2xl parallax-card">
+            
+            <!-- Enhanced Card Header -->
+            <div class="relative bg-gradient-to-br from-slate-800/60 via-slate-800/50 to-slate-900/50 p-4 border-b border-slate-700/80 backdrop-blur-sm">
+                <!-- Header Top Row: Source Detected + Matched Keywords -->
+                <div class="flex items-center justify-between gap-3 mb-3 flex-wrap">
+                    <!-- Left: Source Detected + Matched Keywords -->
+                    <div class="flex items-center gap-3 flex-wrap flex-1">
+                        <span class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-semibold bg-blue-500/15 text-blue-300 border border-blue-500/40 uppercase tracking-wider backdrop-blur-sm">
+                            <i class="fa-solid fa-radar text-[10px]"></i>Source Detected
+                        </span>
+                        {% if r.matched_keywords %}
+                        <div class="flex items-center gap-2 flex-wrap">
+                            {% for kw in r.matched_keywords %}
+                            <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[11px] font-semibold bg-gradient-to-r from-green-600/20 to-emerald-600/20 text-green-300 border border-green-500/40 uppercase tracking-wide shadow-sm hover:shadow-md hover:border-green-500/60 transition-all duration-200">
+                                <i class="fa-solid fa-tag text-[9px]"></i>{{ kw }}
+                            </span>
+                            {% endfor %}
+                        </div>
+                        {% endif %}
+                    </div>
+                    
+                    <!-- Right: NEW Badge + Timestamp -->
+                    <div class="flex items-center gap-3">
+                        {% if r.is_fresh %}
+                        <span class="new-badge inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-bold bg-gradient-to-r from-green-600/90 to-emerald-600/90 text-white border border-green-500/60 uppercase tracking-wider shadow-lg shadow-green-500/30 backdrop-blur-sm">
+                            <i class="fa-solid fa-sparkles text-[10px]"></i>NEW
+                        </span>
+                        {% endif %}
+                        <div class="flex items-center gap-2 text-xs text-slate-300">
+                            <i class="fa-solid fa-clock text-[10px]"></i>
+                            <time datetime="{{ r.timestamp if r.timestamp else '' }}" class="font-mono">
+                                {{ r.timestamp[:10] if r.timestamp else 'Unknown' }}
+                            </time>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Title Section -->
+                <div class="mb-3">
+                    <a href="{{ r.url }}" target="_blank" class="group block">
+                        <h2 class="text-lg font-bold text-white group-hover:text-blue-400 transition-colors duration-200 leading-snug pr-6">
+                            {{ r.original_title }}
+                            <i class="fa-solid fa-external-link-alt text-xs opacity-40 group-hover:opacity-70 ml-2 transition-opacity"></i>
+                        </h2>
+                    </a>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 divide-y md:divide-y-0 md:divide-x divide-slate-800">
+                
+                <!-- Relevance Lens -->
+                <div class="p-4 hover:bg-slate-800/30 transition lens-card">
+                    <div class="flex items-center justify-between mb-3 pb-2 border-b border-slate-700/50">
+                        <div class="flex items-center gap-1.5 text-amber-400">
+                            <i class="fa-solid fa-bullseye text-xs"></i>
+                            <h3 class="text-xs font-bold uppercase tracking-wider">Relevance</h3>
+                        </div>
+                        <span class="font-mono text-amber-400 font-bold text-xs">{{ r.relevance.relevance_score if r.relevance and r.relevance.relevance_score else 0 }}/100</span>
+                    </div>
+                    <!-- Badge Fields Header -->
+                    <div class="flex items-center justify-between mb-3 pb-2 border-b border-slate-700/30">
+                        <span class="text-[10px] text-slate-300 uppercase font-semibold">Urgency</span>
+                        <span class="text-[10px] font-bold px-2 py-0.5 rounded
+                            {% if r.relevance and r.relevance.urgency == 'High' %} bg-orange-500/20 text-orange-400 border border-orange-800/50
+                            {% elif r.relevance and r.relevance.urgency == 'Medium' %} bg-yellow-500/20 text-yellow-400 border border-yellow-800/50
+                            {% else %} bg-slate-500/20 text-slate-400 border border-slate-700/50 {% endif %}">
+                            {{ r.relevance.urgency if r.relevance and r.relevance.urgency else 'Low' }}
+                        </span>
+                    </div>
+                    <div class="space-y-3">
+                        <div>
+                            <p class="text-[10px] text-slate-300 uppercase font-semibold mb-1">Why It Matters</p>
+                            <p class="text-xs text-slate-300 leading-relaxed">{{ r.relevance.why_it_matters if r.relevance and r.relevance.why_it_matters else 'N/A' }}</p>
+                        </div>
+                        <div>
+                            <p class="text-[10px] text-slate-300 uppercase font-semibold mb-1">Key Insight</p>
+                            <p class="text-xs text-slate-300 leading-relaxed">{{ r.relevance.key_insight if r.relevance and r.relevance.key_insight else 'N/A' }}</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Technical Lens -->
+                <div class="p-4 hover:bg-slate-800/30 transition lens-card">
+                    <div class="flex items-center justify-between mb-3 pb-2 border-b border-slate-700/50">
+                        <div class="flex items-center gap-1.5 text-cyan-400">
+                            <i class="fa-solid fa-microchip text-xs"></i>
+                            <h3 class="text-xs font-bold uppercase tracking-wider">Technical</h3>
+                        </div>
+                        <span class="text-[10px] text-slate-300 uppercase font-semibold">Assessment</span>
+                    </div>
+                    <!-- Badge Fields Header -->
+                    <div class="grid grid-cols-2 gap-3 mb-3 pb-2 border-b border-slate-700/30">
+                        <div class="flex items-center justify-between gap-1.5">
+                            <span class="text-[10px] text-slate-300 uppercase font-semibold">Complexity</span>
+                            <span class="text-[10px] font-bold px-2 py-0.5 rounded
+                                {% if r.product and r.product.complexity == 'High' %} bg-red-500/20 text-red-400 border border-red-800/50
+                                {% elif r.product and r.product.complexity == 'Medium' %} bg-yellow-500/20 text-yellow-400 border border-yellow-800/50
+                                {% else %} bg-green-500/20 text-green-400 border border-green-800/50 {% endif %}">
+                                {{ r.product.complexity if r.product and r.product.complexity else 'N/A' }}
+                            </span>
+                        </div>
+                        <div class="flex items-center justify-between gap-1.5">
+                            <span class="text-[10px] text-slate-300 uppercase font-semibold">Readiness</span>
+                            <span class="text-[10px] font-bold px-2 py-0.5 rounded
+                                {% if r.product and r.product.readiness == 'Production' %} bg-green-500/20 text-green-400 border border-green-800/50
+                                {% elif r.product and r.product.readiness == 'Beta' %} bg-blue-500/20 text-blue-400 border border-blue-800/50
+                                {% else %} bg-orange-500/20 text-orange-400 border border-orange-800/50 {% endif %}">
+                                {{ r.product.readiness if r.product and r.product.readiness else 'N/A' }}
+                            </span>
+                        </div>
+                    </div>
+                    <div class="space-y-3">
+                        <div>
+                            <p class="text-[10px] text-slate-300 uppercase font-semibold mb-1">Performance</p>
+                            <p class="text-xs text-slate-300 leading-relaxed">{{ r.product.performance if r.product and r.product.performance else 'N/A' }}</p>
+                        </div>
+                        <div>
+                            <p class="text-[10px] text-slate-300 uppercase font-semibold mb-1">Use Case</p>
+                            <p class="text-xs text-slate-300 leading-relaxed">{{ r.product.use_case if r.product and r.product.use_case else 'N/A' }}</p>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+        {% endfor %}
+    </main>
+
+    <script>
+        // Cache DOM elements
+        const elements = {
+            settingsModal: null,
+            watchlistTags: null,
+            scanLimit: null,
+            newWatchlistItem: null,
+            watchlistDisplay: null
+        };
+        
+        // Initialize DOM cache
+        function initElements() {
+            elements.settingsModal = document.getElementById('settingsModal');
+            elements.watchlistTags = document.getElementById('watchlistTags');
+            elements.scanLimit = document.getElementById('scanLimit');
+            elements.newWatchlistItem = document.getElementById('newWatchlistItem');
+            elements.watchlistDisplay = document.getElementById('watchlistDisplay');
+        }
+        
+        let currentWatchlist = {{ watchlist|tojson }};
+        let currentLensConfigs = {};
+        let currentLensTab = 'Relevance';
+        let currentScanLimit = 50;
+        
+        // Load watchlist on page load
+        async function loadWatchlist() {
+            try {
+                const res = await fetch('/api/watchlist');
+                const data = await res.json();
+                if(data.success) {
+                    currentWatchlist = data.watchlist;
+                    currentScanLimit = data.scan_limit || 50;
+                    if(elements.scanLimit) elements.scanLimit.value = currentScanLimit;
+                    renderWatchlistTags();
+                }
+            } catch(e) {
+                console.error('Failed to load watchlist:', e);
+            }
+        }
+        
+        // Load lens configurations
+        async function loadLensConfigs() {
+            try {
+                const res = await fetch('/api/lenses');
+                const data = await res.json();
+                if(data.success) {
+                    data.lenses.forEach(lens => {
+                        currentLensConfigs[lens.lens_name] = lens;
+                    });
+                    renderLensConfigs();
+                }
+            } catch(e) {
+                console.error('Failed to load lens configs:', e);
+            }
+        }
+        
+        function renderLensConfigs() {
+            ['Relevance', 'Technical'].forEach(lensName => {
+                const config = currentLensConfigs[lensName] || {};
+                
+                // Set prompt
+                const promptEl = document.getElementById(`${lensName.toLowerCase()}Prompt`);
+                if(promptEl) promptEl.value = config.prompt_template || '';
+                
+                // Render schema fields
+                renderSchemaFields(lensName, config.schema_fields || []);
+            });
+        }
+        
+        function renderSchemaFields(lensName, fields) {
+            const container = document.getElementById(`${lensName.toLowerCase()}SchemaFields`);
+            if(!container) return;
+            
+            container.innerHTML = '';
+            
+            fields.forEach((field, index) => {
+                const fieldEl = createSchemaFieldElement(lensName, field, index);
+                container.appendChild(fieldEl);
+            });
+            
+            if(fields.length === 0) {
+                container.innerHTML = '<p class="text-xs text-slate-300 italic">No fields defined. Click "Add Field" to create one.</p>';
+            }
+        }
+        
+        function createSchemaFieldElement(lensName, field, index) {
+            const div = document.createElement('div');
+            div.className = 'bg-slate-900/50 p-2 rounded border border-slate-700';
+            
+            // Escape HTML to prevent XSS
+            const escapeHtml = (str) => (str || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+            const name = escapeHtml(field.name || '');
+            const desc = escapeHtml(field.description || '');
+            const literalVals = field.literal_values ? escapeHtml(field.literal_values.join(', ')) : '';
+            const isLiteral = field.type === 'Literal';
+            
+            div.innerHTML = `
+                <div class="grid grid-cols-12 gap-2 items-center">
+                    <div class="col-span-4">
+                        <input type="text" 
+                            class="schema-field-name w-full bg-slate-800 border border-slate-700 rounded px-2 py-1.5 text-xs text-slate-200 focus:outline-none focus:border-blue-500"
+                            placeholder="name"
+                            value="${name}"
+                            data-lens="${lensName}"
+                            data-index="${index}"
+                            data-field="name"
+                            onchange="updateSchemaField('${lensName}', ${index})"
+                        >
+                    </div>
+                    <div class="col-span-2">
+                        <select class="schema-field-type w-full bg-slate-800 border border-slate-700 rounded px-2 py-1.5 text-xs text-slate-200 focus:outline-none focus:border-blue-500"
+                            data-lens="${lensName}"
+                            data-index="${index}"
+                            data-field="type"
+                            onchange="updateSchemaField('${lensName}', ${index})"
+                        >
+                            <option value="str" ${field.type === 'str' ? 'selected' : ''}>str</option>
+                            <option value="int" ${field.type === 'int' ? 'selected' : ''}>int</option>
+                            <option value="bool" ${field.type === 'bool' ? 'selected' : ''}>bool</option>
+                            <option value="List[str]" ${field.type === 'List[str]' ? 'selected' : ''}>List[str]</option>
+                            <option value="Literal" ${isLiteral ? 'selected' : ''}>Literal</option>
+                        </select>
+                    </div>
+                    <div class="col-span-5">
+                        <input type="text" 
+                            class="schema-field-desc w-full bg-slate-800 border border-slate-700 rounded px-2 py-1.5 text-xs text-slate-200 focus:outline-none focus:border-blue-500"
+                            placeholder="description"
+                            value="${desc}"
+                            data-lens="${lensName}"
+                            data-index="${index}"
+                            data-field="description"
+                            onchange="updateSchemaField('${lensName}', ${index})"
+                        >
+                    </div>
+                    <div class="col-span-1">
+                        <button onclick="removeSchemaField('${lensName}', ${index})" 
+                            class="w-full bg-red-600/20 hover:bg-red-600/40 text-red-400 px-2 py-1.5 rounded text-xs transition border border-red-800/50" 
+                            aria-label="Remove field">
+                            <i class="fa-solid fa-trash"></i>
+                        </button>
+                    </div>
+                </div>
+                ${isLiteral ? `
+                    <div class="mt-2">
+                        <input type="text" 
+                            class="schema-field-literal w-full bg-slate-800 border border-slate-700 rounded px-2 py-1 text-xs text-slate-200 focus:outline-none focus:border-blue-500"
+                            placeholder="Values (comma-separated)"
+                            value="${literalVals}"
+                            data-lens="${lensName}"
+                            data-index="${index}"
+                            onchange="updateSchemaField('${lensName}', ${index})"
+                        >
+                    </div>
+                ` : ''}
+            `;
+            return div;
+        }
+        
+        function updateSchemaField(lensName, index) {
+            if(!currentLensConfigs[lensName] || !currentLensConfigs[lensName].schema_fields) return;
+            
+            const field = currentLensConfigs[lensName].schema_fields[index];
+            if(!field) return;
+            
+            // Update from inputs
+            const nameInput = document.querySelector(`input[data-lens="${lensName}"][data-index="${index}"][data-field="name"]`);
+            const typeInput = document.querySelector(`select[data-lens="${lensName}"][data-index="${index}"][data-field="type"]`);
+            const descInput = document.querySelector(`input[data-lens="${lensName}"][data-index="${index}"][data-field="description"]`);
+            const literalInput = document.querySelector(`input[data-lens="${lensName}"][data-index="${index}"].schema-field-literal`);
+            
+            if(nameInput) field.name = nameInput.value;
+            if(typeInput) {
+                field.type = typeInput.value;
+                // Re-render if type changed to show/hide literal input
+                if(typeInput.value === 'Literal' || field.type === 'Literal') {
+                    renderSchemaFields(lensName, currentLensConfigs[lensName].schema_fields);
+                }
+            }
+            if(descInput) field.description = descInput.value;
+            if(literalInput && field.type === 'Literal') {
+                const values = literalInput.value.split(',').map(v => v.trim()).filter(v => v);
+                field.literal_values = values;
+            }
+        }
+        
+        function addSchemaField(lensName) {
+            if(!currentLensConfigs[lensName]) {
+                currentLensConfigs[lensName] = {lens_name: lensName, schema_fields: []};
+            }
+            if(!currentLensConfigs[lensName].schema_fields) {
+                currentLensConfigs[lensName].schema_fields = [];
+            }
+            
+            currentLensConfigs[lensName].schema_fields.push({
+                name: '',
+                type: 'str',
+                description: '',
+                default: null
+            });
+            
+            renderSchemaFields(lensName, currentLensConfigs[lensName].schema_fields);
+        }
+        
+        function removeSchemaField(lensName, index) {
+            if(currentLensConfigs[lensName] && currentLensConfigs[lensName].schema_fields) {
+                currentLensConfigs[lensName].schema_fields.splice(index, 1);
+                renderSchemaFields(lensName, currentLensConfigs[lensName].schema_fields);
+            }
+        }
+        
+        let currentMainTab = 'watchlist';
+        
+        // Cache tab elements
+        const tabElements = {
+            watchlistTab: null,
+            lensesTab: null,
+            watchlistContent: null,
+            lensesContent: null
+        };
+        
+        function initTabElements() {
+            tabElements.watchlistTab = document.getElementById('mainTabWatchlist');
+            tabElements.lensesTab = document.getElementById('mainTabLenses');
+            tabElements.watchlistContent = document.getElementById('tabContentWatchlist');
+            tabElements.lensesContent = document.getElementById('tabContentLenses');
+        }
+        
+        function switchMainTab(tabName) {
+            if(!tabElements.watchlistTab) initTabElements();
+            
+            const active = tabName === 'watchlist';
+            const inactive = !active;
+            
+            // Update watchlist tab
+            if(tabElements.watchlistTab) {
+                if(active) {
+                    tabElements.watchlistTab.classList.add('border-blue-500', 'text-blue-400');
+                    tabElements.watchlistTab.classList.remove('border-transparent', 'text-slate-400');
+                } else {
+                    tabElements.watchlistTab.classList.remove('border-blue-500', 'text-blue-400');
+                    tabElements.watchlistTab.classList.add('border-transparent', 'text-slate-400');
+                }
+            }
+            
+            // Update lenses tab
+            if(tabElements.lensesTab) {
+                if(inactive) {
+                    tabElements.lensesTab.classList.add('border-blue-500', 'text-blue-400');
+                    tabElements.lensesTab.classList.remove('border-transparent', 'text-slate-400');
+                } else {
+                    tabElements.lensesTab.classList.remove('border-blue-500', 'text-blue-400');
+                    tabElements.lensesTab.classList.add('border-transparent', 'text-slate-400');
+                }
+            }
+            
+            // Update content
+            if(tabElements.watchlistContent) {
+                tabElements.watchlistContent.classList.toggle('hidden', !active);
+            }
+            if(tabElements.lensesContent) {
+                tabElements.lensesContent.classList.toggle('hidden', active);
+            }
+        }
+        
+        function switchLensTab(lensName) {
+            currentLensTab = lensName;
+            
+            ['Relevance', 'Technical'].forEach(name => {
+                const tab = document.getElementById(`tab${name}`);
+                const panel = document.getElementById(`lensConfig${name}`);
+                if(!tab || !panel) return;
+                
+                const isActive = name === lensName;
+                
+                // Reset all tab styles
+                tab.classList.remove('border-amber-500', 'text-amber-400', 'border-cyan-500', 'text-cyan-400', 'border-transparent', 'text-slate-400');
+                
+                if (isActive) {
+                    if (name === 'Relevance') {
+                        tab.classList.add('border-amber-500', 'text-amber-400');
+                    } else if (name === 'Technical') {
+                        tab.classList.add('border-cyan-500', 'text-cyan-400');
+                    }
+                } else {
+                    tab.classList.add('border-transparent', 'text-slate-400');
+                }
+                
+                panel.classList.toggle('hidden', !isActive);
+            });
+        }
+        
+        function renderWatchlistTags() {
+            if(!elements.watchlistTags) return;
+            const container = elements.watchlistTags;
+            container.innerHTML = '';
+            
+            currentWatchlist.forEach((tag, index) => {
+                const tagEl = document.createElement('div');
+                tagEl.className = 'flex items-center gap-2 bg-blue-900/30 text-blue-300 px-3 py-1.5 rounded-lg border border-blue-800/50 text-sm';
+                tagEl.innerHTML = `
+                    <span>${tag}</span>
+                    <button onclick="removeWatchlistItem(${index})" class="text-blue-400 hover:text-red-400 transition" aria-label="Remove ${tag}">
+                        <i class="fa-solid fa-times text-xs"></i>
+                    </button>
+                `;
+                container.appendChild(tagEl);
+            });
+            
+            if(elements.watchlistDisplay) {
+                elements.watchlistDisplay.textContent = currentWatchlist.join(', ');
+            }
+        }
+        
+        function addWatchlistItem() {
+            if(!elements.newWatchlistItem) return;
+            const value = elements.newWatchlistItem.value.trim();
+            if(value && !currentWatchlist.includes(value)) {
+                currentWatchlist.push(value);
+                renderWatchlistTags();
+                elements.newWatchlistItem.value = '';
+            }
+        }
+        
+        function removeWatchlistItem(index) {
+            currentWatchlist.splice(index, 1);
+            renderWatchlistTags();
+        }
+        
+        function openSettings() {
+            if(elements.settingsModal) {
+                elements.settingsModal.classList.remove('hidden');
+                loadWatchlist();
+                loadLensConfigs();
+            }
+        }
+        
+        function closeSettings() {
+            if(elements.settingsModal) {
+                elements.settingsModal.classList.add('hidden');
+            }
+        }
+        
+        async function saveSettings() {
+            try {
+                // Collect lens configs from UI
+                ['Relevance', 'Technical'].forEach(lensName => {
+                    const promptEl = document.getElementById(`${lensName.toLowerCase()}Prompt`);
+                    if(!promptEl) return;
+                    
+                    const prompt = promptEl.value;
+                    
+                    if(!currentLensConfigs[lensName]) {
+                        currentLensConfigs[lensName] = {lens_name: lensName, schema_fields: []};
+                    }
+                    
+                    currentLensConfigs[lensName].prompt_template = prompt;
+                    
+                    if(!currentLensConfigs[lensName].schema_fields) {
+                        currentLensConfigs[lensName].schema_fields = [];
+                    }
+                    
+                    // Update all fields from UI before saving
+                    currentLensConfigs[lensName].schema_fields.forEach((field, index) => {
+                        updateSchemaField(lensName, index);
+                    });
+                    
+                    // Filter out empty fields
+                    currentLensConfigs[lensName].schema_fields = currentLensConfigs[lensName].schema_fields.filter(f => f.name && f.name.trim());
+                });
+                
+                // Get scan limit
+                const scanLimit = elements.scanLimit ? parseInt(elements.scanLimit.value) || 50 : 50;
+                
+                // Save watchlist and scan limit
+                const watchlistRes = await fetch('/api/watchlist', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({
+                        watchlist: currentWatchlist,
+                        scan_limit: scanLimit
+                    })
+                });
+                
+                const watchlistData = await watchlistRes.json();
+                if(!watchlistData.success) {
+                    alert('Failed to save watchlist: ' + (watchlistData.error || 'Unknown error'));
+                    return;
+                }
+                
+                // Save lens configs
+                let allSaved = true;
+                for(const [lensName, config] of Object.entries(currentLensConfigs)) {
+                    const lensRes = await fetch(`/api/lenses/${lensName}`, {
+                        method: 'POST',
+                        headers: {'Content-Type': 'application/json'},
+                        body: JSON.stringify(config)
+                    });
+                    
+                    const lensData = await lensRes.json();
+                    if(!lensData.success) {
+                        console.error(`Failed to save ${lensName}:`, lensData.error);
+                        allSaved = false;
+                    }
+                }
+                
+                if(allSaved) {
+                    closeSettings();
+                    alert('Configuration saved! Changes will take effect on the next scan.');
+                    location.reload();
+                } else {
+                    alert('Some lens configurations failed to save. Check console for details.');
+                }
+            } catch(e) {
+                console.error(e);
+                alert('Failed to save configuration: ' + e.message);
+            }
+        }
+        
+        async function refreshData() {
+            const btn = document.getElementById('refreshBtn');
+            const originalHTML = btn.innerHTML;
+            btn.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin"></i> Scanning...';
+            btn.disabled = true;
+            btn.classList.add('opacity-75', 'cursor-not-allowed');
+            
+            try {
+                const res = await fetch('/api/refresh', {method: 'POST'});
+                const data = await res.json();
+                if(data.success) {
+                    if(data.status === 'no_new') {
+                        // Show "nothing new" message
+                        btn.innerHTML = '<i class="fa-solid fa-check"></i> Scan Complete';
+                        btn.classList.remove('opacity-75', 'cursor-not-allowed');
+                        btn.disabled = false;
+                        
+                        // Show notification
+                        showNotification(data.message, 'info');
+                        
+                        // Reset button after 3 seconds
+                        setTimeout(() => {
+                            btn.innerHTML = originalHTML;
+                        }, 3000);
+                    } else {
+                        // New reports found, reload page
+                        setTimeout(() => location.reload(), 1000);
+                    }
+                } else {
+                    alert(`Scan failed: ${data.error || 'Unknown error'}`);
+                    btn.innerHTML = originalHTML;
+                    btn.disabled = false;
+                    btn.classList.remove('opacity-75', 'cursor-not-allowed');
+                }
+            } catch(e) {
+                console.error(e);
+                alert("Scan failed. Check console.");
+                btn.innerHTML = originalHTML;
+                btn.disabled = false;
+                btn.classList.remove('opacity-75', 'cursor-not-allowed');
+            }
+        }
+        
+        function showNotification(message, type = 'info') {
+            // Create notification element
+            const notification = document.createElement('div');
+            notification.className = `fixed top-4 right-4 z-50 px-4 py-3 rounded-lg shadow-lg border backdrop-blur-sm slide-in ${
+                type === 'info' ? 'bg-blue-900/80 border-blue-700 text-blue-200' : 
+                type === 'success' ? 'bg-green-900/80 border-green-700 text-green-200' :
+                'bg-red-900/80 border-red-700 text-red-200'
+            }`;
+            notification.innerHTML = `
+                <div class="flex items-center gap-2">
+                    <i class="fa-solid ${type === 'info' ? 'fa-info-circle' : type === 'success' ? 'fa-check-circle' : 'fa-exclamation-circle'}"></i>
+                    <span class="text-sm font-medium">${message}</span>
+                </div>
+            `;
+            
+            document.body.appendChild(notification);
+            
+            // Remove after 5 seconds
+            setTimeout(() => {
+                notification.style.opacity = '0';
+                notification.style.transform = 'translateX(100%)';
+                setTimeout(() => notification.remove(), 300);
+            }, 5000);
+        }
+        
+        // Initialize popover click handlers
+        function initPopovers() {
+            document.querySelectorAll('.popover-trigger').forEach(trigger => {
+                trigger.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    // Close other popovers
+                    document.querySelectorAll('.popover-trigger').forEach(t => {
+                        if(t !== trigger) t.classList.remove('active');
+                    });
+                    // Toggle current popover
+                    trigger.classList.toggle('active');
+                });
+            });
+            
+            // Close popovers when clicking outside
+            document.addEventListener('click', (e) => {
+                if(!e.target.closest('.popover-trigger')) {
+                    document.querySelectorAll('.popover-trigger').forEach(t => {
+                        t.classList.remove('active');
+                    });
+                }
+            });
+        }
+        
+        // Initialize on DOM ready
+        if(document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', () => {
+                initElements();
+                initTabElements();
+                loadWatchlist();
+                initPopovers();
+            });
+        } else {
+            initElements();
+            initTabElements();
+            loadWatchlist();
+            initPopovers();
+        }
+        
+        // Close modal on outside click
+        document.addEventListener('click', (e) => {
+            if(elements.settingsModal && e.target === elements.settingsModal) {
+                closeSettings();
+            }
+        });
+        
+        function updateSort() {
+            const sortValue = document.getElementById('sortSelector').value;
+            
+            // Update URL and reload
+            const url = new URL(window.location);
+            url.searchParams.set('sort_by', sortValue);
+            // Preserve keyword filter if present
+            const keyword = url.searchParams.get('keyword');
+            if(keyword) {
+                url.searchParams.set('keyword', keyword);
+            }
+            window.location.href = url.toString();
+        }
+        
+        function filterByKeyword(keyword) {
+            // Update URL and reload
+            const url = new URL(window.location);
+            if(keyword) {
+                url.searchParams.set('keyword', keyword);
+            } else {
+                url.searchParams.delete('keyword');
+            }
+            // Preserve sort_by if present
+            const sortBy = url.searchParams.get('sort_by');
+            if(sortBy) {
+                url.searchParams.set('sort_by', sortBy);
+            }
+            window.location.href = url.toString();
+        }
+        
+        // Load reports dynamically when sort changes (for future AJAX implementation)
+        async function loadReports(sortBy = 'date_desc') {
+            try {
+                const url = new URL('/api/reports', window.location.origin);
+                url.searchParams.set('limit', '10');
+                url.searchParams.set('sort_by', sortBy);
+                const keyword = new URL(window.location).searchParams.get('keyword');
+                if(keyword) {
+                    url.searchParams.set('keyword', keyword);
+                }
+                const res = await fetch(url);
+                const data = await res.json();
+                if(data.success) {
+                    // Could update DOM here instead of reloading
+                    // For now, we'll use URL-based filtering
+                    return data.reports;
+                }
+            } catch(e) {
+                console.error('Failed to load reports:', e);
+            }
+            return [];
+        }
+        
+        // --- PARALLAX EFFECTS ---
+        
+        // 1. Subtle Background Parallax (throttled for performance)
+        let mouseX = 0.5;
+        let mouseY = 0.5;
+        let rafId = null;
+        
+        function updateMouseParallax() {
+            document.documentElement.style.setProperty('--mouse-x', mouseX);
+            document.documentElement.style.setProperty('--mouse-y', mouseY);
+            rafId = null;
+        }
+        
+        document.addEventListener('mousemove', (e) => {
+            mouseX = e.clientX / window.innerWidth;
+            mouseY = e.clientY / window.innerHeight;
+            if(!rafId) {
+                rafId = requestAnimationFrame(updateMouseParallax);
+            }
+        }, { passive: true });
+        
+        // 2. Scroll Parallax (throttled)
+        let scrollY = 0;
+        let scrollRafId = null;
+        
+        function updateScrollParallax() {
+            document.documentElement.style.setProperty('--scroll-y', scrollY);
+            scrollRafId = null;
+        }
+        
+        window.addEventListener('scroll', () => {
+            scrollY = window.scrollY;
+            if(!scrollRafId) {
+                scrollRafId = requestAnimationFrame(updateScrollParallax);
+            }
+        }, { passive: true });
+        
+        // 3. Intersection Observer for Card Reveals
+        const cardObserver = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if(entry.isIntersecting) {
+                    entry.target.classList.add('visible');
+                    cardObserver.unobserve(entry.target); // Stop observing once revealed
+                }
+            });
+        }, {
+            threshold: 0.1,
+            rootMargin: '0px 0px -50px 0px'
+        });
+        
+        // Observe cards after DOM ready
+        if(document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', initCardObserver);
+        } else {
+            initCardObserver();
+        }
+        
+        function initCardObserver() {
+            document.querySelectorAll('.parallax-card').forEach(card => {
+                cardObserver.observe(card);
+            });
+        }
+    </script>
+</body>
+</html>

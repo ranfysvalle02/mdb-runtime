@@ -140,26 +140,18 @@ async def periodic_metrics_broadcast():
                     }
                 })
         except Exception as e:
-            print(f"⚠️  Error in periodic metrics broadcast: {e}")
+            logger.error(f"Error in periodic metrics broadcast: {e}")
         
         await asyncio.sleep(5)  # Update every 5 seconds
 
 
 @app.on_event("startup")
 async def startup_event():
-    # Log all registered routes for debugging
-    print("=" * 50)
-    print("📋 Registered Routes (BEFORE WebSocket registration):")
-    for route in app.routes:
-        if hasattr(route, 'path'):
-            route_type = "WebSocket" if hasattr(route, 'endpoint') and 'websocket' in str(type(route)).lower() else "HTTP"
-            print(f"  {route_type}: {route.path}")
-    print("=" * 50)
     """Initialize the runtime engine on startup"""
     global engine, db
     db = None
     
-    print("🚀 Starting Hello World Web Application...")
+    logger.info("Starting Hello World Web Application...")
     
     # Get MongoDB connection from environment
     mongo_uri = os.getenv(
@@ -176,7 +168,7 @@ async def startup_event():
     
     # Connect to MongoDB
     await engine.initialize()
-    print("✅ Engine initialized successfully")
+    logger.info("Engine initialized successfully")
     
     # Load and register the app manifest
     manifest_path = Path("/app/manifest.json")
@@ -187,9 +179,9 @@ async def startup_event():
         manifest = await engine.load_manifest(manifest_path)
         success = await engine.register_app(manifest, create_indexes=True)
         if success:
-            print(f"✅ App '{manifest['slug']}' registered successfully")
+            logger.info(f"App '{manifest['slug']}' registered successfully")
         else:
-            print("⚠️  Failed to register app")
+            logger.warning("Failed to register app")
     
     # Get scoped database and store globally
     db = engine.get_scoped_db("hello_world")
@@ -220,11 +212,11 @@ async def startup_event():
                 "date_created": datetime.utcnow()
             }
             await top_level_db.users.insert_one(user_doc)
-            print(f"✅ Created demo user: {DEMO_EMAIL}")
+            logger.info(f"Created demo user: {DEMO_EMAIL}")
         else:
-            print(f"✅ Demo user already exists: {DEMO_EMAIL}")
+            logger.info(f"Demo user already exists: {DEMO_EMAIL}")
     except Exception as e:
-        print(f"⚠️  Could not create demo user: {e}")
+        logger.warning(f"Could not create demo user: {e}")
     
     # Seed some initial data if collection is empty
     try:
@@ -239,65 +231,11 @@ async def startup_event():
             ]
             for greeting in greetings:
                 await db.greetings.insert_one(greeting)
-            print(f"✅ Seeded {len(greetings)} initial greetings")
+            logger.info(f"Seeded {len(greetings)} initial greetings")
     except Exception as e:
-        print(f"⚠️  Could not seed data: {e}")
+        logger.warning(f"Could not seed data: {e}")
     
-    # Log all registered routes AFTER WebSocket registration
-    print("=" * 50)
-    print("📋 Registered Routes (AFTER WebSocket registration):")
-    ws_routes = []
-    for route in app.routes:
-        if hasattr(route, 'path'):
-            # Check if it's a WebSocket route
-            is_ws = False
-            route_type_name = type(route).__name__
-            
-            try:
-                from fastapi.routing import WebSocketRoute
-                
-                # Check if it's a WebSocketRoute instance
-                if isinstance(route, WebSocketRoute):
-                    is_ws = True
-                # HTTP routes have 'methods' attribute, WebSocket routes don't
-                elif hasattr(route, 'methods'):
-                    is_ws = False
-                # Check route_class attribute
-                elif hasattr(route, 'route_class'):
-                    route_class_name = route.route_class.__name__ if hasattr(route.route_class, '__name__') else str(route.route_class)
-                    is_ws = 'WebSocket' in route_class_name
-                # Check the type string
-                else:
-                    route_type_str = str(type(route))
-                    is_ws = 'websocket' in route_type_str.lower() or 'WebSocket' in route_type_str or 'WebSocketRoute' in route_type_str
-                
-                # Special check for /ws path - inspect route details
-                if route.path == '/ws' and not is_ws:
-                    print(f"   🔍 DEBUG: /ws route type: {route_type_name}, has methods: {hasattr(route, 'methods')}, route_class: {getattr(route, 'route_class', 'N/A')}")
-                    # If it doesn't have methods, it's likely a WebSocket route
-                    if not hasattr(route, 'methods'):
-                        is_ws = True
-                        print(f"   ✅ Detected /ws as WebSocket (no methods attribute)")
-            except Exception as e:
-                # If detection fails, check type string as fallback
-                try:
-                    route_type_str = str(type(route))
-                    is_ws = 'websocket' in route_type_str.lower() or 'WebSocketRoute' in route_type_str
-                except:
-                    pass
-            
-            route_type = "WebSocket" if is_ws else "HTTP"
-            print(f"  {route_type}: {route.path}")
-            if is_ws:
-                ws_routes.append(route.path)
-    print("=" * 50)
-    if '/ws' in ws_routes:
-        print("✅ WebSocket route '/ws' is registered!")
-    else:
-        print("❌ WebSocket route '/ws' is NOT registered!")
-        print(f"   Found WebSocket routes: {ws_routes}")
-    
-    print("✅ Web application ready!")
+    logger.info("Web application ready!")
     
     # Start background task for periodic metrics updates
     asyncio.create_task(periodic_metrics_broadcast())
@@ -309,7 +247,7 @@ async def shutdown_event():
     global engine
     if engine:
         await engine.shutdown()
-        print("🧹 Cleaned up and shut down")
+        logger.info("Cleaned up and shut down")
 
 
 def get_db():
@@ -606,7 +544,7 @@ async def dashboard(
                             "index_size": 0,
                         }
                     except Exception as e2:
-                        print(f"⚠️  Could not get stats for collection {base_name}: {e2}")
+                        logger.warning(f"Could not get stats for collection {base_name}: {e2}")
                         collections_info[base_name] = {
                             "count": 0,
                             "size": 0,
@@ -615,15 +553,15 @@ async def dashboard(
                             "index_size": 0,
                         }
             except Exception as e:
-                print(f"⚠️  Error processing collection {base_name}: {e}")
+                logger.warning(f"Error processing collection {base_name}: {e}")
                 import traceback
                 traceback.print_exc()
                 continue
         
-        print(f"✅ Found {len(collections_info)} collections: {list(collections_info.keys())}")
-        print(f"✅ Found indexes for {len(indexes_info)} collections: {list(indexes_info.keys())}")
+        logger.debug(f"Found {len(collections_info)} collections: {list(collections_info.keys())}")
+        logger.debug(f"Found indexes for {len(indexes_info)} collections: {list(indexes_info.keys())}")
     except Exception as e:
-        print(f"⚠️  Could not get indexes info: {e}")
+        logger.warning(f"Could not get indexes info: {e}")
         import traceback
         traceback.print_exc()
     
@@ -875,40 +813,6 @@ async def metrics_api(user: Optional[Dict[str, Any]] = Depends(get_current_user)
     return metrics
 
 
-@app.get("/ws-test")
-async def websocket_test():
-    """Test endpoint to verify WebSocket route is accessible"""
-    ws_routes = []
-    all_routes = []
-    for route in app.routes:
-        if hasattr(route, 'path'):
-            all_routes.append(str(route.path))
-            # Check if it's a WebSocket route
-            try:
-                if hasattr(route, 'route_class'):
-                    route_class_name = route.route_class.__name__ if hasattr(route.route_class, '__name__') else str(route.route_class)
-                    if 'WebSocket' in route_class_name:
-                        ws_routes.append(str(route.path))
-            except:
-                pass
-    return {
-        "message": "WebSocket endpoint check",
-        "path": "/ws",
-        "ws_route_exists": "/ws" in ws_routes,
-        "all_ws_routes": ws_routes,
-        "all_routes": all_routes[:20]  # Limit to first 20
-    }
-
-@app.get("/routes")
-async def list_routes():
-    """List all registered routes for debugging"""
-    routes = []
-    for route in app.routes:
-        if hasattr(route, 'path') and hasattr(route, 'methods'):
-            routes.append({"path": route.path, "methods": list(route.methods), "type": "HTTP"})
-        elif hasattr(route, 'path'):
-            routes.append({"path": route.path, "type": "WebSocket"})
-    return {"routes": routes}
 
 # Register WebSocket routes from manifest
 # The runtime engine will handle WebSocket registration automatically
@@ -925,48 +829,25 @@ def register_websocket_routes_from_manifest():
     """Register WebSocket routes from manifest configuration."""
     global ws_manager
     if engine:
-        print(f"🔌 Registering WebSocket routes for app 'hello_world'...")
+        logger.info("Registering WebSocket routes for app 'hello_world'...")
         try:
             # Check if WebSocket config exists
             ws_config = engine.get_websocket_config("hello_world")
             if not ws_config:
-                print(f"⚠️  No WebSocket configuration found in manifest for 'hello_world'")
+                logger.warning("No WebSocket configuration found in manifest for 'hello_world'")
                 return
-            
-            print(f"📋 WebSocket config found: {ws_config}")
             
             # Register routes automatically from manifest
             engine.register_websocket_routes(app, "hello_world")
-            print(f"✅ WebSocket routes registered successfully")
-            
-            # Verify route was registered - check ALL routes
-            print(f"📋 Checking all registered routes...")
-            all_routes = []
-            ws_routes = []
-            for route in app.routes:
-                if hasattr(route, 'path'):
-                    route_type = type(route).__name__
-                    all_routes.append(f"{route.path} ({route_type})")
-                    if '/ws' in str(route.path) or 'WebSocket' in route_type:
-                        ws_routes.append(route)
-            
-            print(f"📋 All routes ({len(all_routes)}): {all_routes[:10]}...")  # Show first 10
-            print(f"📋 WebSocket routes found: {len(ws_routes)}")
-            for route in ws_routes:
-                print(f"   ✅ {route.path} (type: {type(route).__name__})")
-            
-            if not ws_routes:
-                print(f"❌ WARNING: No WebSocket routes found! Route registration may have failed.")
+            logger.info("WebSocket routes registered successfully")
             
             # Get the WebSocket manager for this app (sync version for startup)
             ws_manager = get_websocket_manager_sync("hello_world")
-            print(f"✅ WebSocket manager initialized")
+            logger.info("WebSocket manager initialized")
         except Exception as e:
-            print(f"❌ Error registering WebSocket routes: {e}")
-            import traceback
-            traceback.print_exc()
+            logger.error(f"Error registering WebSocket routes: {e}", exc_info=True)
     else:
-        print(f"⚠️  Engine not initialized, cannot register WebSocket routes")
+        logger.warning("Engine not initialized, cannot register WebSocket routes")
 
 
 # Global counter for demo purposes
@@ -1045,25 +926,11 @@ def register_websocket_message_handlers():
     
     # Register handler for the "realtime" endpoint
     register_message_handler("hello_world", "realtime", handle_realtime_messages)
-    print("✅ Registered WebSocket message handlers for bi-directional communication")
+    logger.info("Registered WebSocket message handlers for bi-directional communication")
 
 # Note: The WebSocket endpoint is automatically registered by the runtime from manifest.json
 # No need for a custom @app.websocket("/ws") endpoint - the runtime handles it via register_websocket_routes()
 
-# TEMPORARY DEBUG: Add a simple test WebSocket to verify FastAPI WebSocket works at all
-@app.websocket("/ws-debug")
-async def websocket_debug(websocket: WebSocket):
-    """Simple debug WebSocket to test if FastAPI WebSocket works"""
-    print("🔌 [DEBUG WS] Connection attempt to /ws-debug")
-    try:
-        await websocket.accept()
-        print("✅ [DEBUG WS] Connection accepted")
-        await websocket.send_json({"type": "connected", "message": "Debug WebSocket works!"})
-        await websocket.close()
-    except Exception as e:
-        print(f"❌ [DEBUG WS] Error: {e}")
-        import traceback
-        traceback.print_exc()
 
 
 if __name__ == "__main__":

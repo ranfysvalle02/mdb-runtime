@@ -55,15 +55,18 @@ mdb-runtime/
 │   │   ├── validation.py       # Input validation
 │   │   └── decorators.py       # Decorators
 │   │
-│   └── [other modules]/        # Additional modules
-│       ├── actors/
-│       ├── cache/
-│       ├── multi_tenancy/
-│       ├── observability/
-│       ├── resilience/
-│       ├── routing/
-│       ├── security/
-│       └── testing/
+│   ├── observability/          # Observability (health, logging, metrics)
+│   │   ├── health.py
+│   │   ├── logging.py
+│   │   └── metrics.py
+│   │
+│   ├── routing/                # Routing & WebSockets
+│   │   └── websockets.py
+│   │
+│   └── llm/                    # LLM integration
+│       ├── service.py
+│       ├── embedding_service.py
+│       └── dependencies.py
 │
 ├── .gitignore                  # Git ignore rules
 ├── LICENSE                     # License file

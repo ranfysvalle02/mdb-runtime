@@ -56,52 +56,42 @@ LANGCHAIN_AVAILABLE = False
 LANGCHAIN_ERROR_DETAILS = []
 
 try:
-    logger.debug("Attempting to import langgraph.prebuilt...")
     from langgraph.prebuilt import create_react_agent
-    logger.debug("✓ langgraph.prebuilt imported successfully")
 except ImportError as e:
     LANGCHAIN_ERROR_DETAILS.append(f"langgraph.prebuilt: {str(e)}")
-    logger.error(f"❌ Failed to import langgraph.prebuilt: {e}", exc_info=True)
+    logger.error(f"Failed to import langgraph.prebuilt: {e}", exc_info=True)
 
 # Optional imports (not required for LangGraph, but useful for compatibility)
 try:
-    logger.debug("Attempting to import langchain_core.prompts...")
     from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
-    logger.debug("✓ langchain_core.prompts imported successfully (optional)")
-except ImportError as e:
-    logger.debug(f"langchain_core.prompts not available (optional): {e}")
+except ImportError:
+    pass
 
 try:
-    logger.debug("Attempting to import langchain_core.messages...")
     from langchain_core.messages import HumanMessage, AIMessage
-    logger.debug("✓ langchain_core.messages imported successfully (optional)")
-except ImportError as e:
-    logger.debug(f"langchain_core.messages not available (optional): {e}")
+except ImportError:
+    pass
 
 try:
-    logger.debug("Attempting to import langchain_core.tools...")
     from langchain_core.tools import tool
-    logger.debug("✓ langchain_core.tools imported successfully")
 except ImportError as e:
     LANGCHAIN_ERROR_DETAILS.append(f"langchain_core.tools: {str(e)}")
-    logger.error(f"❌ Failed to import langchain_core.tools: {e}", exc_info=True)
+    logger.error(f"Failed to import langchain_core.tools: {e}", exc_info=True)
 
 try:
-    logger.debug("Attempting to import langchain_litellm...")
     from langchain_litellm import ChatLiteLLM
-    logger.debug("✓ langchain_litellm imported successfully")
 except ImportError as e:
     LANGCHAIN_ERROR_DETAILS.append(f"langchain_litellm: {str(e)}")
-    logger.error(f"❌ Failed to import langchain_litellm: {e}", exc_info=True)
+    logger.error(f"Failed to import langchain_litellm: {e}", exc_info=True)
 
 # Check if all imports succeeded
 if not LANGCHAIN_ERROR_DETAILS:
     LANGCHAIN_AVAILABLE = True
-    logger.info("✅ All LangChain imports successful")
+    logger.info("All LangChain imports successful")
 else:
     error_summary = "\n".join(f"  - {detail}" for detail in LANGCHAIN_ERROR_DETAILS)
     logger.error(
-        f"❌ LangChain imports failed. Details:\n{error_summary}\n"
+        f"LangChain imports failed. Details:\n{error_summary}\n"
         f"Install with: pip install langchain langchain-community langchain-litellm litellm\n"
         f"Or check if packages are installed: pip list | grep langchain"
     )
@@ -110,7 +100,6 @@ else:
 try:
     from ddgs import DDGS
     DDGS_AVAILABLE = True
-    logger.debug("✓ ddgs imported successfully")
 except ImportError as e:
     DDGS_AVAILABLE = False
     logger.warning(f"ddgs not available (ImportError: {e}). Web search will be disabled.")
@@ -118,7 +107,6 @@ except ImportError as e:
 try:
     from docling.document_converter import DocumentConverter
     DOCLING_AVAILABLE = True
-    logger.debug("✓ docling imported successfully")
 except ImportError as e:
     DOCLING_AVAILABLE = False
     logger.warning(f"docling not available (ImportError: {e}). Document conversion will be limited.")
@@ -193,9 +181,6 @@ current_session: str = "default"
 last_retrieved_sources: List[str] = []
 background_tasks: Dict[str, Dict[str, Any]] = {}
 
-# Debug tracking (matching Flask version)
-debug_requests: List[Dict[str, Any]] = []
-debug_retrieved_chunks: List[Dict[str, Any]] = []
 _current_user_query: Optional[str] = None  # Store current user query for tool context
 
 # Track which indexes are being created to prevent duplicate attempts
@@ -467,7 +452,7 @@ async def shutdown_event():
     global engine
     if engine:
         await engine.shutdown()
-        print("🧹 Cleaned up and shut down")
+        logger.info("Cleaned up and shut down")
 
 
 # ============================================================================
@@ -528,7 +513,7 @@ if LANGCHAIN_AVAILABLE:
     @tool
     async def search_knowledge_base(query: str, embedding_model: str = "voyage/voyage-2", num_sources: int = 3, max_chunk_length: int = 2000) -> str:
         """Query the knowledge base to find relevant chunks for `query`."""
-        global current_session, last_retrieved_sources, debug_retrieved_chunks, _current_user_query
+        global current_session, last_retrieved_sources, _current_user_query
         
         try:
             logger.info(f"[INFO] Searching with '{embedding_model}' → top {num_sources}")
@@ -541,30 +526,6 @@ if LANGCHAIN_AVAILABLE:
             # Remember sources
             found_sources = [r.get("source", "N/A") for r in results]
             last_retrieved_sources = list(set(found_sources))
-            
-            # Store retrieved chunks with both the tool query and original user query
-            # This helps match chunks back to the original user query even if agent modified it
-            user_query = _current_user_query if '_current_user_query' in globals() and _current_user_query else query
-            
-            # Debug: Store retrieved chunks
-            debug_retrieved_chunks.append({
-                "timestamp": datetime.now().isoformat(),
-                "query": query,  # The actual query used by the tool
-                "user_query": user_query,  # The original user query
-                "session_id": current_session,
-                "embedding_model": embedding_model,
-                "chunks": [
-                    {
-                        "text": r.get("content", ""),
-                        "source": r.get("source", "N/A"),
-                        "score": r.get("score", 0.0)
-                    }
-                    for r in results
-                ]
-            })
-            # Keep only last 50 retrievals
-            if len(debug_retrieved_chunks) > 50:
-                debug_retrieved_chunks = debug_retrieved_chunks[-50:]
             
             # Build a context string
             context_parts = []
@@ -908,17 +869,6 @@ async def index(request: Request):
     """Home page"""
     return templates.TemplateResponse("index.html", {"request": request})
 
-@app.get("/debug/static")
-async def debug_static():
-    """Debug endpoint to check static file configuration"""
-    return {
-        "static_dir": str(static_dir) if static_dir else None,
-        "static_dir_exists": static_dir.exists() if static_dir else False,
-        "static_dir_absolute": str(static_dir.absolute()) if static_dir and static_dir.exists() else None,
-        "styles_css_exists": (static_dir / "styles.css").exists() if static_dir else False,
-        "script_js_exists": (static_dir / "script.js").exists() if static_dir else False,
-        "static_dir_files": list(static_dir.iterdir()) if static_dir and static_dir.exists() else [],
-    }
 
 
 # ============================================================================
@@ -1113,7 +1063,7 @@ async def chat(
     embedding_service: EmbeddingService = Depends(get_embedding_service_dep)
 ):
     """Chat endpoint with RAG using LangChain agent"""
-    global current_session, chat_history, last_retrieved_sources, debug_requests, debug_retrieved_chunks, _current_user_query
+    global current_session, chat_history, last_retrieved_sources, _current_user_query
     
     if not request.query or not request.session_id:
         raise HTTPException(status_code=400, detail="Missing 'query' or 'session_id'")
@@ -1217,53 +1167,7 @@ async def chat(
         ])
         chat_history[request.session_id] = current_chat_history
         
-        # Get chunks for this query from debug_retrieved_chunks
-        # Find the most recent retrieval for this session and embedding model
-        # (The agent might modify the query, so we match by session and model, not exact query)
-        retrieved_chunks = []
-        matching_retrievals = [
-            r for r in debug_retrieved_chunks
-            if (r.get("session_id") == request.session_id and
-                r.get("embedding_model") == request.embedding_model)
-        ]
-        
-        if matching_retrievals:
-            # Try to find one that matches the user query (either query or user_query field)
-            user_query_match = None
-            for r in reversed(matching_retrievals):
-                if (r.get("user_query") == request.query or 
-                    r.get("query") == request.query):
-                    user_query_match = r
-                    break
-            
-            # Use user query match if found, otherwise use most recent
-            # This handles cases where the agent modifies the query
-            most_recent = user_query_match if user_query_match else matching_retrievals[-1]
-            retrieved_chunks = most_recent.get("chunks", [])
-            
-            # If we found chunks, log success
-            if retrieved_chunks:
-                logger.info(f"[Chat] ✅ Found {len(retrieved_chunks)} chunks for session '{request.session_id}' (matched query: '{most_recent.get('user_query') or most_recent.get('query', 'N/A')}')")
-            else:
-                logger.warning(f"[Chat] ⚠️ No chunks in matched retrieval for session '{request.session_id}'")
-        else:
-            logger.warning(f"[Chat] ⚠️ No matching retrievals found for session '{request.session_id}', model '{request.embedding_model}'. Total retrievals: {len(debug_retrieved_chunks)}")
-        
-        # Debug: Store request info
-        rag_params = request.rag_params or {}
-        debug_requests.append({
-            "timestamp": datetime.now().isoformat(),
-            "query": request.query,
-            "session_id": request.session_id,
-            "embedding_model": request.embedding_model,
-            "num_sources": rag_params.get("num_sources", 3),
-            "sources_used": sources_used,
-            "response_length": len(response_text),
-            "rag_params": rag_params
-        })
-        # Keep only last 50 requests
-        if len(debug_requests) > 50:
-            debug_requests = debug_requests[-50:]
+        # Note: Chunks are retrieved by the agent tool, sources_used contains the sources
         
         # Get all sessions using aggregation
         session_field_path = f"$metadata.{SESSION_FIELD}"
@@ -1277,13 +1181,7 @@ async def chat(
         mem_sessions = set(chat_history.keys())
         all_sessions = sorted(list(db_sessions.union(mem_sessions)))
         
-        logger.info(f"[Chat] Returning response with {len(retrieved_chunks)} chunks for query '{request.query}'")
-        if retrieved_chunks:
-            logger.info(f"[Chat] Chunk sources: {[c.get('source', 'N/A') for c in retrieved_chunks[:3]]}")
-        else:
-            logger.warning(f"[Chat] No chunks found! Total debug_retrieved_chunks: {len(debug_retrieved_chunks)}")
-            if debug_retrieved_chunks:
-                logger.warning(f"[Chat] Recent retrievals: {[(r.get('session_id'), r.get('embedding_model'), len(r.get('chunks', []))) for r in debug_retrieved_chunks[-3:]]}")
+        logger.info(f"[Chat] Returning response for query '{request.query}'")
         
         return {
             "messages": [{
@@ -1436,7 +1334,7 @@ async def _direct_rag_chat(
         
         # Provide helpful context in the response
         if doc_count > 0:
-            logger.warning(f"[RAG] ⚠️ Documents exist ({doc_count}) but vector search returned 0 results. "
+            logger.warning(f"[RAG] Documents exist ({doc_count}) but vector search returned 0 results. "
                          f"This usually means the vector index 'embedding_vector_index' doesn't exist yet. "
                          f"Vector indexes are created asynchronously and may take a few minutes to build.")
     
@@ -1860,102 +1758,6 @@ async def create_indexes(db=Depends(get_db)):
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@app.get("/debug")
-async def get_debug_info(
-    session_id: str = "default",
-    embedding_model: str = "voyage/voyage-2",
-    db=Depends(get_db)
-):
-    """Get debug information including chunks, LLM requests, and system state"""
-    try:
-        # Get recent requests for this session
-        session_requests = [
-            req for req in debug_requests
-            if req.get("session_id") == session_id
-        ][-10:]  # Last 10 requests
-        
-        # Get recent retrieved chunks for this session
-        session_chunks = [
-            chunk for chunk in debug_retrieved_chunks
-            if chunk.get("session_id") == session_id and chunk.get("embedding_model") == embedding_model
-        ][-10:]  # Last 10 retrievals
-        
-        # Get index status
-        vector_index_name = f"{APP_SLUG}_embedding_vector_index"
-        doc_count = await db.knowledge_base_sessions.count_documents({
-            f"metadata.{SESSION_FIELD}": session_id,
-            "embedding": {"$exists": True}
-        })
-        
-        index_queryable = False
-        index_status_str = "UNKNOWN"
-        try:
-            # Use index manager to get actual index status
-            collection_wrapper = db.knowledge_base_sessions
-            if hasattr(collection_wrapper, 'index_manager') and collection_wrapper.index_manager:
-                index_info = await collection_wrapper.index_manager.get_search_index(vector_index_name)
-                if index_info:
-                    status = index_info.get("status", "UNKNOWN")
-                    queryable = index_info.get("queryable", False)
-                    index_status_str = status.upper()
-                    index_queryable = queryable
-                else:
-                    index_status_str = "NOT_FOUND"
-            else:
-                # Fallback: try dummy query
-                dummy_vector = [0.0] * 1024
-                test_pipeline = [
-                    {
-                        "$vectorSearch": {
-                            "index": vector_index_name,
-                            "path": "embedding",
-                            "queryVector": dummy_vector,
-                            "numCandidates": 1,
-                            "limit": 1
-                        }
-                    }
-                ]
-                await db.knowledge_base_sessions.aggregate(test_pipeline).to_list(length=1)
-                index_queryable = True
-                index_status_str = "READY"
-        except Exception:
-            index_status_str = "NOT_FOUND"
-        
-        # Get sample chunks from database
-        sample_chunks_cursor = db.knowledge_base_sessions.find(
-            {f"metadata.{SESSION_FIELD}": session_id},
-            {"text": 1, "metadata.source": 1, "_id": 1}
-        ).limit(20)
-        sample_chunks = await sample_chunks_cursor.to_list(length=20)
-        
-        return {
-            "session_id": session_id,
-            "embedding_model": embedding_model,
-            "index_status": {
-                "name": vector_index_name,
-                "status": index_status_str,
-                "queryable": index_queryable,
-                "document_count": doc_count
-            },
-            "recent_requests": session_requests,
-            "recent_retrieved_chunks": session_chunks,
-            "sample_chunks": [
-                {
-                    "_id": str(chunk["_id"]),
-                    "text": chunk.get("text", "")[:200] + "..." if len(chunk.get("text", "")) > 200 else chunk.get("text", ""),
-                    "source": chunk.get("metadata", {}).get("source", "N/A")
-                }
-                for chunk in sample_chunks
-            ],
-            "chat_history_length": len(chat_history.get(session_id, [])),
-            "total_requests_stored": len(debug_requests),
-            "total_chunks_stored": len(debug_retrieved_chunks)
-        }
-    except Exception as e:
-        logger.error(f"Error in /debug endpoint: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
-
-
 class ClearHistoryRequest(BaseModel):
     session_id: str
 
@@ -2347,50 +2149,6 @@ async def api_update_chunk(
 # Source Browsing
 # ============================================================================
 
-@app.get("/debug/vector-index")
-async def debug_vector_index(session_id: str = "default", db=Depends(get_db)):
-    """Debug endpoint to check vector index and document storage"""
-    try:
-        # Check if collection exists
-        collection_name = "knowledge_base_sessions"
-        collections = await db.list_collection_names()
-        has_collection = collection_name in collections
-        
-        # Count documents
-        total_docs = await db.knowledge_base_sessions.count_documents({})
-        session_docs = await db.knowledge_base_sessions.count_documents(
-            {f"metadata.{SESSION_FIELD}": session_id}
-        )
-        
-        # Check for embeddings
-        docs_with_embeddings = await db.knowledge_base_sessions.count_documents(
-            {"embedding": {"$exists": True}}
-        )
-        
-        # Sample a document to check structure
-        sample_doc = await db.knowledge_base_sessions.find_one(
-            {f"metadata.{SESSION_FIELD}": session_id}
-        )
-        
-        # Check vector index (if accessible)
-        index_info = None
-        try:
-            # Try to get index info via aggregation (if index exists)
-            # Index name is prefixed with app slug by RuntimeEngine
-            vector_index_name = f"{APP_SLUG}_embedding_vector_index"
-            pipeline = [
-                {"$vectorSearch": {
-                    "index": vector_index_name,
-                    "path": "embedding",
-                    "queryVector": [0.0] * 1024,  # Dummy vector
-                    "numCandidates": 1,
-                    "limit": 1
-                }},
-                {"$limit": 1}
-            ]
-            # This will fail if index doesn't exist, which is fine
-            try:
-                await db.knowledge_base_sessions.aggregate(pipeline).to_list(length=1)
                 index_info = "Vector index appears to exist and is accessible"
             except Exception as idx_error:
                 index_info = f"Vector index error: {str(idx_error)[:200]}"

@@ -1,0 +1,55 @@
+{
+  "version": "2.0",
+  "slug": "parallax",
+  "name": "Parallax - Tech News Intelligence",
+  "description": "Tool for analyzing tech news from Relevance and Technical perspectives based on watchlist keywords",
+  "status": "active",
+  "developer_id": "developer@example.com",
+  "auth_required": false,
+  "auth_policy": {
+    "required": false,
+    "allow_anonymous": true
+  },
+  "sub_auth": {
+    "enabled": false
+  },
+  "managed_indexes": {
+    "parallax_reports": [
+      {
+        "type": "regular",
+        "keys": {"story_id": 1},
+        "name": "story_id_idx",
+        "options": {
+          "background": true,
+          "unique": true
+        }
+      },
+      {
+        "type": "regular",
+        "keys": {"timestamp": -1},
+        "name": "timestamp_idx",
+        "options": {
+          "background": true
+        }
+      }
+    ],
+    "watchlist_config": [
+      {
+        "type": "regular",
+        "keys": {"config_type": 1},
+        "name": "config_type_idx",
+        "options": {
+          "background": true,
+          "unique": true
+        }
+      }
+    ]
+  },
+  "llm_config": {
+    "enabled": true,
+    "default_chat_model": "gpt-4o",
+    "default_embedding_model": "voyage/voyage-2",
+    "default_temperature": 0.0,
+    "max_retries": 4
+  }
+}

@@ -1,0 +1,18 @@
+# Requirements for Parallax Example
+# Install MDB_RUNTIME first: pip install mdb-runtime
+# Or install from source: pip install -e ../..
+
+mdb-runtime>=0.1.0
+
+# LangChain dependencies for Parallax multi-agent analysis
+# REQUIRED for Parallax to work
+langchain>=0.1.0
+langchain-community>=0.0.20
+langchain-core>=0.1.0
+langchain-litellm>=0.1.0
+litellm>=1.0.0
+pydantic>=2.0.0  # Required for structured output (MarketingView, SalesView, ProductView)
+pydantic-settings>=2.0.0  # Required for LLM service configuration
+httpx>=0.24.0  # Required for async HTTP requests to Hacker News API
+requests>=2.31.0  # Fallback HTTP client
+

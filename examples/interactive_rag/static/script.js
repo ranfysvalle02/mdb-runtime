@@ -62,7 +62,6 @@ function initDOMReferences() {
 // Modal Logic
 // -----------
 function showModal({ title, text, contentHTML, onSubmit, onCancel, submitText, cancelText, hideCancel }) {
- console.log("[showModal] Called with:", { title, hasText: !!text, hasContentHTML: !!contentHTML, hideCancel });
  
  if (!modalTitle || !modalText || !modalContentHost || !modalOverlay || !modalContainer) {
   console.error("[showModal] Modal elements not found!", {
@@ -160,17 +159,9 @@ function showModal({ title, text, contentHTML, onSubmit, onCancel, submitText, c
  void modalOverlay.offsetWidth;
  void modalContainer.offsetWidth;
  
- console.log("[showModal] Modal shown. Overlay classes before:", overlayClassesBefore, "after:", modalOverlay.className);
- console.log("[showModal] Container classes before:", containerClassesBefore, "after:", modalContainer.className);
- console.log("[showModal] Overlay inline styles - display:", modalOverlay.style.display, "visibility:", modalOverlay.style.visibility, "opacity:", modalOverlay.style.opacity);
- console.log("[showModal] Overlay computed style display:", window.getComputedStyle(modalOverlay).display);
- console.log("[showModal] Overlay computed style visibility:", window.getComputedStyle(modalOverlay).visibility);
- console.log("[showModal] Overlay computed style opacity:", window.getComputedStyle(modalOverlay).opacity);
- console.log("[showModal] Overlay z-index:", window.getComputedStyle(modalOverlay).zIndex);
 }
 
 function hideModal(immediate = false) {
- console.log("[hideModal] Hiding modal, immediate:", immediate);
  
  if (!modalOverlay || !modalContainer || !modalTitle || !modalText || !modalContentHost) {
   console.warn("[hideModal] Modal elements not found");
@@ -179,7 +170,6 @@ function hideModal(immediate = false) {
  
  if (immediate) {
   // FORCE HIDE IMMEDIATELY - no animation
-  console.log("[hideModal] Force hiding modal immediately");
   modalOverlay.style.display = "none";
   modalOverlay.style.visibility = "hidden";
   modalOverlay.style.opacity = "0";
@@ -214,7 +204,6 @@ function hideModal(immediate = false) {
     };
   }
   
-  console.log("[hideModal] Modal force hidden");
   return;
  }
  
@@ -260,7 +249,6 @@ function hideModal(immediate = false) {
   if (modalSubmitBtn) modalSubmitBtn.onclick = null;
   if (modalCancelBtn) modalCancelBtn.onclick = null;
   
-  console.log("[hideModal] Modal hidden and content cleared");
  }, 300); // Match transition duration
 }
 
@@ -578,13 +566,6 @@ function addBotMessage(message) {
  const query = message.query || null;
  const chunks = message.chunks || [];
 
- console.log('[addBotMessage] Message received:', { 
-   hasContent: !!content, 
-   sourcesCount: sources.length, 
-   hasQuery: !!query, 
-   chunksCount: chunks.length,
-   chunks: chunks 
- });
 
  const messageEl = document.createElement("div");
  messageEl.className = "message bot-message flex flex-col p-4 bg-gray-700 rounded-lg animate-fade-in-up";
@@ -612,7 +593,6 @@ function addBotMessage(message) {
   window.messageChunksMap = window.messageChunksMap || new Map();
   if (chunks && chunks.length > 0) {
    window.messageChunksMap.set(messageId, chunks);
-   console.log('[addBotMessage] ✅ Stored chunks for message:', messageId, chunks.length);
   } else {
    console.warn('[addBotMessage] ⚠️ No chunks to store for message:', messageId);
    window.messageChunksMap.set(messageId, []);
@@ -721,7 +701,6 @@ function setThinking(isThinking) {
 // Session Switching UI Control
 // -------------------------
 function showSessionSwitchModal(sessionName, isCreating = false) {
-  console.log("[showSessionSwitchModal] Showing modal for session:", sessionName, "isCreating:", isCreating);
   
   // Check if modal elements exist
   if (!modalTitle || !modalText || !modalContentHost || !modalOverlay || !modalContainer) {
@@ -756,7 +735,6 @@ function showSessionSwitchModal(sessionName, isCreating = false) {
     </div>
   `;
   
-  console.log("[showSessionSwitchModal] Calling showModal with:", { title, message });
   
   showModal({
     title: title,
@@ -771,7 +749,6 @@ function showSessionSwitchModal(sessionName, isCreating = false) {
   if (modalSubmitBtn) {
     modalSubmitBtn.style.display = "none";
     modalSubmitBtn.style.visibility = "hidden";
-    console.log("[showSessionSwitchModal] Submit button hidden");
   } else {
     console.warn("[showSessionSwitchModal] modalSubmitBtn not found!");
   }
@@ -779,14 +756,12 @@ function showSessionSwitchModal(sessionName, isCreating = false) {
   // Mark modal as non-dismissible during session switch
   if (modalOverlay) {
     modalOverlay.setAttribute("data-session-switching", "true");
-    console.log("[showSessionSwitchModal] Modal marked as non-dismissible");
   } else {
     console.warn("[showSessionSwitchModal] modalOverlay not found!");
   }
   
   // Force a reflow to ensure modal is visible
   void modalOverlay.offsetWidth;
-  console.log("[showSessionSwitchModal] Modal should now be visible. Overlay classes:", modalOverlay.className);
 }
 
 function showSessionSwitchOverlay(sessionName, isCreating = false) {
@@ -832,12 +807,10 @@ function showSessionSwitchOverlay(sessionName, isCreating = false) {
 }
 
 function hideSessionSwitchOverlay() {
-  console.log("[hideSessionSwitchOverlay] Hiding session switch overlay and modal");
   
   // Remove session switching flag from modal
   if (modalOverlay) {
     modalOverlay.removeAttribute("data-session-switching");
-    console.log("[hideSessionSwitchOverlay] Removed session-switching attribute");
   }
   
   // FORCE HIDE MODAL IMMEDIATELY - no animation delay
@@ -873,7 +846,6 @@ function hideSessionSwitchOverlay() {
     appContainer.style.pointerEvents = "";
   }
   
-  console.log("[hideSessionSwitchOverlay] Modal and overlay force hidden, UI re-enabled");
 }
 
 // -------------------------
@@ -894,7 +866,6 @@ function updateSessionDropdown() {
   // Ensure we always have at least "default" in the list
   const sessionsToShow = allSessions.length > 0 ? allSessions : ["default"];
   
-  console.log("[updateSessionDropdown] Updating dropdown with sessions:", sessionsToShow, "currentSessionId:", currentSessionId);
   
   sessionsToShow.forEach((session) => {
     const opt = document.createElement("option");
@@ -902,14 +873,12 @@ function updateSessionDropdown() {
     opt.textContent = session;
     if (session === currentSessionId) {
       opt.selected = true;
-      console.log("[updateSessionDropdown] Selected session:", session);
     }
     sessionSelector.appendChild(opt);
   });
   
   // Ensure currentSessionId is selected even if it's not in the list
   if (currentSessionId && !sessionsToShow.includes(currentSessionId)) {
-    console.log("[updateSessionDropdown] Current session not in list, adding it:", currentSessionId);
     const opt = document.createElement("option");
     opt.value = currentSessionId;
     opt.textContent = currentSessionId;
@@ -919,19 +888,15 @@ function updateSessionDropdown() {
   
   // If the value changed, log it for debugging
   if (previousValue !== sessionSelector.value) {
-    console.log("[updateSessionDropdown] Dropdown value changed. Previous:", previousValue, "New:", sessionSelector.value);
   }
   
-  console.log("[updateSessionDropdown] Dropdown updated. Final value:", sessionSelector.value, "Options:", Array.from(sessionSelector.options).map(o => o.value));
 }
 
 function loadSessionsAndState() {
  const sessionIdToFetch = currentSessionId; // Capture current session ID
- console.log("[loadSessionsAndState] Fetching state for session:", sessionIdToFetch);
  return fetch(`/state?session_id=${encodeURIComponent(sessionIdToFetch)}`)
   .then((r) => r.json())
   .then((data) => {
-   console.log("[loadSessionsAndState] Received state:", data);
    const previousSessions = [...allSessions];
    const previousCurrentSession = currentSessionId;
    
@@ -953,15 +918,12 @@ function loadSessionsAndState() {
      currentSessionId = data.current_session;
    } else if (currentSessionId && currentSessionId !== "default" && allSessions.includes(currentSessionId)) {
      // Preserve current session if it exists in our merged list
-     console.log("[loadSessionsAndState] Preserving currentSessionId:", currentSessionId);
    } else {
      currentSessionId = "default";
    }
    
    indexStatusCache = data.index_status || {};
    
-   console.log("[loadSessionsAndState] Sessions - previous:", previousSessions, "merged:", allSessions);
-   console.log("[loadSessionsAndState] Current session - previous:", previousCurrentSession, "new:", currentSessionId);
   
    // Update session dropdown
    updateSessionDropdown();
@@ -1136,7 +1098,6 @@ function checkIndexReady(embeddingModel, maxWait = 30000, pollInterval = 2000) {
 }
 
 function switchSession(sessionId, skipModal = false) {
-  console.log("[switchSession] Switching to session:", sessionId, "skipModal:", skipModal);
   
   // Show modal and disable UI (unless already shown)
   if (!skipModal) {
@@ -1234,7 +1195,6 @@ function switchSession(sessionId, skipModal = false) {
 }
 
 function createSession(newSessionName) {
- console.log("[createSession] Creating session:", newSessionName, "Current session:", currentSessionId);
  
  // Show modal and disable UI
  showSessionSwitchModal(newSessionName, true);
@@ -1271,7 +1231,6 @@ function createSession(newSessionName) {
    })
     .then((r) => r.json())
     .then((data) => {
-     console.log("[createSession] Response received:", data);
      
      if (data.error) {
       console.error("Error creating session:", data.error);
@@ -1282,11 +1241,9 @@ function createSession(newSessionName) {
      
      // ALWAYS update currentSessionId to the new session (don't trust backend response)
      currentSessionId = newSessionName;
-     console.log("[createSession] Updated currentSessionId to:", currentSessionId);
      
      // Update session list from session_update if available
      if (data.session_update && data.session_update.all_sessions) {
-       console.log("[createSession] Using session_update.all_sessions:", data.session_update.all_sessions);
        allSessions = [...data.session_update.all_sessions]; // Copy array
      }
      
@@ -1294,19 +1251,15 @@ function createSession(newSessionName) {
      if (!allSessions.includes(newSessionName)) {
        allSessions.push(newSessionName);
        allSessions.sort();
-       console.log("[createSession] Added new session to allSessions:", allSessions);
      }
      
      // IMPORTANT: Don't trust current_session from response when creating a new session
      // The backend might return the old session. Always use the new session name we created.
      if (data.session_update && data.session_update.current_session === newSessionName) {
-       console.log("[createSession] Response current_session matches new session, keeping it");
      } else if (data.session_update) {
-       console.log("[createSession] Response current_session doesn't match new session, ignoring it. Response had:", data.session_update.current_session, "but we created:", newSessionName);
      }
      
      // ALWAYS update session dropdown immediately with the new session
-     console.log("[createSession] Updating dropdown with sessions:", allSessions, "current:", currentSessionId);
      updateSessionDropdown();
      
      // FORCE HIDE MODAL IMMEDIATELY - no delay
@@ -1399,7 +1352,6 @@ function initializeEventListeners() {
     sessionSelector.addEventListener("change", () => {
       const sel = sessionSelector.value;
       if (sel !== currentSessionId) {
-        console.log("[Dropdown Change] Switching to session:", sel);
         // Call switchSession - it will handle showing the modal and disabling UI
         switchSession(sel, false);
       } else {
@@ -2407,16 +2359,10 @@ window.openDebugModal = function() {
 };
 
 window.inspectRetrievedChunks = function(messageId) {
-  console.log('[Chunk Inspection v2.0 - TABS ONLY] Message ID:', messageId);
-  console.log('[Chunk Inspection] All message IDs:', Array.from(messageQueryMap.keys()));
-  console.log('[Chunk Inspection] Chunks map exists:', !!window.messageChunksMap);
-  console.log('[Chunk Inspection] Function version: 2.0 - Generating Bootstrap tabs, NOT cards');
   
   const query = messageQueryMap.get(messageId);
   const chunks = (window.messageChunksMap && window.messageChunksMap.get(messageId)) || [];
   
-  console.log('[Chunk Inspection] Query:', query);
-  console.log('[Chunk Inspection] Chunks found:', chunks.length, chunks);
   
   if (!query) {
     alert('Query information not available for this message.');
@@ -2788,4 +2734,4 @@ if (document.readyState === 'loading') {
   restoreSectionStates();
 }
 
-console.log("Interactive RAG UI initialized");
+// Interactive RAG UI initialized

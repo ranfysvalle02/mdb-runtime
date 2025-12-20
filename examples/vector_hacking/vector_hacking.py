@@ -99,7 +99,7 @@ class SharedState:
             # Method 1: Vector distance threshold
             if error <= MATCH_ERROR:
                 is_match = True
-                logger.info(f"✅ Match found via vector distance: {error:.4f} <= {MATCH_ERROR}")
+                logger.info(f"Match found via vector distance: {error:.4f} <= {MATCH_ERROR}")
             
             # Method 2: Text similarity (case-insensitive, handles variations)
             # Use stored target_text from SharedState
@@ -110,7 +110,7 @@ class SharedState:
                 # Exact match (case-insensitive) - handles "Hello World" vs "HELLO WORLD"
                 if guess_normalized == target_normalized:
                     is_match = True
-                    logger.info(f"✅ Match found via exact text match: '{text}' == '{self.target_text}'")
+                    logger.info(f"Match found via exact text match: '{text}' == '{self.target_text}'")
                 else:
                     # Calculate similarity for near-matches
                     from difflib import SequenceMatcher
@@ -118,7 +118,7 @@ class SharedState:
                     
                     if similarity >= TEXT_SIMILARITY_THRESHOLD:
                         is_match = True
-                        logger.info(f"✅ Match found via text similarity: {similarity:.2%} >= {TEXT_SIMILARITY_THRESHOLD:.0%} ('{text}' vs '{self.target_text}')")
+                        logger.info(f"Match found via text similarity: {similarity:.2%} >= {TEXT_SIMILARITY_THRESHOLD:.0%} ('{text}' vs '{self.target_text}')")
             
             if is_match:
                 self.MATCH_FOUND = True
@@ -580,7 +580,7 @@ Generate ONE random phrase. Output ONLY the phrase, nothing else."""
                     self.shared_state = None
                     self.v_target = None
                     self.last_best_error = np.inf
-                    logger.info("✅ Ready for next attack!")
+                    logger.info("Ready for next attack!")
                     break
                 
                 if state['TOTAL_COST'] >= COST_LIMIT:
@@ -623,7 +623,7 @@ Generate ONE random phrase. Output ONLY the phrase, nothing else."""
                     self.shared_state = None
                     self.v_target = None
                     self.last_best_error = np.inf
-                    logger.info("✅ Ready for next attack!")
+                    logger.info("Ready for next attack!")
                     break
                 
                 iteration += 1
@@ -633,11 +633,11 @@ Generate ONE random phrase. Output ONLY the phrase, nothing else."""
                 if current_error != np.inf and current_error < self.last_best_error:
                     # New optimization found - log it but keep running
                     self.last_best_error = current_error
-                    logger.info(f"✨ New best guess found (error: {current_error:.4f}) - continuing attack...")
+                    logger.info(f"New best guess found (error: {current_error:.4f}) - continuing attack...")
                 
                 # Log progress every 20 iterations
                 if iteration % 20 == 0 and state['CURRENT_BEST_ERROR'] != np.inf:
-                    logger.info(f"📊 Progress: {state['GUESSES_MADE']} guesses, best error: {state['CURRENT_BEST_ERROR']:.4f}, cost: ${state['TOTAL_COST']:.4f}")
+                    logger.info(f"Progress: {state['GUESSES_MADE']} guesses, best error: {state['CURRENT_BEST_ERROR']:.4f}, cost: ${state['TOTAL_COST']:.4f}")
                 
                 # Small delay between batches
                 await asyncio.sleep(0.3)

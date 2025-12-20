@@ -86,7 +86,7 @@ async def startup_event():
     """Initialize the runtime engine on startup"""
     global engine, db, vector_hacking_service
     
-    print("🚀 Starting Vector Hacking Web Application...")
+    logger.info("Starting Vector Hacking Web Application...")
     
     # Get MongoDB connection from environment
     mongo_uri = os.getenv(
@@ -103,7 +103,7 @@ async def startup_event():
     
     # Connect to MongoDB
     await engine.initialize()
-    print("✅ Engine initialized successfully")
+    logger.info("Engine initialized successfully")
     
     # Load and register the app manifest
     manifest_path = Path("/app/manifest.json")
@@ -114,9 +114,9 @@ async def startup_event():
         manifest = await engine.load_manifest(manifest_path)
         success = await engine.register_app(manifest, create_indexes=True)
         if success:
-            print(f"✅ App '{manifest['slug']}' registered successfully")
+            logger.info(f"App '{manifest['slug']}' registered successfully")
         else:
-            print("⚠️  Failed to register app")
+            logger.warning("Failed to register app")
     
     # Get scoped database and store globally
     db = engine.get_scoped_db("vector_hacking")
@@ -133,7 +133,7 @@ async def startup_event():
         app_config = engine.get_app("vector_hacking")
         if app_config and "llm_config" in app_config:
             llm_config = app_config["llm_config"]
-            print(f"✅ LLM config loaded from manifest.json: {llm_config.get('default_chat_model')} / {llm_config.get('default_embedding_model')}")
+            logger.info(f"LLM config loaded from manifest.json: {llm_config.get('default_chat_model')} / {llm_config.get('default_embedding_model')}")
         
         if not llm_service:
             logger.warning("LLM service not available - ensure llm_config.enabled=true in manifest.json")
@@ -148,14 +148,14 @@ async def startup_event():
             llm_service=llm_service,  # LLM service abstraction (from manifest.json)
             llm_config=llm_config      # Config reference (from manifest.json)
         )
-        print("✅ Vector hacking service initialized with LLM service abstraction")
+        logger.info("Vector hacking service initialized with LLM service abstraction")
     except Exception as e:
         logger.error(f"Failed to initialize vector hacking service: {e}")
         import traceback
         traceback.print_exc()
         vector_hacking_service = None
     
-    print("✅ Web application ready!")
+    logger.info("Web application ready!")
 
 
 @app.on_event("shutdown")
@@ -171,7 +171,7 @@ async def shutdown_event():
     
     if engine:
         await engine.shutdown()
-        print("🧹 Cleaned up and shut down")
+        logger.info("Cleaned up and shut down")
 
 
 def get_db():
@@ -350,8 +350,7 @@ async def restart_attack():
         return {
             "status": "ready",
             "reload": True,
-            "message": "State reset. Page will reload.",
-            "reload": True  # Signal frontend to reload page
+            "message": "State reset. Page will reload."
         }
     except Exception as e:
         logger.error(f"Error restarting attack: {e}")
