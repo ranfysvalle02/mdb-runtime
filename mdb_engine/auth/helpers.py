@@ -7,7 +7,6 @@ This module is part of MDB_ENGINE - MongoDB Engine.
 """
 
 import logging
-from typing import Optional
 
 logger = logging.getLogger(__name__)
 

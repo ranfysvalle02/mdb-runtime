@@ -42,7 +42,7 @@ from pymongo.results import (
 )
 from pymongo.operations import SearchIndexModel
 from pymongo.errors import OperationFailure, CollectionInvalid, AutoReconnect
-from pymongo import ASCENDING, DESCENDING, TEXT, MongoClient
+from pymongo import ASCENDING, DESCENDING, TEXT
 
 # Import constants
 from ..constants import (
@@ -67,46 +67,19 @@ logger = logging.getLogger(__name__)
 GEO2DSPHERE = "2dsphere"
 # --- END FIX ---
 
-# --- TASK MANAGER IMPORT ---
-# Import task manager from main to prevent task accumulation (optional)
-# This allows the module to work standalone or with the main application
-try:
-    from main import _task_manager
-    TASK_MANAGER_AVAILABLE = True
-except ImportError:
-    # Fallback if main.py is not available (e.g., during testing or standalone use)
-    _task_manager = None
-    TASK_MANAGER_AVAILABLE = False
-    logger.debug("Task manager not available. Falling back to raw asyncio.create_task().")
-# --- END TASK MANAGER IMPORT ---
-
 # --- HELPER FUNCTION FOR MANAGED TASK CREATION ---
 def _create_managed_task(
     coro: Coroutine[Any, Any, Any],
     task_name: Optional[str] = None
 ) -> None:
     """
-    Creates a background task using the task manager if available.
-    Falls back to raw asyncio.create_task() if task manager is not available.
-    
-    This prevents task accumulation during high traffic by using the
-    BackgroundTaskManager's max_concurrent_tasks limit.
-    
-    Note: The task manager's create_task() is async and manages tasks internally,
-    so we wrap it in a fire-and-forget task.
+    Creates a background task using asyncio.create_task().
     
     Args:
         coro: Coroutine to run as a background task
-        task_name: Optional name for the task (for monitoring/debugging)
+        task_name: Optional name for the task (for monitoring/debugging, currently unused)
     """
-    if TASK_MANAGER_AVAILABLE and _task_manager:
-        # Use task manager - it manages tasks internally and limits concurrency
-        async def _task_wrapper() -> None:
-            await _task_manager.create_task(coro, task_name=task_name)
-        asyncio.create_task(_task_wrapper())
-    else:
-        # Fallback to raw task creation if task manager not available
-        asyncio.create_task(coro)
+    asyncio.create_task(coro)
 # --- END HELPER FUNCTION ---
 
 

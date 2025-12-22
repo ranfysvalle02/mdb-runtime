@@ -9,7 +9,6 @@ This module is part of MDB_ENGINE - MongoDB Engine.
 import logging
 from typing import Dict, Any, List
 from datetime import datetime
-from bson import ObjectId
 
 logger = logging.getLogger(__name__)
 
