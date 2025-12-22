@@ -44,7 +44,6 @@ def __getattr__(name):
         "WebSocketConnectionManager",
         "WebSocketConnection",
         "get_websocket_manager",
-        "get_websocket_manager_sync",
         "create_websocket_endpoint",
         "authenticate_websocket",
         "broadcast_to_app",
@@ -58,7 +57,6 @@ __all__ = [
     "WebSocketConnectionManager",
     "WebSocketConnection",
     "get_websocket_manager",
-    "get_websocket_manager_sync",
     "create_websocket_endpoint",
     "authenticate_websocket",
     "broadcast_to_app",  # Simplest way to broadcast from app code

@@ -427,7 +427,6 @@ ScopedMongoWrapper(
 #### Functions
 
 - `get_app_db()` - FastAPI dependency for AppDB
-- `create_actor_database(engine, app_slug)` - Create database for actor
 
 ## Configuration
 

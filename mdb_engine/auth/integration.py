@@ -424,42 +424,4 @@ async def setup_auth_from_manifest(app: FastAPI, engine, slug_id: str) -> bool:
         return False
 
 
-async def add_security_middleware(app: FastAPI, slug_id: str, engine) -> bool:
-    """
-    Add security middleware to FastAPI app.
-    
-    This should be called after setup_auth_from_manifest to actually add the middleware.
-    
-    Args:
-        app: FastAPI application instance
-        slug_id: App slug identifier
-        engine: MongoDBEngine instance
-    
-    Returns:
-        True if middleware was added, False otherwise
-    """
-    try:
-        # Get config
-        config = await get_auth_config(slug_id, engine)
-        token_management = config.get("token_management", {})
-        
-        if not token_management.get("enabled", True):
-            return False
-        
-        security_config = token_management.get("security", {})
-        if security_config.get("csrf_protection", True) or security_config.get("require_https", False):
-            from .middleware import SecurityMiddleware
-            app.add_middleware(
-                SecurityMiddleware,
-                require_https=security_config.get("require_https", False),
-                csrf_protection=security_config.get("csrf_protection", True),
-                security_headers=True
-            )
-            logger.info(f"Security middleware added to app for {slug_id}")
-            return True
-        
-        return False
-    except Exception as e:
-        logger.error(f"Error adding security middleware for {slug_id}: {e}", exc_info=True)
-        return False
 

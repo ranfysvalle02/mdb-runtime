@@ -100,7 +100,6 @@ from .middleware import (
 from .integration import (
     get_auth_config,
     setup_auth_from_manifest,
-    add_security_middleware,
 )
 
 # Casbin Factory
@@ -193,7 +192,6 @@ __all__ = [
     # Integration
     "get_auth_config",
     "setup_auth_from_manifest",
-    "add_security_middleware",
     
     # Casbin Factory
     "get_casbin_model",

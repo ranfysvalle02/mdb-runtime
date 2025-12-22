@@ -389,14 +389,9 @@ anon_user = await get_or_create_anonymous_user(
 
 ### 9. Security Middleware
 
+Security middleware is automatically added when using `setup_auth_from_manifest()`. If you need to add it manually:
+
 ```python
-from mdb_engine.auth import create_security_middleware, add_security_middleware
-
-# Add security middleware to FastAPI app
-middleware = create_security_middleware()
-add_security_middleware(app, middleware)
-
-# Or use SecurityMiddleware directly
 from mdb_engine.auth import SecurityMiddleware
 
 app.add_middleware(SecurityMiddleware)

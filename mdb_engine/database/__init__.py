@@ -15,7 +15,6 @@ from .abstraction import (
     AppDB,
     Collection,
     get_app_db,
-    create_actor_database,
 )
 from .connection import (
     get_shared_mongo_client,
@@ -36,7 +35,6 @@ __all__ = [
     "AppDB",
     "Collection",
     "get_app_db",
-    "create_actor_database",
     
     # Connection pooling
     "get_shared_mongo_client",
