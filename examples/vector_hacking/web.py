@@ -20,7 +20,6 @@ logger = logging.getLogger(__name__)
 from fastapi import FastAPI, Request, Depends, HTTPException, status
 from fastapi.responses import HTMLResponse, RedirectResponse, JSONResponse
 from fastapi.templating import Jinja2Templates
-from fastapi.middleware.cors import CORSMiddleware
 
 from mdb_engine import MongoDBEngine
 from mdb_engine.embeddings import EmbeddingService
@@ -42,14 +41,7 @@ app = FastAPI(
     version="1.0.0"
 )
 
-# Add CORS middleware
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],  # In production, specify actual origins
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+# CORS is now handled automatically by setup_auth_from_manifest() based on manifest.json
 
 # Templates directory - works in both Docker (/app) and local development
 templates_dir = Path("/app/templates")

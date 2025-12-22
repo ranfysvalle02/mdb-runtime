@@ -16,7 +16,6 @@ from typing import Optional
 from fastapi import FastAPI, Request, HTTPException, WebSocket, WebSocketDisconnect
 from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.templating import Jinja2Templates
-from fastapi.middleware.cors import CORSMiddleware
 import json
 
 from mdb_engine import MongoDBEngine
@@ -76,14 +75,7 @@ class ConnectionManager:
 
 manager = ConnectionManager()
 
-# Add CORS middleware
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+# CORS is now handled automatically by setup_auth_from_manifest() based on manifest.json
 
 # WebSocket connection manager for real-time updates
 class ConnectionManager:

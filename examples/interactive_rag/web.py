@@ -43,7 +43,6 @@ from fastapi import FastAPI, Request, Depends, HTTPException, status, UploadFile
 from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 from jinja2 import Template
-from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
 from mdb_engine import MongoDBEngine
@@ -80,14 +79,7 @@ app = FastAPI(
     version="1.0.0"
 )
 
-# Add CORS middleware
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+# CORS is now handled automatically by setup_auth_from_manifest() based on manifest.json
 
 # Static files directory - use explicit routes instead of mount for reliability
 from fastapi.responses import FileResponse

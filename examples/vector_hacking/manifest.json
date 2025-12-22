@@ -53,6 +53,13 @@
     "enabled": true,
     "max_tokens_per_chunk": 1000,
     "default_embedding_model": "text-embedding-3-small"
+  },
+  "cors": {
+    "enabled": true,
+    "allow_origins": ["*"],
+    "allow_credentials": true,
+    "allow_methods": ["*"],
+    "allow_headers": ["*"]
   }
 }
 

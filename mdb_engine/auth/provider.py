@@ -236,11 +236,28 @@ class OsoAdapter:
                 del self._cache[cache_key]
         
         try:
-            # OSO's authorize method signature is: authorize(user, permission, resource)
-            # So we map: subject -> user, action -> permission, resource -> resource
+            # OSO Cloud's authorize method signature is: authorize(actor, action, resource)
+            # OSO Cloud expects objects with .type and .id attributes, not dicts
+            # Create simple objects with type and id attributes
+            class TypedObject:
+                def __init__(self, type_name, id_value):
+                    self.type = type_name
+                    self.id = id_value
+            
+            # Create typed objects for OSO Cloud
+            if isinstance(subject, str):
+                actor = TypedObject("User", subject)
+            else:
+                actor = subject
+            
+            if isinstance(resource, str):
+                resource_obj = TypedObject("Document", resource)
+            else:
+                resource_obj = resource
+            
             # Run in thread pool to prevent blocking the event loop
             result = await asyncio.to_thread(
-                self._oso.authorize, subject, action, resource
+                self._oso.authorize, actor, action, resource_obj
             )
             
             # Cache the result
@@ -283,19 +300,23 @@ class OsoAdapter:
             
             role, obj, act = params
             # OSO fact: grants_permission(role, action, object)
-            # Note: For OSO Cloud, we use tell() method
-            if hasattr(self._oso, 'tell'):
-                # OSO Cloud client
+            # OSO Cloud SDK uses insert() method with a list
+            if hasattr(self._oso, 'insert'):
+                # OSO Cloud client - insert fact as a list
+                result = await asyncio.to_thread(
+                    self._oso.insert, ["grants_permission", role, act, obj]
+                )
+            elif hasattr(self._oso, 'tell'):
+                # Legacy OSO Cloud SDK
                 result = await asyncio.to_thread(
                     self._oso.tell, "grants_permission", role, act, obj
                 )
             elif hasattr(self._oso, 'register_constant'):
                 # OSO library - we'd need to use a different approach
-                # For now, log that this needs to be handled differently
                 logger.warning("OSO library mode: add_policy needs to be handled via policy files")
                 result = True  # Assume success for now
             else:
-                logger.warning("OSO client doesn't support tell() method")
+                logger.warning("OSO client doesn't support insert() or tell() method")
                 result = False
             
             # Clear cache when policies are modified
@@ -309,27 +330,68 @@ class OsoAdapter:
     async def add_role_for_user(self, *params) -> bool:
         """
         Adds a has_role fact in OSO.
-        Maps Casbin g(user, role) to OSO fact: has_role(user, role)
+        Supports both global roles (2 params: user, role) and resource-based roles (3 params: user, role, resource).
+        Maps to OSO fact: has_role(user, role) or has_role(user, role, resource)
         """
         try:
-            if len(params) != 2:
-                logger.warning(f"add_role_for_user expects 2 params (user, role), got {len(params)}")
+            if len(params) < 2 or len(params) > 3:
+                logger.warning(f"add_role_for_user expects 2-3 params (user, role, [resource]), got {len(params)}")
                 return False
             
-            user, role = params
-            # OSO fact: has_role(user, role)
-            # Note: For OSO Cloud, we use tell() method
-            if hasattr(self._oso, 'tell'):
-                # OSO Cloud client
-                result = await asyncio.to_thread(
-                    self._oso.tell, "has_role", user, role
-                )
+            user, role = params[0], params[1]
+            resource = params[2] if len(params) == 3 else None
+            
+            # OSO Cloud SDK uses insert() method with Value objects for typed entities
+            if hasattr(self._oso, 'insert'):
+                try:
+                    from oso_cloud import Value
+                    # OSO Cloud client - insert fact with Value objects
+                    # User must be a Value object with type "User" and id as the email string
+                    user_value = Value("User", str(user))
+                    
+                    if resource is not None:
+                        # Resource-based role: has_role(user, role, resource)
+                        # Resource can be a string (resource type) or a Value object
+                        if isinstance(resource, str):
+                            resource_value = Value("Document", str(resource))
+                        else:
+                            resource_value = resource
+                        fact = ["has_role", user_value, str(role), resource_value]
+                    else:
+                        # Global role: has_role(user, role)
+                        # For resource-based policies, we still need a resource
+                        # Default to resource type "documents" if not specified
+                        resource_value = Value("Document", "documents")
+                        fact = ["has_role", user_value, str(role), resource_value]
+                    
+                    result = await asyncio.to_thread(
+                        self._oso.insert, fact
+                    )
+                except ImportError:
+                    # Fallback if Value not available - try with string
+                    if resource is not None:
+                        fact = ["has_role", str(user), str(role), str(resource)]
+                    else:
+                        fact = ["has_role", str(user), str(role), "documents"]
+                    result = await asyncio.to_thread(
+                        self._oso.insert, fact
+                    )
+            elif hasattr(self._oso, 'tell'):
+                # Legacy OSO Cloud SDK
+                if resource is not None:
+                    result = await asyncio.to_thread(
+                        self._oso.tell, "has_role", user, role, resource
+                    )
+                else:
+                    result = await asyncio.to_thread(
+                        self._oso.tell, "has_role", user, role
+                    )
             elif hasattr(self._oso, 'register_constant'):
                 # OSO library - we'd need to use a different approach
                 logger.warning("OSO library mode: add_role_for_user needs to be handled via policy files")
                 result = True  # Assume success for now
             else:
-                logger.warning("OSO client doesn't support tell() method")
+                logger.warning("OSO client doesn't support insert() or tell() method")
                 result = False
             
             # Clear cache when roles are modified

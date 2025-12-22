@@ -684,24 +684,33 @@ async def ensure_demo_users_exist(
                         created_users.append(existing)
                     else:
                         # Create app demo user linked to platform demo
-                        user_doc = {
-                            "email": platform_demo["email"],
-                            "password": platform_demo["password"],  # Plain text for demo
-                            "role": "user",
-                            "platform_user_id": platform_demo["platform_user_id"],
-                            "is_demo": True,
-                            "date_created": datetime.datetime.utcnow()
-                        }
-                        # Use getattr to access collection (works with ScopedMongoWrapper and AppDB)
-                        collection = getattr(db, collection_name)
-                        result = await collection.insert_one(user_doc)
-                        user_doc["_id"] = result.inserted_id
-                        user_doc["app_user_id"] = str(result.inserted_id)
-                        created_users.append(user_doc)
-                        logger.info(
-                            f"ensure_demo_users_exist: Created app demo user "
-                            f"'{platform_demo['email']}' for '{slug_id}'"
-                        )
+                        # Hash password with bcrypt (required for authentication)
+                        platform_password = platform_demo.get("password", "demo123")
+                        password_hash = None
+                        try:
+                            password_hash = bcrypt.hashpw(platform_password.encode("utf-8"), bcrypt.gensalt())
+                        except Exception as e:
+                            logger.error(f"Error hashing password for platform demo user {platform_demo['email']}: {e}", exc_info=True)
+                        
+                        if password_hash:
+                            user_doc = {
+                                "email": platform_demo["email"],
+                                "password_hash": password_hash,  # Bcrypt hashed password
+                                "role": "user",
+                                "platform_user_id": platform_demo["platform_user_id"],
+                                "is_demo": True,
+                                "date_created": datetime.datetime.utcnow()
+                            }
+                            # Use getattr to access collection (works with ScopedMongoWrapper and AppDB)
+                            collection = getattr(db, collection_name)
+                            result = await collection.insert_one(user_doc)
+                            user_doc["_id"] = result.inserted_id
+                            user_doc["app_user_id"] = str(result.inserted_id)
+                            created_users.append(user_doc)
+                            logger.info(
+                                f"ensure_demo_users_exist: Created app demo user "
+                                f"'{platform_demo['email']}' for '{slug_id}'"
+                            )
                 else:
                     logger.warning(
                         f"ensure_demo_users_exist: Platform demo user not found for '{slug_id}' "
@@ -783,10 +792,17 @@ async def ensure_demo_users_exist(
             if not auto_create:
                 continue
             
+            # Hash password with bcrypt (required for authentication)
+            try:
+                password_hash = bcrypt.hashpw(password.encode("utf-8"), bcrypt.gensalt())
+            except Exception as e:
+                logger.error(f"Error hashing password for demo user {email}: {e}", exc_info=True)
+                continue
+            
             # Create user
             user_doc = {
                 "email": email,
-                "password": password,  # Plain text for demo purposes
+                "password_hash": password_hash,  # Bcrypt hashed password
                 "role": role,
                 "is_demo": True,
                 "date_created": datetime.datetime.utcnow()

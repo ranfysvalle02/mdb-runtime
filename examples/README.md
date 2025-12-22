@@ -24,6 +24,23 @@ cd hello_world
 ./run_with_docker.sh
 ```
 
+### [OSO Hello World](./oso_hello_world/)
+
+A simple example demonstrating:
+- OSO Cloud authorization integration
+- Automatic OSO provider setup from manifest.json
+- Permission-based access control (read/write permissions)
+- OSO Dev Server for local development
+- Zero boilerplate OSO initialization
+
+**Perfect for:** Learning OSO Cloud integration with mdb-engine
+
+**Run it:**
+```bash
+cd oso_hello_world
+docker-compose up
+```
+
 ### [Interactive RAG](./interactive_rag/)
 
 An advanced example demonstrating:

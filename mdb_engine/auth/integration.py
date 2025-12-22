@@ -6,6 +6,7 @@ Helpers for integrating authentication features from manifest configuration.
 This module is part of MDB_ENGINE - MongoDB Engine.
 """
 
+import os
 import logging
 from typing import Optional, Dict, Any
 from fastapi import FastAPI
@@ -24,6 +25,37 @@ logger = logging.getLogger(__name__)
 
 # Cache for auth configs
 _auth_config_cache: Dict[str, Dict[str, Any]] = {}
+
+
+def _has_cors_middleware(app: FastAPI) -> bool:
+    """
+    Check if CORS middleware is already added to the FastAPI app.
+    
+    Args:
+        app: FastAPI application instance
+    
+    Returns:
+        True if CORS middleware exists, False otherwise
+    """
+    try:
+        from fastapi.middleware.cors import CORSMiddleware
+        
+        # Check if CORS middleware is in the middleware stack
+        # FastAPI stores middleware in app.user_middleware list
+        for middleware in app.user_middleware:
+            # Middleware is stored as (middleware_class, options) tuple
+            if len(middleware) >= 1:
+                middleware_cls = middleware[0]
+                # Check if it's CORSMiddleware or a subclass
+                if middleware_cls == CORSMiddleware or (
+                    hasattr(middleware_cls, '__name__') and 
+                    'CORS' in middleware_cls.__name__
+                ):
+                    return True
+        return False
+    except Exception as e:
+        logger.debug(f"Error checking for CORS middleware: {e}")
+        return False
 
 
 def invalidate_auth_config_cache(slug_id: Optional[str] = None) -> None:
@@ -124,9 +156,114 @@ async def setup_auth_from_manifest(app: FastAPI, engine, slug_id: str) -> bool:
             except Exception as e:
                 logger.warning(f"Could not auto-create Casbin provider for {slug_id}: {e}")
         elif provider == "oso":
-            logger.info(f"OSO provider specified for {slug_id} - manual setup required")
+            # Auto-create OSO Cloud provider
+            try:
+                from .oso_factory import initialize_oso_from_manifest
+                authz_provider = await initialize_oso_from_manifest(engine, slug_id, config)
+                if authz_provider:
+                    app.state.authz_provider = authz_provider
+                    logger.info(f"✅ Authorization provider (OSO Cloud) auto-created for {slug_id}")
+                else:
+                    logger.error(
+                        f"❌ OSO Cloud provider not created for {slug_id}. "
+                        f"Check logs above for details. OSO_AUTH={'SET' if os.getenv('OSO_AUTH') else 'NOT SET'}, "
+                        f"OSO_URL={os.getenv('OSO_URL', 'NOT SET')}"
+                    )
+            except Exception as e:
+                logger.error(
+                    f"❌ Could not auto-create OSO Cloud provider for {slug_id}: {e}",
+                    exc_info=True
+                )
         elif provider == "custom":
             logger.info(f"Custom provider specified for {slug_id} - manual setup required")
+        
+        # Auto-create demo users if sub_auth is enabled and demo_user_seed_strategy is "auto"
+        sub_auth = config.get("sub_auth", {})
+        demo_users = []
+        if sub_auth.get("enabled", False):
+            seed_strategy = sub_auth.get("demo_user_seed_strategy", "auto")
+            demo_users_config = sub_auth.get("demo_users", [])
+            
+            # Only auto-create if strategy is explicitly "auto" or default (when not specified)
+            if seed_strategy == "auto":
+                # Check if demo_users is explicitly configured or using defaults
+                has_explicit_demo_users = len(demo_users_config) > 0
+                auto_link_platform = sub_auth.get("auto_link_platform_demo", True)
+                
+                if has_explicit_demo_users or auto_link_platform:
+                    try:
+                        from .sub_auth import ensure_demo_users_exist
+                        db = engine.get_scoped_db(slug_id)
+                        
+                        logger.info(
+                            f"Auto-creating demo users for {slug_id} "
+                            f"(strategy: {seed_strategy}, "
+                            f"explicit_users: {has_explicit_demo_users}, "
+                            f"auto_link_platform: {auto_link_platform})"
+                        )
+                        
+                        demo_users = await ensure_demo_users_exist(
+                            db=db,
+                            slug_id=slug_id,
+                            config=config,
+                            mongo_uri=engine.mongo_uri,
+                            db_name=engine.db_name
+                        )
+                        if demo_users:
+                            logger.info(
+                                f"✅ Created/verified {len(demo_users)} demo user(s) for {slug_id}: "
+                                f"{', '.join([u.get('email', 'unknown') for u in demo_users])}"
+                            )
+                        else:
+                            logger.debug(f"No demo users created for {slug_id} (may already exist or config disabled)")
+                    except Exception as e:
+                        logger.warning(f"Could not create demo users for {slug_id}: {e}", exc_info=True)
+                else:
+                    logger.debug(
+                        f"Skipping demo user creation for {slug_id}: "
+                        f"demo_user_seed_strategy is 'auto' but no demo_users configured "
+                        f"and auto_link_platform_demo is disabled"
+                    )
+            elif seed_strategy == "disabled":
+                logger.debug(f"Demo user creation disabled for {slug_id} (demo_user_seed_strategy: disabled)")
+            elif seed_strategy == "manual":
+                logger.debug(f"Demo user creation set to manual for {slug_id} - skipping auto-creation")
+        
+        # Link demo users with OSO initial_roles if auth provider is OSO
+        if hasattr(app.state, "authz_provider") and demo_users:
+            try:
+                auth_policy = config.get("auth_policy", {})
+                authorization = auth_policy.get("authorization", {})
+                initial_roles = authorization.get("initial_roles", [])
+                
+                if initial_roles:
+                    # Match demo users by email to initial_roles entries
+                    for demo_user in demo_users:
+                        user_email = demo_user.get("email")
+                        if not user_email:
+                            continue
+                        
+                        for role_assignment in initial_roles:
+                            if role_assignment.get("user") == user_email:
+                                role = role_assignment.get("role")
+                                resource = role_assignment.get("resource", "documents")
+                                try:
+                                    await app.state.authz_provider.add_role_for_user(
+                                        user_email,
+                                        role,
+                                        resource
+                                    )
+                                    logger.info(
+                                        f"✅ Assigned role '{role}' on resource '{resource}' "
+                                        f"to demo user '{user_email}' for {slug_id}"
+                                    )
+                                except Exception as e:
+                                    logger.warning(
+                                        f"Failed to assign role '{role}' to user '{user_email}' "
+                                        f"for {slug_id}: {e}"
+                                    )
+            except Exception as e:
+                logger.warning(f"Could not link demo users with OSO roles for {slug_id}: {e}", exc_info=True)
         
         # Check if token management is enabled
         if not token_management.get("enabled", True):
@@ -167,8 +304,13 @@ async def setup_auth_from_manifest(app: FastAPI, engine, slug_id: str) -> bool:
         if security_config.get("csrf_protection", True) or security_config.get("require_https", False):
             try:
                 from .middleware import SecurityMiddleware
-                # Only add middleware if app hasn't started yet
-                if not hasattr(app.state, "_started"):
+                # Try to add middleware - FastAPI will raise RuntimeError if app has started
+                # Check if middleware stack is still modifiable by inspecting app state
+                can_add_middleware = True
+                
+                # FastAPI with lifespan might have initialized middleware stack already
+                # Try to add middleware and catch the error if it fails
+                try:
                     app.add_middleware(
                         SecurityMiddleware,
                         require_https=security_config.get("require_https", False),
@@ -176,13 +318,17 @@ async def setup_auth_from_manifest(app: FastAPI, engine, slug_id: str) -> bool:
                         security_headers=True
                     )
                     logger.info(f"Security middleware added for {slug_id}")
-                else:
-                    logger.warning(f"Security middleware not added for {slug_id} - app already started")
-            except RuntimeError as e:
-                if "Cannot add middleware" in str(e):
-                    logger.warning(f"Security middleware not added for {slug_id} - app already started")
-                else:
-                    logger.warning(f"Could not set up security middleware for {slug_id}: {e}")
+                except (RuntimeError, ValueError) as e:
+                    error_msg = str(e).lower()
+                    if "cannot add middleware" in error_msg or "middleware" in error_msg:
+                        # App has already started - this is expected with lifespan context managers
+                        # The middleware is optional for security, so we just log a debug message
+                        logger.debug(
+                            f"Security middleware not added for {slug_id} - app middleware stack already initialized. "
+                            f"This is normal when using lifespan context managers."
+                        )
+                    else:
+                        logger.warning(f"Could not set up security middleware for {slug_id}: {e}")
             except Exception as e:
                 logger.warning(f"Could not set up security middleware for {slug_id}: {e}")
         
@@ -207,22 +353,55 @@ async def setup_auth_from_manifest(app: FastAPI, engine, slug_id: str) -> bool:
         # Set up CORS middleware if enabled
         if app.state.cors_config.get("enabled", False):
             try:
-                from fastapi.middleware.cors import CORSMiddleware
-                if not hasattr(app.state, "_started"):
-                    app.add_middleware(
-                        CORSMiddleware,
-                        allow_origins=app.state.cors_config.get("allow_origins", ["*"]),
-                        allow_credentials=app.state.cors_config.get("allow_credentials", False),
-                        allow_methods=app.state.cors_config.get("allow_methods", ["GET", "POST", "PUT", "DELETE", "PATCH"]),
-                        allow_headers=app.state.cors_config.get("allow_headers", ["*"]),
-                        expose_headers=app.state.cors_config.get("expose_headers", []),
-                        max_age=app.state.cors_config.get("max_age", 3600)
-                    )
-                    logger.info(f"CORS middleware added for {slug_id}")
+                # Check if CORS middleware already exists to avoid duplication
+                if _has_cors_middleware(app):
+                    logger.debug(f"CORS middleware already exists for {slug_id}, skipping addition")
                 else:
-                    logger.warning(f"CORS middleware not added for {slug_id} - app already started")
+                    from fastapi.middleware.cors import CORSMiddleware
+                    if not hasattr(app.state, "_started"):
+                        try:
+                            app.add_middleware(
+                                CORSMiddleware,
+                                allow_origins=app.state.cors_config.get("allow_origins", ["*"]),
+                                allow_credentials=app.state.cors_config.get("allow_credentials", False),
+                                allow_methods=app.state.cors_config.get("allow_methods", ["GET", "POST", "PUT", "DELETE", "PATCH"]),
+                                allow_headers=app.state.cors_config.get("allow_headers", ["*"]),
+                                expose_headers=app.state.cors_config.get("expose_headers", []),
+                                max_age=app.state.cors_config.get("max_age", 3600)
+                            )
+                            logger.info(f"CORS middleware added for {slug_id}")
+                        except (RuntimeError, ValueError) as e:
+                            error_msg = str(e).lower()
+                            if "cannot add middleware" in error_msg or "middleware" in error_msg:
+                                logger.debug(
+                                    f"CORS middleware not added for {slug_id} - app middleware stack already initialized. "
+                                    f"This is normal when using lifespan context managers."
+                                )
+                            else:
+                                logger.warning(f"Could not set up CORS middleware for {slug_id}: {e}")
+                    else:
+                        logger.warning(f"CORS middleware not added for {slug_id} - app already started")
             except Exception as e:
                 logger.warning(f"Could not set up CORS middleware for {slug_id}: {e}")
+        
+        # Add stale session cleanup middleware if sub_auth is enabled
+        if sub_auth.get("enabled", False):
+            try:
+                from .middleware import StaleSessionMiddleware
+                try:
+                    app.add_middleware(StaleSessionMiddleware, slug_id=slug_id, engine=engine)
+                    logger.info(f"Stale session cleanup middleware added for {slug_id}")
+                except (RuntimeError, ValueError) as e:
+                    error_msg = str(e).lower()
+                    if "cannot add middleware" in error_msg or "middleware" in error_msg:
+                        logger.debug(
+                            f"Stale session middleware not added for {slug_id} - app middleware stack already initialized. "
+                            f"This is normal when using lifespan context managers."
+                        )
+                    else:
+                        logger.warning(f"Could not set up stale session middleware for {slug_id}: {e}")
+            except Exception as e:
+                logger.warning(f"Could not set up stale session middleware for {slug_id}: {e}")
         
         logger.info(f"Auth setup completed for {slug_id}")
         return True

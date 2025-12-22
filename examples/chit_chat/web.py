@@ -16,8 +16,6 @@ from bson.objectid import ObjectId
 from fastapi import FastAPI, Request, HTTPException, status, Form, WebSocket, WebSocketDisconnect
 from fastapi.responses import HTMLResponse, RedirectResponse, JSONResponse
 from fastapi.templating import Jinja2Templates
-from fastapi.middleware.cors import CORSMiddleware
-
 from mdb_engine import MongoDBEngine
 from mdb_engine.auth.sub_auth import (
     get_app_sub_user,
@@ -56,14 +54,7 @@ app = FastAPI(
     version="1.0.0"
 )
 
-# Add CORS middleware
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+# CORS is now handled automatically by setup_auth_from_manifest() based on manifest.json
 
 # Templates directory
 templates_dir = Path("/app/templates") if Path("/app/templates").exists() else Path(__file__).parent / "templates"

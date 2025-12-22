@@ -105,6 +105,93 @@ class SecurityMiddleware(BaseHTTPMiddleware):
         return response
 
 
+class StaleSessionMiddleware(BaseHTTPMiddleware):
+    """
+    Middleware for cleaning up stale session cookies.
+    
+    When get_app_sub_user() detects a stale/invalid session cookie,
+    it sets request.state.clear_stale_session = True. This middleware
+    then removes the cookie from the response.
+    """
+    
+    def __init__(self, app, slug_id: str, engine=None):
+        """
+        Initialize stale session middleware.
+        
+        Args:
+            app: FastAPI application
+            slug_id: App slug identifier
+            engine: Optional MongoDBEngine instance for getting app config
+        """
+        super().__init__(app)
+        self.slug_id = slug_id
+        self.engine = engine
+    
+    async def dispatch(self, request: Request, call_next: Callable[[Request], Awaitable[Response]]) -> Response:
+        """
+        Process request and clean up stale session cookies if needed.
+        
+        This middleware only acts when request.state.clear_stale_session is set to True
+        by get_app_sub_user() when it detects an invalid/stale session cookie.
+        It gracefully handles missing config and only processes requests for apps
+        that use sub_auth.
+        """
+        # Process request first
+        response = await call_next(request)
+        
+        # Check if we need to clear a stale session cookie
+        # Only act if explicitly flagged - this ensures we don't interfere with
+        # apps that don't use get_app_sub_user()
+        if hasattr(request.state, "clear_stale_session") and request.state.clear_stale_session:
+            try:
+                # Get cookie name from app config
+                cookie_name = None
+                
+                # Try to get from app state first (set during setup_auth_from_manifest)
+                if hasattr(request.app.state, "auth_config"):
+                    try:
+                        auth_config = request.app.state.auth_config
+                        sub_auth = auth_config.get("sub_auth", {})
+                        if sub_auth.get("enabled", False):
+                            session_cookie_name = sub_auth.get("session_cookie_name", "app_session")
+                            cookie_name = f"{session_cookie_name}_{self.slug_id}"
+                    except (AttributeError, KeyError, TypeError):
+                        pass
+                
+                # Fallback: get from engine if available
+                if not cookie_name and self.engine:
+                    try:
+                        app_config = self.engine.get_app(self.slug_id)
+                        if app_config:
+                            sub_auth = app_config.get("sub_auth", {})
+                            if sub_auth.get("enabled", False):
+                                session_cookie_name = sub_auth.get("session_cookie_name", "app_session")
+                                cookie_name = f"{session_cookie_name}_{self.slug_id}"
+                    except (AttributeError, KeyError, TypeError, Exception):
+                        pass
+                
+                # Final fallback to default naming convention
+                if not cookie_name:
+                    cookie_name = f"app_session_{self.slug_id}"
+                
+                # Get cookie settings to match how it was set
+                should_use_secure = request.url.scheme == "https" or os.getenv("G_NOME_ENV") == "production"
+                
+                # Delete the stale cookie
+                response.delete_cookie(
+                    key=cookie_name,
+                    httponly=True,
+                    secure=should_use_secure,
+                    samesite="lax"
+                )
+                logger.debug(f"Cleared stale session cookie '{cookie_name}' for {self.slug_id}")
+            except Exception as e:
+                # Don't fail the request if cookie cleanup fails
+                logger.warning(f"Error clearing stale session cookie for {self.slug_id}: {e}", exc_info=True)
+        
+        return response
+
+
 def create_security_middleware(config: dict) -> Callable:
     """
     Create security middleware from manifest config.

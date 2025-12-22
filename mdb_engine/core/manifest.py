@@ -116,32 +116,85 @@ MANIFEST_SCHEMA_V2 = {
                 "authorization": {
                     "type": "object",
                     "properties": {
+                        # Casbin-specific properties
                         "model": {
                             "type": "string",
                             "default": "rbac",
-                            "description": "Casbin model type or path. Use 'rbac' for default RBAC model, or provide path to custom model file."
+                            "description": "Casbin model type or path. Use 'rbac' for default RBAC model, or provide path to custom model file. Only used when provider is 'casbin'."
                         },
                         "policies_collection": {
                             "type": "string",
                             "pattern": "^[a-zA-Z0-9_]+$",
                             "default": "casbin_policies",
-                            "description": "MongoDB collection name for storing Casbin policies (default: 'casbin_policies')."
+                            "description": "MongoDB collection name for storing Casbin policies (default: 'casbin_policies'). Only used when provider is 'casbin'."
                         },
                         "link_sub_auth_roles": {
                             "type": "boolean",
                             "default": True,
-                            "description": "If true, automatically assign Casbin roles to sub_auth users when they are created or updated."
+                            "description": "If true, automatically assign Casbin roles to sub_auth users when they are created or updated. Only used when provider is 'casbin'."
                         },
                         "default_roles": {
                             "type": "array",
                             "items": {
                                 "type": "string"
                             },
-                            "description": "List of default roles to create in Casbin (e.g., ['user', 'admin']). These roles are created automatically when the provider is initialized."
+                            "description": "List of default roles to create in Casbin (e.g., ['user', 'admin']). These roles are created automatically when the provider is initialized. Only used when provider is 'casbin'."
+                        },
+                        # OSO Cloud-specific properties
+                        "api_key": {
+                            "type": ["string", "null"],
+                            "description": "OSO Cloud API key. If not provided, reads from OSO_AUTH environment variable. Only used when provider is 'oso'."
+                        },
+                        "url": {
+                            "type": ["string", "null"],
+                            "description": "OSO Cloud URL. If not provided, reads from OSO_URL environment variable. Only used when provider is 'oso'."
+                        },
+                        "initial_roles": {
+                            "type": "array",
+                            "items": {
+                                "type": "object",
+                                "properties": {
+                                    "user": {
+                                        "type": "string",
+                                        "format": "email"
+                                    },
+                                    "role": {
+                                        "type": "string"
+                                    },
+                                    "resource": {
+                                        "type": "string",
+                                        "default": "app"
+                                    }
+                                },
+                                "required": ["user", "role"],
+                                "additionalProperties": False
+                            },
+                            "description": "Initial role assignments to set up in OSO Cloud on startup. Only used when provider is 'oso'. Example: [{\"user\": \"admin@example.com\", \"role\": \"admin\"}]"
+                        },
+                        "initial_policies": {
+                            "type": "array",
+                            "items": {
+                                "type": "object",
+                                "properties": {
+                                    "role": {
+                                        "type": "string"
+                                    },
+                                    "resource": {
+                                        "type": "string",
+                                        "default": "documents"
+                                    },
+                                    "action": {
+                                        "type": "string"
+                                    }
+                                },
+                                "required": ["role", "action"],
+                                "additionalProperties": False
+                            },
+                            "description": "Initial permission policies to set up in OSO Cloud on startup. Only used when provider is 'oso'. Example: [{\"role\": \"admin\", \"resource\": \"documents\", \"action\": \"read\"}]"
                         }
                     },
                     "additionalProperties": False,
-                    "description": "Authorization configuration for Casbin provider. Only used when provider is 'casbin'."
+                    "description": "Authorization configuration. For Casbin provider: use 'model', 'policies_collection', 'default_roles'. For OSO Cloud provider: use 'api_key' (or env var), 'url' (or env var), 'initial_roles', 'initial_policies'."
                 },
                 "allowed_roles": {
                     "type": "array",
@@ -779,10 +832,10 @@ MANIFEST_SCHEMA_V2 = {
                     "type": "array",
                     "items": {
                         "type": "string",
-                        "enum": ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS", "HEAD"]
+                        "enum": ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS", "HEAD", "*"]
                     },
                     "default": ["GET", "POST", "PUT", "DELETE", "PATCH"],
-                    "description": "List of allowed HTTP methods"
+                    "description": "List of allowed HTTP methods. Use ['*'] to allow all methods (not recommended for production)"
                 },
                 "allow_headers": {
                     "type": "array",
@@ -897,6 +950,17 @@ MANIFEST_SCHEMA_V2 = {
             },
             "additionalProperties": False,
             "description": "Observability configuration (health checks, metrics, logging)"
+        },
+        "initial_data": {
+            "type": "object",
+            "patternProperties": {
+                "^[a-zA-Z0-9_]+$": {
+                    "type": "array",
+                    "items": {"type": "object"},
+                    "description": "Collection name -> array of documents to seed"
+                }
+            },
+            "description": "Initial data to seed into collections. Only seeds if collection is empty (idempotent). Each key is a collection name, value is an array of documents to insert."
         },
         "developer_id": {
             "type": "string",

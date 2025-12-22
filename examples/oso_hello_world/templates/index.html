@@ -1,0 +1,557 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OSO Cloud Authorization Demo</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        :root {
+            --primary: #4F46E5;
+            --primary-hover: #4338ca;
+            --bg: #F3F4F6;
+            --card-bg: #ffffff;
+            --text-main: #111827;
+            --text-muted: #6B7280;
+            --success: #10B981;
+            --success-bg: #D1FAE5;
+            --success-text: #065F46;
+            --error: #EF4444;
+            --error-bg: #FEE2E2;
+            --error-text: #991B1B;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background-color: var(--bg);
+            color: var(--text-main);
+            line-height: 1.5;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+            padding: 2rem;
+            width: 100%;
+        }
+
+        /* --- Header --- */
+        header {
+            text-align: center;
+            margin-bottom: 2.5rem;
+        }
+        
+        h1 {
+            font-size: 2.5rem;
+            font-weight: 800;
+            color: var(--text-main);
+            margin-bottom: 0.5rem;
+            letter-spacing: -0.025em;
+        }
+        
+        .subtitle {
+            color: var(--text-muted);
+            font-size: 1.1rem;
+        }
+
+        .status-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-size: 0.875rem;
+            padding: 0.25rem 0.75rem;
+            border-radius: 999px;
+            background: #E5E7EB;
+            color: var(--text-muted);
+            margin-top: 1rem;
+        }
+        .status-badge.connected {
+            background: var(--success-bg);
+            color: var(--success-text);
+        }
+
+        /* --- Cards --- */
+        .card {
+            background: var(--card-bg);
+            border-radius: 1rem;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+            padding: 2rem;
+            margin-bottom: 2rem;
+            transition: transform 0.2s;
+        }
+
+        /* --- Auth View --- */
+        .login-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 1.5rem;
+        }
+
+        .user-option {
+            border: 2px solid #E5E7EB;
+            border-radius: 0.75rem;
+            padding: 1.5rem;
+            cursor: pointer;
+            transition: all 0.2s;
+            text-align: center;
+        }
+        
+        .user-option:hover {
+            border-color: var(--primary);
+            background: #EEF2FF;
+            transform: translateY(-2px);
+        }
+
+        .user-avatar {
+            width: 64px;
+            height: 64px;
+            background: #E0E7FF;
+            color: var(--primary);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.75rem;
+            margin: 0 auto 1rem;
+        }
+
+        /* --- Dashboard View --- */
+        .dashboard-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding-bottom: 1.5rem;
+            border-bottom: 1px solid #E5E7EB;
+            margin-bottom: 1.5rem;
+        }
+
+        .user-profile {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .role-badge {
+            text-transform: uppercase;
+            font-size: 0.75rem;
+            font-weight: 700;
+            padding: 0.25rem 0.75rem;
+            border-radius: 0.375rem;
+        }
+        .role-badge.editor { background: #DCFCE7; color: #166534; }
+        .role-badge.viewer { background: #DBEAFE; color: #1E40AF; }
+
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.625rem 1.25rem;
+            border-radius: 0.5rem;
+            font-weight: 600;
+            border: none;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-size: 0.95rem;
+        }
+        .btn-primary { background: var(--primary); color: white; }
+        .btn-primary:hover { background: var(--primary-hover); }
+        .btn-secondary { background: white; border: 1px solid #D1D5DB; color: var(--text-main); }
+        .btn-secondary:hover { background: #F9FAFB; border-color: #9CA3AF; }
+        .btn-danger { background: #FEF2F2; color: #DC2626; border: 1px solid #FEE2E2; }
+        .btn-danger:hover { background: #FEE2E2; }
+
+        /* --- Documents --- */
+        .doc-list {
+            display: grid;
+            gap: 1rem;
+        }
+        .doc-item {
+            border: 1px solid #E5E7EB;
+            border-radius: 0.75rem;
+            padding: 1.5rem;
+            background: #FAFAFA;
+        }
+        .doc-item h3 { font-size: 1.25rem; margin-bottom: 0.5rem; color: #1F2937; }
+        .doc-meta { font-size: 0.875rem; color: var(--text-muted); margin-bottom: 1rem; }
+        .doc-content { color: #4B5563; }
+
+        /* --- Forms --- */
+        .form-group { margin-bottom: 1rem; }
+        .form-group label { display: block; font-weight: 500; margin-bottom: 0.5rem; color: #374151; }
+        .form-control {
+            width: 100%;
+            padding: 0.75rem;
+            border: 1px solid #D1D5DB;
+            border-radius: 0.5rem;
+            font-size: 1rem;
+        }
+        .form-control:focus { outline: 2px solid var(--primary); border-color: transparent; }
+        textarea.form-control { min-height: 120px; resize: vertical; }
+
+        /* --- Alerts/States --- */
+        .loading-overlay {
+            position: fixed; inset: 0; background: rgba(255,255,255,0.8);
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            z-index: 50; backdrop-filter: blur(2px);
+        }
+        .spinner {
+            width: 40px; height: 40px; border: 4px solid #E5E7EB;
+            border-top: 4px solid var(--primary); border-radius: 50%;
+            animation: spin 1s linear infinite; margin-bottom: 1rem;
+        }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+
+        .hidden { display: none !important; }
+        
+        .no-perm-box {
+            background: #FEF3C7; color: #92400E; padding: 1rem;
+            border-radius: 0.5rem; border-left: 4px solid #F59E0B;
+            display: flex; align-items: center; gap: 0.75rem;
+        }
+
+        .toast {
+            position: fixed; bottom: 2rem; right: 2rem;
+            padding: 1rem 1.5rem; border-radius: 0.5rem;
+            color: white; font-weight: 500;
+            transform: translateY(150%); transition: transform 0.3s cubic-bezier(0.18, 0.89, 0.32, 1.28);
+            z-index: 100;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+        }
+        .toast.show { transform: translateY(0); }
+        .toast.success { background: var(--success); }
+        .toast.error { background: var(--error); }
+    </style>
+</head>
+<body>
+
+    <div id="loader" class="loading-overlay hidden">
+        <div class="spinner"></div>
+        <div id="loaderText" style="font-weight: 600; color: #4B5563;">Loading...</div>
+    </div>
+
+    <div class="container">
+        <header>
+            <h1>🔐 OSO Cloud Demo</h1>
+            <p class="subtitle">Interactive Authorization Example</p>
+            <div id="osoStatus" class="status-badge">
+                <i class="fas fa-circle-notch fa-spin"></i> Connecting to OSO...
+            </div>
+        </header>
+
+        <div id="loginView" class="card hidden">
+            <h2 style="text-align: center; margin-bottom: 2rem;">Select a Demo User</h2>
+            
+            <div class="login-grid">
+                <div class="user-option" onclick="handleLogin('alice@example.com')">
+                    <div class="user-avatar" style="background: #DCFCE7; color: #166534;">
+                        <i class="fas fa-user-edit"></i>
+                    </div>
+                    <h3>Alice</h3>
+                    <div class="role-badge editor" style="display: inline-block; margin: 0.5rem 0;">Editor</div>
+                    <p style="color: var(--text-muted); font-size: 0.9rem;">Can Read & Write documents</p>
+                </div>
+
+                <div class="user-option" onclick="handleLogin('bob@example.com')">
+                    <div class="user-avatar" style="background: #DBEAFE; color: #1E40AF;">
+                        <i class="fas fa-eye"></i>
+                    </div>
+                    <h3>Bob</h3>
+                    <div class="role-badge viewer" style="display: inline-block; margin: 0.5rem 0;">Viewer</div>
+                    <p style="color: var(--text-muted); font-size: 0.9rem;">Can only Read documents</p>
+                </div>
+            </div>
+            
+            <p style="text-align: center; margin-top: 2rem; font-size: 0.875rem; color: var(--text-muted);">
+                Password auto-filled: <code>password123</code>
+            </p>
+        </div>
+
+        <div id="dashboardView" class="hidden">
+            <div class="card">
+                <div class="dashboard-header">
+                    <div class="user-profile">
+                        <div class="user-avatar" style="width: 48px; height: 48px; font-size: 1.25rem; margin: 0;">
+                            <i class="fas fa-user"></i>
+                        </div>
+                        <div>
+                            <div style="font-weight: 700;" id="userEmail">...</div>
+                            <div id="userRole" class="role-badge">...</div>
+                        </div>
+                    </div>
+                    <div style="display: flex; gap: 0.5rem;">
+                        <button class="btn btn-secondary" onclick="switchUser()">
+                            <i class="fas fa-users"></i> Switch User
+                        </button>
+                        <button class="btn btn-danger" onclick="logout()">
+                            <i class="fas fa-sign-out-alt"></i> Logout
+                        </button>
+                    </div>
+                </div>
+
+                <div id="createSection" class="hidden">
+                    <h3 style="margin-bottom: 1rem;"><i class="fas fa-plus-circle"></i> New Document</h3>
+                    <form onsubmit="createDocument(event)" style="background: #F9FAFB; padding: 1.5rem; border-radius: 0.75rem;">
+                        <div class="form-group">
+                            <label>Title</label>
+                            <input type="text" id="docTitle" class="form-control" placeholder="Project Plan..." required>
+                        </div>
+                        <div class="form-group">
+                            <label>Content</label>
+                            <textarea id="docContent" class="form-control" placeholder="Write something..." required></textarea>
+                        </div>
+                        <button type="submit" class="btn btn-primary">Create Document</button>
+                    </form>
+                    <hr style="margin: 2rem 0; border: 0; border-top: 1px solid #E5E7EB;">
+                </div>
+
+                <div id="noPermSection" class="hidden" style="margin-bottom: 2rem;">
+                    <div class="no-perm-box">
+                        <i class="fas fa-lock"></i>
+                        <div>
+                            <strong>Read Only Access</strong>
+                            <div style="font-size: 0.9rem;">You do not have permission to create new documents.</div>
+                        </div>
+                    </div>
+                </div>
+
+                <h3 style="margin-bottom: 1rem;">📄 Recent Documents</h3>
+                <div id="docList" class="doc-list">
+                    </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="toast" class="toast"></div>
+
+    <script>
+        // --- State Management ---
+        const state = {
+            user: null,
+            documents: []
+        };
+
+        // --- Init ---
+        document.addEventListener('DOMContentLoaded', async () => {
+            await checkOsoStatus();
+            await checkAuth();
+        });
+
+        // --- Auth Functions ---
+
+        async function checkAuth() {
+            showLoader(true);
+            try {
+                const res = await fetch('/api/me');
+                if (res.ok) {
+                    state.user = await res.json();
+                    renderDashboard();
+                    fetchDocuments();
+                } else {
+                    showLogin();
+                }
+            } catch (err) {
+                console.error(err);
+                showLogin();
+            } finally {
+                showLoader(false);
+            }
+        }
+
+        async function handleLogin(email) {
+            showLoader(true, "Logging in...");
+            const formData = new FormData();
+            formData.append('email', email);
+            formData.append('password', 'password123');
+
+            try {
+                const res = await fetch('/login', {
+                    method: 'POST',
+                    body: formData
+                });
+                const data = await res.json();
+                
+                if (data.success) {
+                    // Reload to ensure clean state and fresh server context
+                    window.location.reload(); 
+                } else {
+                    showToast(data.detail || "Login failed", "error");
+                    showLoader(false);
+                }
+            } catch (err) {
+                showToast("Connection error", "error");
+                showLoader(false);
+            }
+        }
+
+        async function logout() {
+            showLoader(true, "Logging out...");
+            try {
+                await fetch('/logout');
+                window.location.reload();
+            } catch (err) {
+                console.error(err);
+                window.location.reload();
+            }
+        }
+
+        function switchUser() {
+            // Simply scroll to top and show logic? No, logout first.
+            // Best UX for switch is explicit logout then show login.
+            logout();
+        }
+
+        // --- Data Functions ---
+
+        async function fetchDocuments() {
+            const listEl = document.getElementById('docList');
+            listEl.innerHTML = '<div style="text-align:center; padding: 2rem; color: #6B7280"><i class="fas fa-spinner fa-spin"></i> Loading...</div>';
+            
+            try {
+                const res = await fetch('/api/documents');
+                if (res.ok) {
+                    const data = await res.json();
+                    state.documents = data.documents;
+                    renderDocuments();
+                } else {
+                    listEl.innerHTML = '<div class="no-perm-box">Failed to load documents</div>';
+                }
+            } catch (e) {
+                listEl.innerHTML = '<div class="no-perm-box">Network error</div>';
+            }
+        }
+
+        async function createDocument(e) {
+            e.preventDefault();
+            const btn = e.target.querySelector('button');
+            const originalText = btn.innerHTML;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Saving...';
+            btn.disabled = true;
+
+            const payload = {
+                title: document.getElementById('docTitle').value,
+                content: document.getElementById('docContent').value
+            };
+
+            try {
+                const res = await fetch('/api/documents', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify(payload)
+                });
+                
+                if (res.ok) {
+                    showToast("Document created!", "success");
+                    e.target.reset();
+                    fetchDocuments(); // Refresh list
+                } else {
+                    const err = await res.json();
+                    showToast(err.detail || "Failed to create", "error");
+                }
+            } catch (err) {
+                showToast("Network error", "error");
+            } finally {
+                btn.innerHTML = originalText;
+                btn.disabled = false;
+            }
+        }
+
+        // --- UI Rendering ---
+
+        function showLogin() {
+            document.getElementById('loginView').classList.remove('hidden');
+            document.getElementById('dashboardView').classList.add('hidden');
+        }
+
+        function renderDashboard() {
+            document.getElementById('loginView').classList.add('hidden');
+            document.getElementById('dashboardView').classList.remove('hidden');
+
+            // User Info
+            document.getElementById('userEmail').textContent = state.user.email;
+            const roleEl = document.getElementById('userRole');
+            roleEl.textContent = state.user.role;
+            roleEl.className = `role-badge ${state.user.role}`;
+
+            // Permissions
+            if (state.user.permissions.includes('write')) {
+                document.getElementById('createSection').classList.remove('hidden');
+                document.getElementById('noPermSection').classList.add('hidden');
+            } else {
+                document.getElementById('createSection').classList.add('hidden');
+                document.getElementById('noPermSection').classList.remove('hidden');
+            }
+        }
+
+        function renderDocuments() {
+            const listEl = document.getElementById('docList');
+            if (state.documents.length === 0) {
+                listEl.innerHTML = `
+                    <div style="text-align: center; padding: 3rem; color: #9CA3AF; border: 2px dashed #E5E7EB; border-radius: 0.75rem;">
+                        <i class="fas fa-file-alt" style="font-size: 2rem; margin-bottom: 1rem;"></i>
+                        <p>No documents found.</p>
+                    </div>
+                `;
+                return;
+            }
+
+            listEl.innerHTML = state.documents.map(doc => `
+                <div class="doc-item">
+                    <div style="display:flex; justify-content:space-between; align-items:start;">
+                        <h3>${escapeHtml(doc.title)}</h3>
+                        <span style="font-size:0.75rem; color:#9CA3AF;">${new Date(doc.created_at).toLocaleDateString()}</span>
+                    </div>
+                    <div class="doc-meta">
+                        <i class="fas fa-user-circle"></i> ${escapeHtml(doc.created_by)}
+                    </div>
+                    <div class="doc-content">${escapeHtml(doc.content)}</div>
+                </div>
+            `).join('');
+        }
+
+        // --- Utilities ---
+
+        async function checkOsoStatus() {
+            const badge = document.getElementById('osoStatus');
+            try {
+                const res = await fetch('/api/oso-status');
+                const data = await res.json();
+                if (data.connected) {
+                    badge.classList.add('connected');
+                    badge.innerHTML = '<i class="fas fa-check-circle"></i> OSO Connected';
+                } else {
+                    badge.innerHTML = '<i class="fas fa-exclamation-triangle"></i> OSO Disconnected';
+                    badge.style.background = '#FEE2E2';
+                    badge.style.color = '#991B1B';
+                }
+            } catch (e) {
+                badge.innerHTML = 'Status Check Failed';
+            }
+        }
+
+        function showLoader(show, text = "Loading...") {
+            const el = document.getElementById('loader');
+            document.getElementById('loaderText').textContent = text;
+            if (show) el.classList.remove('hidden');
+            else el.classList.add('hidden');
+        }
+
+        function showToast(msg, type = 'success') {
+            const el = document.getElementById('toast');
+            el.textContent = msg;
+            el.className = `toast ${type} show`;
+            setTimeout(() => el.classList.remove('show'), 3000);
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+    </script>
+</body>
+</html>

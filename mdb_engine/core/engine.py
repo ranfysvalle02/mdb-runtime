@@ -429,6 +429,10 @@ class MongoDBEngine:
             if create_indexes and "managed_indexes" in manifest:
                 await self._create_app_indexes(slug, manifest)
             
+            # Seed initial data if configured
+            if "initial_data" in manifest:
+                await self._seed_initial_data(slug, manifest["initial_data"])
+            
             # Initialize Memory service if configured (works standalone with MongoDB, configured via .env)
             memory_config = manifest.get("memory_config")
             if memory_config and memory_config.get("enabled", False):
@@ -599,6 +603,46 @@ class MongoDBEngine:
             contextual_logger.debug(
                 f"Configured WebSocket endpoint '{endpoint_name}' at path '{path}'",
                 extra={"app_slug": slug, "endpoint": endpoint_name, "path": path}
+            )
+    
+    async def _seed_initial_data(
+        self,
+        slug: str,
+        initial_data: Dict[str, List[Dict[str, Any]]]
+    ) -> None:
+        """
+        Seed initial data into collections for an app.
+        
+        Args:
+            slug: App slug
+            initial_data: Dictionary mapping collection names to arrays of documents
+        """
+        try:
+            from .seeding import seed_initial_data
+            
+            db = self.get_scoped_db(slug)
+            results = await seed_initial_data(db, slug, initial_data)
+            
+            total_inserted = sum(results.values())
+            if total_inserted > 0:
+                contextual_logger.info(
+                    f"Seeded initial data for app '{slug}'",
+                    extra={
+                        "app_slug": slug,
+                        "collections_seeded": len([c for c, count in results.items() if count > 0]),
+                        "total_documents": total_inserted
+                    }
+                )
+            else:
+                contextual_logger.debug(
+                    f"No initial data seeded for app '{slug}' (collections already had data or were empty)",
+                    extra={"app_slug": slug}
+                )
+        except Exception as e:
+            contextual_logger.error(
+                f"Failed to seed initial data for app '{slug}': {e}",
+                extra={"app_slug": slug, "error": str(e)},
+                exc_info=True
             )
     
     def get_websocket_config(self, slug: str) -> Optional[Dict[str, Any]]:
