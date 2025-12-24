@@ -1,39 +1,36 @@
-# MDB_ENGINE Documentation
+# MDB Engine Documentation
 
-This directory contains documentation for the MDB_ENGINE project.
+Welcome to the MDB Engine documentation. This directory contains comprehensive documentation for developers, contributors, and users.
 
-## Documentation Files
+## Documentation Structure
 
 ### Getting Started
-- **[Quick Start Guide](QUICK_START.md)** - Quick start guide for getting started with MDB_ENGINE
+- **[Quick Start Guide](QUICK_START.md)** - Get up and running quickly
+- **[Setup Guide](../SETUP.md)** - Development environment setup
 
-### Core Topics
-- **[Authorization System](AUTHZ.md)** - Comprehensive guide to the pluggable authorization system
+### Guides
+- **[Authorization Guide](AUTHZ.md)** - Authentication and authorization
+- **[Contributing Guide](../CONTRIBUTING.md)** - How to contribute to the project
 
-### Project Information
-- **[Project Structure](../PROJECT_STRUCTURE.md)** - Detailed project organization and structure
+### API Documentation
+- API reference documentation (coming soon)
 
-## Documentation by Topic
+### Other Documentation
+- **[FAQ](FAQ.md)** - Frequently asked questions
+- **[Blog](blog.md)** - Blog posts and updates
 
-### For Users
-- Start with [Quick Start Guide](QUICK_START.md)
-- See main [README.md](../README.md) for overview
+## Quick Links
 
-### For Developers
-- See [Project Structure](../PROJECT_STRUCTURE.md) for organization
-- See [Authorization System](AUTHZ.md) for implementing authorization
-- See [tests/README.md](../tests/README.md) for testing information
+- [Main README](../README.md)
+- [Contributing Guidelines](../CONTRIBUTING.md)
+- [Development Setup](../SETUP.md)
 
-### For Contributors
-- Review [Project Structure](../PROJECT_STRUCTURE.md) for guidelines
-- Review [Authorization System](AUTHZ.md) for extending authorization
-- Follow code quality standards (type hints, tests, observability)
+## Documentation Standards
 
-## Structure
+When adding documentation:
 
-```
-docs/
-├── README.md              # This file
-├── QUICK_START.md         # Quick start guide
-└── AUTHZ.md               # Authorization system documentation
-```
+1. Use clear, concise language
+2. Include code examples where helpful
+3. Keep documentation up to date with code changes
+4. Follow Markdown best practices
+5. Link related documentation

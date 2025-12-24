@@ -4,19 +4,22 @@ Helper functions for index management.
 This module contains shared utility functions to reduce code duplication
 in index creation and management.
 """
+
 import logging
 from typing import Any, Dict, List, Optional, Tuple, Union
 
 logger = logging.getLogger(__name__)
 
 
-def normalize_keys(keys: Union[Dict[str, Any], List[Tuple[str, Any]]]) -> List[Tuple[str, Any]]:
+def normalize_keys(
+    keys: Union[Dict[str, Any], List[Tuple[str, Any]]]
+) -> List[Tuple[str, Any]]:
     """
     Normalize index keys to a consistent format.
-    
+
     Args:
         keys: Index keys as dict or list of tuples
-        
+
     Returns:
         List of (field_name, direction) tuples
     """
@@ -28,10 +31,10 @@ def normalize_keys(keys: Union[Dict[str, Any], List[Tuple[str, Any]]]) -> List[T
 def keys_to_dict(keys: Union[Dict[str, Any], List[Tuple[str, Any]]]) -> Dict[str, Any]:
     """
     Convert index keys to dictionary format for comparison.
-    
+
     Args:
         keys: Index keys as dict or list of tuples
-        
+
     Returns:
         Dictionary representation of keys
     """
@@ -43,10 +46,10 @@ def keys_to_dict(keys: Union[Dict[str, Any], List[Tuple[str, Any]]]) -> Dict[str
 def is_id_index(keys: Union[Dict[str, Any], List[Tuple[str, Any]]]) -> bool:
     """
     Check if index keys target the _id field (which MongoDB creates automatically).
-    
+
     Args:
         keys: Index keys to check
-        
+
     Returns:
         True if this is an _id index
     """
@@ -62,18 +65,18 @@ async def check_and_update_index(
     index_name: str,
     expected_keys: Union[Dict[str, Any], List[Tuple[str, Any]]],
     expected_options: Optional[Dict[str, Any]] = None,
-    log_prefix: str = ""
+    log_prefix: str = "",
 ) -> Tuple[bool, Optional[Dict[str, Any]]]:
     """
     Check if an index exists and matches the expected definition.
-    
+
     Args:
         index_manager: AsyncAtlasIndexManager instance
         index_name: Name of the index
         expected_keys: Expected index keys
         expected_options: Expected index options (for comparison)
         log_prefix: Logging prefix for messages
-        
+
     Returns:
         Tuple of (index_exists, existing_index_dict or None)
         If index exists and matches, returns (True, existing_index)
@@ -81,16 +84,16 @@ async def check_and_update_index(
         If index doesn't exist, returns (False, None)
     """
     existing_index = await index_manager.get_index(index_name)
-    
+
     if not existing_index:
         return (False, None)
-    
+
     # Compare keys
     existing_key = existing_index.get("key", {})
     expected_key_dict = keys_to_dict(expected_keys)
-    
+
     keys_match = existing_key == expected_key_dict
-    
+
     # Compare options if provided
     options_match = True
     if expected_options:
@@ -100,10 +103,10 @@ async def check_and_update_index(
             if existing_index.get(key) != value:
                 options_match = False
                 break
-    
+
     if keys_match and options_match:
         return (True, existing_index)
-    
+
     # Index exists but doesn't match - drop it
     logger.warning(
         f"{log_prefix} Index '{index_name}' definition mismatch. "
@@ -118,17 +121,17 @@ def validate_index_definition_basic(
     index_def: Dict[str, Any],
     index_name: str,
     required_fields: List[str],
-    log_prefix: str = ""
+    log_prefix: str = "",
 ) -> Tuple[bool, Optional[str]]:
     """
     Basic validation for index definitions.
-    
+
     Args:
         index_def: Index definition dictionary
         index_name: Name of the index
         required_fields: List of required field names
         log_prefix: Logging prefix
-        
+
     Returns:
         Tuple of (is_valid, error_message)
     """
@@ -137,7 +140,6 @@ def validate_index_definition_basic(
             return (
                 False,
                 f"{log_prefix} Missing '{field}' field on index '{index_name}'. "
-                f"Index requires a '{field}' field. Skipping this index definition."
+                f"Index requires a '{field}' field. Skipping this index definition.",
             )
     return (True, None)
-

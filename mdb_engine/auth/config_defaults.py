@@ -7,7 +7,7 @@ This module provides a single source of truth for all config defaults.
 This module is part of MDB_ENGINE - MongoDB Engine.
 """
 
-from typing import Dict, Any
+from typing import Any, Dict
 
 SECURITY_CONFIG_DEFAULTS: Dict[str, Any] = {
     "password_policy": {
@@ -16,30 +16,23 @@ SECURITY_CONFIG_DEFAULTS: Dict[str, Any] = {
         "require_uppercase": True,
         "require_lowercase": True,
         "require_numbers": True,
-        "require_special": False
+        "require_special": False,
     },
     "session_fingerprinting": {
         "enabled": True,
         "validate_on_login": True,
         "validate_on_refresh": True,
         "validate_on_request": False,
-        "strict_mode": False
+        "strict_mode": False,
     },
     "account_lockout": {
         "enabled": True,
         "max_failed_attempts": 5,
         "lockout_duration_seconds": 900,
-        "reset_on_success": True
+        "reset_on_success": True,
     },
-    "ip_validation": {
-        "enabled": False,
-        "strict": False,
-        "allow_ip_change": True
-    },
-    "token_fingerprinting": {
-        "enabled": True,
-        "bind_to_device": True
-    }
+    "ip_validation": {"enabled": False, "strict": False, "allow_ip_change": True},
+    "token_fingerprinting": {"enabled": True, "bind_to_device": True},
 }
 
 TOKEN_MANAGEMENT_DEFAULTS: Dict[str, Any] = {
@@ -49,7 +42,7 @@ TOKEN_MANAGEMENT_DEFAULTS: Dict[str, Any] = {
     "token_rotation": True,
     "max_sessions_per_user": 10,
     "session_inactivity_timeout": 1800,
-    "auto_setup": True
+    "auto_setup": True,
 }
 
 CORS_DEFAULTS: Dict[str, Any] = {
@@ -58,26 +51,21 @@ CORS_DEFAULTS: Dict[str, Any] = {
     "allow_credentials": False,
     "allow_methods": ["GET", "POST", "PUT", "DELETE", "PATCH"],
     "allow_headers": ["*"],
-    "max_age": 3600
+    "max_age": 3600,
 }
 
 OBSERVABILITY_DEFAULTS: Dict[str, Any] = {
-    "health_checks": {
-        "enabled": True,
-        "endpoint": "/health",
-        "interval_seconds": 30
-    },
+    "health_checks": {"enabled": True, "endpoint": "/health", "interval_seconds": 30},
     "metrics": {
         "enabled": True,
         "collect_operation_metrics": True,
         "collect_performance_metrics": True,
-        "custom_metrics": []
+        "custom_metrics": [],
     },
     "logging": {
         "level": "INFO",
         "format": "json",
         "include_request_id": True,
-        "log_sensitive_data": False
-    }
+        "log_sensitive_data": False,
+    },
 }
-

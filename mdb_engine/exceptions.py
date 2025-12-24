@@ -4,30 +4,27 @@ Custom exceptions for MDB_ENGINE.
 These exceptions provide more specific error types while maintaining
 backward compatibility with RuntimeError.
 """
-from typing import Optional, Dict, Any, List
+
+from typing import Any, Dict, List, Optional
 
 
 class MongoDBEngineError(RuntimeError):
     """
     Base exception for MongoDB Engine errors.
-    
+
     This exception maintains backward compatibility with RuntimeError
     while providing a more specific base class for MDB_ENGINE errors.
-    
+
     Attributes:
         message: Error message
-        context: Optional dictionary with additional context (app_slug, 
+        context: Optional dictionary with additional context (app_slug,
                  collection_name, etc.)
     """
-    
-    def __init__(
-        self,
-        message: str,
-        context: Optional[Dict[str, Any]] = None
-    ) -> None:
+
+    def __init__(self, message: str, context: Optional[Dict[str, Any]] = None) -> None:
         """
         Initialize the exception.
-        
+
         Args:
             message: Error message
             context: Optional dictionary with additional context information
@@ -35,7 +32,7 @@ class MongoDBEngineError(RuntimeError):
         super().__init__(message)
         self.message = message
         self.context = context or {}
-    
+
     def __str__(self) -> str:
         """Return formatted error message with context if available."""
         if self.context:
@@ -47,27 +44,27 @@ class MongoDBEngineError(RuntimeError):
 class InitializationError(MongoDBEngineError):
     """
     Raised when engine initialization fails.
-    
+
     This exception is raised when MongoDB connection fails or
     other critical initialization steps fail.
-    
+
     Attributes:
         message: Error message
         mongo_uri: MongoDB connection URI (if available)
         db_name: Database name (if available)
         context: Additional context information
     """
-    
+
     def __init__(
         self,
         message: str,
         mongo_uri: Optional[str] = None,
         db_name: Optional[str] = None,
-        context: Optional[Dict[str, Any]] = None
+        context: Optional[Dict[str, Any]] = None,
     ) -> None:
         """
         Initialize the initialization error.
-        
+
         Args:
             message: Error message
             mongo_uri: MongoDB connection URI (if available)
@@ -87,10 +84,10 @@ class InitializationError(MongoDBEngineError):
 class ManifestValidationError(MongoDBEngineError):
     """
     Raised when manifest validation fails.
-    
+
     This exception provides more context about validation failures
     while maintaining compatibility with RuntimeError.
-    
+
     Attributes:
         message: Error message
         error_paths: List of JSON paths with validation errors
@@ -98,18 +95,18 @@ class ManifestValidationError(MongoDBEngineError):
         schema_version: Schema version used for validation (if available)
         context: Additional context information
     """
-    
+
     def __init__(
         self,
         message: str,
         error_paths: Optional[List[str]] = None,
         manifest_slug: Optional[str] = None,
         schema_version: Optional[str] = None,
-        context: Optional[Dict[str, Any]] = None
+        context: Optional[Dict[str, Any]] = None,
     ) -> None:
         """
         Initialize the manifest validation error.
-        
+
         Args:
             message: Error message
             error_paths: List of JSON paths with validation errors
@@ -133,27 +130,27 @@ class ManifestValidationError(MongoDBEngineError):
 class ConfigurationError(MongoDBEngineError):
     """
     Raised when configuration is invalid or missing.
-    
+
     This exception is raised when required configuration
     parameters are missing or invalid.
-    
+
     Attributes:
         message: Error message
         config_key: Configuration key that caused the error (if available)
         config_value: Configuration value that caused the error (if available)
         context: Additional context information
     """
-    
+
     def __init__(
         self,
         message: str,
         config_key: Optional[str] = None,
         config_value: Optional[Any] = None,
-        context: Optional[Dict[str, Any]] = None
+        context: Optional[Dict[str, Any]] = None,
     ) -> None:
         """
         Initialize the configuration error.
-        
+
         Args:
             message: Error message
             config_key: Configuration key that caused the error (if available)
@@ -168,4 +165,3 @@ class ConfigurationError(MongoDBEngineError):
         super().__init__(message, context=context)
         self.config_key = config_key
         self.config_value = config_value
-

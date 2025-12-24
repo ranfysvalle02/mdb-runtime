@@ -7,21 +7,24 @@ This module provides:
 - Test data factories
 - Common test utilities
 """
+
 import asyncio
-import pytest
-from typing import AsyncGenerator, Dict, Any
+from typing import Any, AsyncGenerator, Dict
 from unittest.mock import AsyncMock, MagicMock, patch
-from pathlib import Path
+
+import pytest
+from motor.motor_asyncio import (AsyncIOMotorClient, AsyncIOMotorCollection,
+                                 AsyncIOMotorDatabase)
 
 # Import engine components for testing
 from mdb_engine.core.engine import MongoDBEngine
-from mdb_engine.database.scoped_wrapper import ScopedMongoWrapper, ScopedCollectionWrapper
-from motor.motor_asyncio import AsyncIOMotorClient, AsyncIOMotorDatabase, AsyncIOMotorCollection
-
+from mdb_engine.database.scoped_wrapper import (ScopedCollectionWrapper,
+                                                ScopedMongoWrapper)
 
 # ============================================================================
 # ASYNC FIXTURES
 # ============================================================================
+
 
 @pytest.fixture(scope="session")
 def event_loop():
@@ -41,6 +44,7 @@ async def async_context():
 # MOCK MONGODB FIXTURES
 # ============================================================================
 
+
 @pytest.fixture
 def mock_mongo_client() -> MagicMock:
     """Create a mock MongoDB client."""
@@ -56,34 +60,79 @@ def mock_mongo_database(mock_mongo_client: MagicMock) -> MagicMock:
     db = MagicMock(spec=AsyncIOMotorDatabase)
     db.client = mock_mongo_client
     db.name = "test_db"
-    
+
     # Mock collection access
     def get_collection(name: str):
         collection = MagicMock(spec=AsyncIOMotorCollection)
         collection.name = name
         collection.database = db
-        collection.find = AsyncMock(return_value=AsyncMock(to_list=AsyncMock(return_value=[])))
+        collection.find = AsyncMock(
+            return_value=AsyncMock(to_list=AsyncMock(return_value=[]))
+        )
         collection.find_one = AsyncMock(return_value=None)
         collection.insert_one = AsyncMock(return_value=MagicMock(inserted_id="test_id"))
-        collection.insert_many = AsyncMock(return_value=MagicMock(inserted_ids=["id1", "id2"]))
+        collection.insert_many = AsyncMock(
+            return_value=MagicMock(inserted_ids=["id1", "id2"])
+        )
         collection.update_one = AsyncMock(return_value=MagicMock(modified_count=1))
         collection.update_many = AsyncMock(return_value=MagicMock(modified_count=2))
         collection.delete_one = AsyncMock(return_value=MagicMock(deleted_count=1))
         collection.delete_many = AsyncMock(return_value=MagicMock(deleted_count=2))
         collection.count_documents = AsyncMock(return_value=0)
-        collection.aggregate = AsyncMock(return_value=AsyncMock(to_list=AsyncMock(return_value=[])))
-        collection.list_indexes = AsyncMock(return_value=AsyncMock(to_list=AsyncMock(return_value=[])))
+        collection.aggregate = AsyncMock(
+            return_value=AsyncMock(to_list=AsyncMock(return_value=[]))
+        )
+        collection.list_indexes = AsyncMock(
+            return_value=AsyncMock(to_list=AsyncMock(return_value=[]))
+        )
         collection.create_index = AsyncMock(return_value="test_index")
         collection.drop_index = AsyncMock()
         collection.create_search_index = AsyncMock()
         collection.update_search_index = AsyncMock()
         collection.drop_search_index = AsyncMock()
-        collection.list_search_indexes = AsyncMock(return_value=AsyncMock(to_list=AsyncMock(return_value=[])))
+        collection.list_search_indexes = AsyncMock(
+            return_value=AsyncMock(to_list=AsyncMock(return_value=[]))
+        )
         return collection
-    
-    db.__getattr__ = lambda self, name: get_collection(name)
+
+    # MagicMock doesn't allow setting __getattr__ directly on instances
+    # Create a simple wrapper that properly handles __getattr__
+    class MockDatabaseWrapper:
+        """Wrapper that allows __getattr__ for dynamic collection access."""
+        def __init__(self, mock_db, get_collection_func):
+            # Use object.__setattr__ to bypass __setattr__ during init
+            object.__setattr__(self, "_mock_db", mock_db)
+            object.__setattr__(self, "_get_collection", get_collection_func)
+            # Copy essential attributes
+            object.__setattr__(self, "client", mock_db.client)
+            object.__setattr__(self, "name", mock_db.name)
+
+        def __getattr__(self, name):
+            if name.startswith("_"):
+                raise AttributeError(f"'{type(self).__name__}' object has no attribute '{name}'")
+            # Return collection for any attribute access
+            return self._get_collection(name)
+
+        def __getitem__(self, name):
+            return self._get_collection(name)
+
+        # Proxy method calls and attribute access to underlying mock
+        def __getattribute__(self, name):
+            # Handle our internal attributes first
+            if name in ("_mock_db", "_get_collection", "__class__", "__dict__"):
+                return object.__getattribute__(self, name)
+            # Try our own attributes
+            try:
+                return object.__getattribute__(self, name)
+            except AttributeError:
+                # Proxy everything else to mock_db
+                mock_db = object.__getattribute__(self, "_mock_db")
+                return getattr(mock_db, name)
+
     db.__getitem__ = lambda self, name: get_collection(name)
-    return db
+    # Return wrapped database that supports __getattr__
+    wrapped = MockDatabaseWrapper(db, get_collection)
+    return wrapped
 
 
 @pytest.fixture
@@ -91,17 +140,25 @@ def mock_mongo_collection() -> MagicMock:
     """Create a mock MongoDB collection."""
     collection = MagicMock(spec=AsyncIOMotorCollection)
     collection.name = "test_collection"
-    collection.find = AsyncMock(return_value=AsyncMock(to_list=AsyncMock(return_value=[])))
+    collection.find = AsyncMock(
+        return_value=AsyncMock(to_list=AsyncMock(return_value=[]))
+    )
     collection.find_one = AsyncMock(return_value=None)
     collection.insert_one = AsyncMock(return_value=MagicMock(inserted_id="test_id"))
-    collection.insert_many = AsyncMock(return_value=MagicMock(inserted_ids=["id1", "id2"]))
+    collection.insert_many = AsyncMock(
+        return_value=MagicMock(inserted_ids=["id1", "id2"])
+    )
     collection.update_one = AsyncMock(return_value=MagicMock(modified_count=1))
     collection.update_many = AsyncMock(return_value=MagicMock(modified_count=2))
     collection.delete_one = AsyncMock(return_value=MagicMock(deleted_count=1))
     collection.delete_many = AsyncMock(return_value=MagicMock(deleted_count=2))
     collection.count_documents = AsyncMock(return_value=0)
-    collection.aggregate = AsyncMock(return_value=AsyncMock(to_list=AsyncMock(return_value=[])))
-    collection.list_indexes = AsyncMock(return_value=AsyncMock(to_list=AsyncMock(return_value=[])))
+    collection.aggregate = AsyncMock(
+        return_value=AsyncMock(to_list=AsyncMock(return_value=[]))
+    )
+    collection.list_indexes = AsyncMock(
+        return_value=AsyncMock(to_list=AsyncMock(return_value=[]))
+    )
     collection.create_index = AsyncMock(return_value="test_index")
     collection.drop_index = AsyncMock()
     return collection
@@ -110,6 +167,7 @@ def mock_mongo_collection() -> MagicMock:
 # ============================================================================
 # MONGODB ENGINE FIXTURES
 # ============================================================================
+
 
 @pytest.fixture
 def mongodb_engine_config() -> Dict[str, Any]:
@@ -123,9 +181,13 @@ def mongodb_engine_config() -> Dict[str, Any]:
 
 
 @pytest.fixture
-async def mongodb_engine(mock_mongo_client: MagicMock, mongodb_engine_config: Dict[str, Any]) -> AsyncGenerator[MongoDBEngine, None]:
+async def mongodb_engine(
+    mock_mongo_client: MagicMock, mongodb_engine_config: Dict[str, Any]
+) -> AsyncGenerator[MongoDBEngine, None]:
     """Create a MongoDBEngine instance with mocked MongoDB client."""
-    with patch('mdb_engine.core.engine.AsyncIOMotorClient', return_value=mock_mongo_client):
+    with patch(
+        "mdb_engine.core.engine.AsyncIOMotorClient", return_value=mock_mongo_client
+    ):
         engine = MongoDBEngine(**mongodb_engine_config)
         await engine.initialize()
         yield engine
@@ -133,7 +195,9 @@ async def mongodb_engine(mock_mongo_client: MagicMock, mongodb_engine_config: Di
 
 
 @pytest.fixture
-async def uninitialized_mongodb_engine(mongodb_engine_config: Dict[str, Any]) -> MongoDBEngine:
+async def uninitialized_mongodb_engine(
+    mongodb_engine_config: Dict[str, Any]
+) -> MongoDBEngine:
     """Create an uninitialized MongoDBEngine instance."""
     return MongoDBEngine(**mongodb_engine_config)
 
@@ -141,6 +205,7 @@ async def uninitialized_mongodb_engine(mongodb_engine_config: Dict[str, Any]) ->
 # ============================================================================
 # SCOPED WRAPPER FIXTURES
 # ============================================================================
+
 
 @pytest.fixture
 def scoped_db_config() -> Dict[str, Any]:
@@ -153,26 +218,27 @@ def scoped_db_config() -> Dict[str, Any]:
 
 
 @pytest.fixture
-async def scoped_db(mock_mongo_database: MagicMock, scoped_db_config: Dict[str, Any]) -> ScopedMongoWrapper:
+async def scoped_db(
+    mock_mongo_database: MagicMock, scoped_db_config: Dict[str, Any]
+) -> ScopedMongoWrapper:
     """Create a ScopedMongoWrapper instance with mocked database."""
-    return ScopedMongoWrapper(
-        real_db=mock_mongo_database,
-        **scoped_db_config
-    )
+    return ScopedMongoWrapper(real_db=mock_mongo_database, **scoped_db_config)
 
 
 @pytest.fixture
-async def scoped_collection(mock_mongo_collection: MagicMock, scoped_db_config: Dict[str, Any]) -> ScopedCollectionWrapper:
+async def scoped_collection(
+    mock_mongo_collection: MagicMock, scoped_db_config: Dict[str, Any]
+) -> ScopedCollectionWrapper:
     """Create a ScopedCollectionWrapper instance with mocked collection."""
     return ScopedCollectionWrapper(
-        real_collection=mock_mongo_collection,
-        **scoped_db_config
+        real_collection=mock_mongo_collection, **scoped_db_config
     )
 
 
 # ============================================================================
 # TEST DATA FACTORIES
 # ============================================================================
+
 
 @pytest.fixture
 def sample_manifest() -> Dict[str, Any]:
@@ -238,13 +304,18 @@ def invalid_manifest() -> Dict[str, Any]:
 # UTILITY FUNCTIONS
 # ============================================================================
 
+
 def assert_experiment_id_in_document(doc: Dict[str, Any], expected_scope: str) -> None:
     """Assert that a document has the correct experiment_id."""
     assert "experiment_id" in doc, "Document missing experiment_id field"
-    assert doc["experiment_id"] == expected_scope, f"Expected experiment_id={expected_scope}, got {doc.get('experiment_id')}"
+    assert (
+        doc["experiment_id"] == expected_scope
+    ), f"Expected experiment_id={expected_scope}, got {doc.get('experiment_id')}"
 
 
-def assert_filter_has_experiment_scope(filter_dict: Dict[str, Any], expected_scopes: list) -> None:
+def assert_filter_has_experiment_scope(
+    filter_dict: Dict[str, Any], expected_scopes: list
+) -> None:
     """Assert that a filter includes experiment_id scoping."""
     if "$and" in filter_dict:
         # Check if any $and condition has experiment_id
@@ -258,8 +329,9 @@ def assert_filter_has_experiment_scope(filter_dict: Dict[str, Any], expected_sco
         # Direct experiment_id filter
         scope_filter = filter_dict["experiment_id"]
         if "$in" in scope_filter:
-            assert set(scope_filter["$in"]) == set(expected_scopes), \
-                f"Expected scopes {expected_scopes}, got {scope_filter['$in']}"
+            assert set(scope_filter["$in"]) == set(
+                expected_scopes
+            ), f"Expected scopes {expected_scopes}, got {scope_filter['$in']}"
     else:
         pytest.fail("Filter missing experiment_id scope")
 
@@ -267,6 +339,7 @@ def assert_filter_has_experiment_scope(filter_dict: Dict[str, Any], expected_sco
 # ============================================================================
 # PATCHES AND MOCKS
 # ============================================================================
+
 
 @pytest.fixture
 def mock_authorization_provider():
@@ -288,6 +361,7 @@ def mock_task_manager():
 # ENVIRONMENT VARIABLES
 # ============================================================================
 
+
 @pytest.fixture(autouse=True)
 def reset_environment(monkeypatch):
     """Reset environment variables before each test."""
@@ -303,3 +377,135 @@ def reset_environment(monkeypatch):
     yield
     # Cleanup happens automatically
 
+
+# ============================================================================
+# TESTCONTAINERS FIXTURES (Real MongoDB for Integration Tests)
+# ============================================================================
+
+
+@pytest.fixture(scope="session")
+def mongodb_container():
+    """
+    Start MongoDB Atlas Local container for integration tests.
+
+    Uses mongodb/mongodb-atlas-local:latest image to match examples.
+    Session-scoped: container starts once and is reused for all integration tests.
+    """
+    try:
+        from testcontainers.mongodb import MongoDbContainer
+    except ImportError:
+        pytest.skip(
+            "testcontainers not installed. Install with: pip install -e '.[test]'"
+        )
+
+    # Use MongoDB Atlas Local image (matches examples)
+    with MongoDbContainer(image="mongodb/mongodb-atlas-local:latest") as container:
+        yield container
+
+
+@pytest.fixture
+def mongodb_connection_string(mongodb_container):
+    """
+    Get the correct MongoDB connection string for the test container.
+
+    Returns a connection string using localhost with the exposed port,
+    which is required for MongoDB Atlas Local containers.
+    """
+    exposed_port = mongodb_container.get_exposed_port(27017)
+    return f"mongodb://localhost:{exposed_port}/?directConnection=true"
+
+
+@pytest.fixture
+async def real_mongo_client(mongodb_container):
+    """
+    Create a real MongoDB client connected to testcontainer.
+
+    Returns an AsyncIOMotorClient connected to the MongoDB container.
+    Automatically closes the client after the test.
+    """
+    from motor.motor_asyncio import AsyncIOMotorClient
+
+    # MongoDB Atlas Local containers need to use localhost with exposed port
+    # instead of the container's internal hostname
+    exposed_port = mongodb_container.get_exposed_port(27017)
+    connection_string = f"mongodb://localhost:{exposed_port}/?directConnection=true"
+    client = AsyncIOMotorClient(connection_string)
+
+    # Verify connection
+    try:
+        await client.admin.command("ping")
+    except Exception as e:
+        pytest.fail(f"Failed to connect to MongoDB container: {e}")
+
+    yield client
+
+    # Cleanup
+    client.close()
+
+
+@pytest.fixture
+async def real_mongo_db(real_mongo_client):
+    """
+    Create a real MongoDB database for testing.
+
+    Uses a unique database name per test run to avoid conflicts.
+    Automatically drops the database after the test.
+    """
+    import os
+
+    # Unique database name per test process
+    db_name = f"test_db_{os.getpid()}_{id(real_mongo_client)}"
+    db = real_mongo_client[db_name]
+
+    yield db
+
+    # Cleanup: drop test database
+    try:
+        await real_mongo_client.drop_database(db_name)
+    except Exception:
+        pass  # Ignore cleanup errors
+
+
+@pytest.fixture
+async def real_mongodb_engine(mongodb_container, real_mongo_db):
+    """
+    Create a fully initialized MongoDBEngine instance with real MongoDB.
+
+    Uses the mongodb_container to get connection string and real_mongo_db for database name.
+    Automatically shuts down the engine after the test.
+    """
+    # MongoDB Atlas Local containers need to use localhost with exposed port
+    # instead of the container's internal hostname
+    exposed_port = mongodb_container.get_exposed_port(27017)
+    mongo_uri = f"mongodb://localhost:{exposed_port}/?directConnection=true"
+
+    engine = MongoDBEngine(
+        mongo_uri=mongo_uri,
+        db_name=real_mongo_db.name,
+        max_pool_size=5,
+        min_pool_size=1,
+    )
+
+    await engine.initialize()
+    yield engine
+    await engine.shutdown()
+
+
+@pytest.fixture
+async def clean_test_db(real_mongo_db):
+    """
+    Clean test database fixture that drops all collections between tests.
+
+    This ensures test isolation by cleaning up data after each test.
+    """
+    # Get all collection names
+    collection_names = await real_mongo_db.list_collection_names()
+
+    yield real_mongo_db
+
+    # Cleanup: drop all collections
+    for collection_name in collection_names:
+        try:
+            await real_mongo_db.drop_collection(collection_name)
+        except Exception:
+            pass  # Ignore cleanup errors

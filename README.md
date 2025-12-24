@@ -42,9 +42,8 @@ The biggest pain point in multi-app (or even single-app) development is data iso
 await db.tasks.find({}).to_list(length=10)
 
 # THE ENGINE EXECUTES THIS (Secure, Scoped Query):
-# Collection: conversations
-# Query: {"app_id": "conversations"}
-
+# Collection: my_app_tasks
+# Query: {"app_id": "my_app"}
 ```
 
 ### 2. Manifest-Driven "DNA" 🧬
@@ -230,8 +229,7 @@ MDB_ENGINE is an incubator, not a cage. Because all data is tagged with `app_id`
 
 1. **Dump:** Use `mongodump` with a query filter:
 ```bash
-mongodump --query='{"app_id":"conversations"}' --out=./export
-
+mongodump --query='{"app_id":"my_app"}' --out=./export
 ```
 
 
@@ -244,18 +242,22 @@ mongodump --query='{"app_id":"conversations"}' --out=./export
 
 ```text
 .
-├── main.py                  # Your FastAPI entry point
-├── manifest.json            # The DNA of your app
-└── mdb_engine/             # The Engine
-    ├── core/                # Manifest validation & registration
-    ├── database/            # ScopedMongoWrapper (The Proxy)
-    ├── auth/                # JWT & RBAC logic
-    ├── indexes/             # Auto-index management
-    ├── embeddings/          # EmbeddingService for semantic text splitting
-    ├── memory/              # Mem0MemoryService for intelligent memory
-    ├── routing/             # WebSocket routing and management
-    └── observability/       # Logging, metrics, and health checks
+├── mdb_engine/              # Core engine package
+│   ├── core/                # Manifest validation & registration
+│   ├── database/            # ScopedMongoWrapper (The Proxy)
+│   ├── auth/                # JWT & RBAC logic
+│   ├── indexes/             # Auto-index management
+│   ├── embeddings/          # EmbeddingService for semantic text splitting
+│   ├── memory/              # Mem0MemoryService for intelligent memory
+│   ├── routing/             # WebSocket routing and management
+│   └── observability/       # Logging, metrics, and health checks
+├── examples/                # Example applications
+├── tests/                   # Test suite
+├── docs/                    # Documentation
+└── scripts/                 # Utility scripts
 ```
+
+The project structure is shown above. Each module is documented in its respective README.md file.
 
 ---
 
@@ -272,5 +274,27 @@ Each example includes a complete `manifest.json`, Docker setup, and working code
 
 ---
 
-**Stop building scaffolding. Start building features.**
+## Contributing
 
+We welcome contributions! Please read our [Contributing Guide](CONTRIBUTING.md) for:
+
+- Exception handling best practices (Staff Engineer level)
+- Code style guidelines
+- Pre-commit hooks setup
+- Testing requirements
+- Pull request process
+
+**Key Requirements:**
+- All exception handling must follow our [best practices](CONTRIBUTING.md#exception-handling-best-practices)
+- Pre-commit hooks must pass before submitting PRs
+- Tests must be included for new features
+
+**Quick Links:**
+- [Contributing Guide](CONTRIBUTING.md)
+- [Development Setup](SETUP.md)
+- [Documentation](docs/README.md)
+- [Quick Start Guide](docs/QUICK_START.md)
+
+---
+
+**Stop building scaffolding. Start building features.**

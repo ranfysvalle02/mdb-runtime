@@ -44,4 +44,3 @@ e = some(where (p.eft == allow))
 [matchers]
 m = r.sub == p.sub && r.obj == p.obj && r.act == p.act
 """
-

@@ -249,6 +249,5 @@ mdb_engine/
 ## Next Steps
 
 - See main [README.md](../README.md) for detailed documentation
-- See [Project Structure](../PROJECT_STRUCTURE.md) for organization
 - Check [tests/README.md](../tests/README.md) for testing information
 

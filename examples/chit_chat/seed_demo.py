@@ -62,7 +62,12 @@ class ChitChatDemoSeeder:
                 if response.status == 200 or response.status == 201:
                     try:
                         return await response.json()
-                    except:
+                    except (json.JSONDecodeError, ValueError, TypeError) as e:
+                        # Response is not valid JSON - return success status instead
+                        return {"status": "success", "status_code": response.status}
+                    except Exception as e:
+                        # Unexpected error parsing JSON - log and return success status
+                        print(f"    ⚠️  Warning: Could not parse JSON response: {e}")
                         return {"status": "success", "status_code": response.status}
                 elif response.status == 302:
                     # Handle redirects (e.g., after login)

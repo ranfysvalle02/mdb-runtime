@@ -1000,7 +1000,6 @@ async def require_admin_or_developer(...) -> Dict[str, Any]
 
 - [Authentication & Authorization README](../mdb_engine/auth/README.md) - Detailed auth module documentation
 - [Quick Start Guide](QUICK_START.md) - Getting started with MDB_ENGINE
-- [Project Structure](../PROJECT_STRUCTURE.md) - Project organization
 
 ## Examples
 

@@ -122,8 +122,10 @@ async def startup_event():
             logger.info("EmbeddingService initialized from manifest.json")
         else:
             logger.debug("No embedding_config found in manifest.json - embedding service not initialized")
+    except ImportError as e:
+        logger.debug("EmbeddingService dependencies not available", exc_info=True)
     except Exception as e:
-        logger.warning(f"Failed to initialize EmbeddingService: {e}", exc_info=True)
+        logger.exception("Failed to initialize EmbeddingService")
     
     # Mark app as started
     app.state._started = True
@@ -288,8 +290,10 @@ async def login(
                     config=app_config,
                     response=response
                 )
+            except (ValueError, TypeError) as e:
+                logger.warning(f"Failed to create app session: {e}", exc_info=True)
             except Exception as e:
-                logger.warning(f"Failed to create app session: {e}")
+                logger.exception("Unexpected error creating app session")
         
         return response
     else:
@@ -358,8 +362,10 @@ async def register(
                     config=app_config,
                     response=response
                 )
+            except (ValueError, TypeError) as e:
+                logger.warning(f"Failed to create app session: {e}", exc_info=True)
             except Exception as e:
-                logger.warning(f"Failed to create app session: {e}")
+                logger.exception("Unexpected error creating app session")
         
         return response
     else:
@@ -617,8 +623,8 @@ async def send_message(request: Request, conversation_id: str, message: str = Fo
         )
         ai_response = completion.choices[0].message.content
     except Exception as e:
-        logger.error(f"Azure OpenAI API error: {e}", exc_info=True)
-        raise HTTPException(status_code=503, detail=f"LLM service error: {str(e)}")
+        logger.exception("Azure OpenAI API error")
+        raise HTTPException(status_code=503, detail=f"LLM service error: {str(e)}") from e
     
     # Save AI message
     ai_message = {

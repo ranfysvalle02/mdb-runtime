@@ -11,7 +11,8 @@ Mem0 enables applications to:
 Key Features:
 - **MongoDB Integration**: Uses MongoDB as the vector store (native integration with mdb-engine)
 - **Standalone Operation**: Works with just MongoDB - no LLM required
-- **Optional LLM Inference**: Can leverage LLM service for automatic memory extraction (set infer: false to disable)
+- **Optional LLM Inference**: Can leverage LLM service for automatic memory
+  extraction (set infer: false to disable)
 - **Graph Support**: Optional knowledge graph construction for entity relationships
 
 Dependencies:
@@ -19,11 +20,11 @@ Dependencies:
 """
 
 # Import service components (mem0 import is lazy within service.py)
-from .service import Mem0MemoryService, Mem0MemoryServiceError, get_memory_service
+from .service import (Mem0MemoryService, Mem0MemoryServiceError,
+                      get_memory_service)
 
 __all__ = [
     "Mem0MemoryService",
     "Mem0MemoryServiceError",
     "get_memory_service",
 ]
-

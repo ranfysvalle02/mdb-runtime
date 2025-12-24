@@ -4,6 +4,7 @@ Constants for MDB_ENGINE.
 This module contains all shared constants used across the codebase to avoid
 magic numbers and improve maintainability.
 """
+
 from typing import Final
 
 # ============================================================================
@@ -157,4 +158,3 @@ SUPPORTED_APP_STATUSES: Final[tuple[str, ...]] = (
     APP_STATUS_ARCHIVED,
     APP_STATUS_INACTIVE,
 )
-
