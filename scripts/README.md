@@ -4,7 +4,7 @@ This directory contains utility scripts for development and maintenance.
 
 ## check_exception_handling.py
 
-Custom pre-commit hook that enforces exception handling best practices.
+Custom script that enforces exception handling best practices.
 
 ### What it checks:
 
@@ -28,8 +28,8 @@ See `docs/guides/error_handling.md` for full documentation.
 # Check specific files
 python scripts/check_exception_handling.py file1.py file2.py
 
-# Run as pre-commit hook (automatic)
-pre-commit run check-exception-handling --all-files
+# Run via Makefile (recommended)
+make lint  # Includes exception handling checks
 ```
 
 ### Exclusions:
@@ -39,4 +39,4 @@ pre-commit run check-exception-handling --all-files
 
 ### Integration:
 
-This script is automatically run as part of the pre-commit hooks. See `.pre-commit-config.yaml` for configuration.
+This script is automatically run as part of `make lint`. See the Makefile for configuration.

@@ -505,7 +505,7 @@ async def startup():
     global engine
     engine = MongoDBEngine(mongo_uri="...", db_name="...")
     await engine.initialize()
-    
+
     manifest = await engine.load_manifest("manifest.json")
     await engine.register_app(manifest)
 
@@ -540,4 +540,3 @@ db2 = engine.get_scoped_db("app2")
 - **`auth/`** - Authentication and authorization
 - **`indexes/`** - Index management
 - **`observability/`** - Health checks and metrics
-

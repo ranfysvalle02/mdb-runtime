@@ -128,7 +128,7 @@ from mdb_engine.auth import setup_auth_from_manifest
 async def startup():
     await engine.initialize()
     await engine.register_app(manifest)
-    
+
     # Auto-creates Casbin provider from manifest
     await setup_auth_from_manifest(app, engine, "my_app")
 ```
@@ -259,4 +259,3 @@ mdb_engine/
 
 - See main [README.md](../README.md) for detailed documentation
 - Check [tests/README.md](../tests/README.md) for testing information
-

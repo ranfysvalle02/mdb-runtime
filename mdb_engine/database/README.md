@@ -520,4 +520,3 @@ shared_db = ScopedMongoWrapper(
 - **`core/`** - MongoDBEngine for app registration
 - **`indexes/`** - Index management orchestration
 - **`observability/`** - Metrics and logging
-

@@ -100,9 +100,9 @@ The vector hacking demo **requires** API keys to function. You need:
 
 1. **OPENAI_API_KEY** - For LLM-based guessing and embeddings (OpenAI)
    - Get your key from: https://platform.openai.com/api-keys
-   
+
    OR
-   
+
 2. **AZURE_OPENAI_API_KEY** and **AZURE_OPENAI_ENDPOINT** - For Azure OpenAI
    - Get your credentials from your Azure OpenAI resource
 
@@ -180,7 +180,7 @@ After running `docker-compose up`, the app automatically runs and tests itself. 
    ```bash
    # View all logs
    docker-compose logs -f
-   
+
    # View just the app logs
    docker-compose logs -f app
    ```
@@ -201,7 +201,7 @@ After running `docker-compose up`, the app automatically runs and tests itself. 
    ```bash
    # Connect to MongoDB container
    docker-compose exec mongodb mongosh -u admin -p password --authenticationDatabase admin
-   
+
    # In mongosh:
    use vector_hacking_db
    db.experiments.find()
@@ -601,4 +601,3 @@ This demonstrates the importance of:
 - Not exposing error messages that reveal vector distances
 - Using proper access controls on vector databases
 - Understanding the security implications of embedding-based systems
-

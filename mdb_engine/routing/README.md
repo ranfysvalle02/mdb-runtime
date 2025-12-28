@@ -54,7 +54,7 @@ from mdb_engine.routing.websockets import register_message_handler, broadcast_to
 async def handle_client_message(websocket, message):
     """Handle incoming messages from WebSocket clients."""
     message_type = message.get("type")
-    
+
     if message_type == "subscribe":
         # Client wants to subscribe to a channel
         channel = message.get("channel")
@@ -63,7 +63,7 @@ async def handle_client_message(websocket, message):
             "channel": channel,
             "user_id": message.get("user_id")
         })
-    
+
     elif message_type == "ping":
         # Respond to custom ping
         await broadcast_to_app("my_app", {
@@ -208,7 +208,7 @@ from mdb_engine.routing.websockets import register_message_handler, broadcast_to
 async def handle_realtime_messages(websocket, message):
     """Handle messages from WebSocket clients."""
     msg_type = message.get("type")
-    
+
     if msg_type == "subscribe":
         # Client subscribes to updates
         channel = message.get("channel", "default")
@@ -216,13 +216,13 @@ async def handle_realtime_messages(websocket, message):
             "type": "subscribed",
             "channel": channel
         })
-    
+
     elif msg_type == "unsubscribe":
         # Client unsubscribes
         await broadcast_to_app("my_app", {
             "type": "unsubscribed"
         })
-    
+
     elif msg_type == "request_data":
         # Client requests specific data
         data_type = message.get("data_type")
@@ -251,11 +251,11 @@ async def handle_user_actions(websocket, message):
         (conn for conn in manager.active_connections if conn.websocket is websocket),
         None
     )
-    
+
     if connection and connection.user_id:
         user_id = connection.user_id
         msg_type = message.get("type")
-        
+
         if msg_type == "update_preferences":
             # Update user preferences
             prefs = message.get("preferences")
@@ -392,7 +392,7 @@ from mdb_engine.routing.websockets import (
 # 1. Register handler to LISTEN to client messages
 async def handle_client_requests(websocket, message):
     msg_type = message.get("type")
-    
+
     if msg_type == "get_status":
         # Client requests status - respond with broadcast
         status = await get_current_status()
@@ -400,7 +400,7 @@ async def handle_client_requests(websocket, message):
             "type": "status_update",
             "data": status
         })
-    
+
     elif msg_type == "subscribe_channel":
         # Client subscribes to channel
         channel = message.get("channel")
@@ -460,4 +460,3 @@ Client                    Server                    App Code
 3. **Message Scoping**: All messages include `app_slug` automatically
 4. **User Context**: Connection metadata tracks user_id and user_email
 5. **Error Handling**: Handler errors don't crash the connection
-

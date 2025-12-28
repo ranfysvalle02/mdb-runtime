@@ -1,15 +1,16 @@
 import os
 from pathlib import Path
+
 from dotenv import load_dotenv
 from mem0 import Memory
 from pymongo import MongoClient
 
 # --- 1. ROBUST ENV LOADING ---
-env_path = Path(__file__).parent / '.env'
+env_path = Path(__file__).parent / ".env"
 load_dotenv(dotenv_path=env_path)
 
 # --- 2. CRITICAL: ENV VAR MAPPING ---
-# The OpenAI SDK (used by mem0) is stubborn. It demands specific variable names 
+# The OpenAI SDK (used by mem0) is stubborn. It demands specific variable names
 # if arguments aren't passed explicitly. We map your Azure vars to what it wants.
 
 # REQUIRED: Maps your AZURE version to the generic OPENAI_API_VERSION
@@ -29,14 +30,12 @@ config = {
         "provider": "azure_openai",
         "config": {
             "model": os.getenv("AZURE_OPENAI_DEPLOYMENT_NAME", "gpt-4o"),
-            "temperature": 0.1
-        }
+            "temperature": 0.1,
+        },
     },
     "embedder": {
         "provider": "azure_openai",
-        "config": {
-            "model": os.getenv("AZURE_EMBEDDING_DEPLOYMENT", "text-embedding-3-small")
-        }
+        "config": {"model": os.getenv("AZURE_EMBEDDING_DEPLOYMENT", "text-embedding-3-small")},
     },
     "vector_store": {
         "provider": "mongodb",
@@ -44,10 +43,11 @@ config = {
             "mongo_uri": os.getenv("MONGO_URI"),
             "db_name": os.getenv("MONGO_DB_NAME"),
             "collection_name": os.getenv("MONGO_COLLECTION"),
-            "embedding_model_dims": 1536
-        }
-    }
+            "embedding_model_dims": 1536,
+        },
+    },
 }
+
 
 def test_integration():
     print("\n--- 1. Initializing Client ---")
@@ -60,7 +60,7 @@ def test_integration():
         return
 
     user_id = "test_user_final"
-    
+
     print(f"\n--- 2. Adding Memory for {user_id} ---")
     try:
         # Takes text -> Sends to Azure Embedding (using env vars) -> Stores in MongoDB
@@ -88,6 +88,7 @@ def test_integration():
     except (ValueError, TypeError, RuntimeError, ConnectionError) as e:
         # Type 2: Recoverable - search failed, continue test
         print(f"❌ Search Failed: {e}")
+
 
 if __name__ == "__main__":
     test_integration()

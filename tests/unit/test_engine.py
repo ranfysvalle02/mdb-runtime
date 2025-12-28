@@ -20,9 +20,7 @@ class TestMongoDBEngineInitialization:
     """Test MongoDBEngine initialization and lifecycle."""
 
     @pytest.mark.asyncio
-    async def test_engine_initialization_success(
-        self, mock_mongo_client, mongodb_engine_config
-    ):
+    async def test_engine_initialization_success(self, mock_mongo_client, mongodb_engine_config):
         """Test successful engine initialization."""
         with patch(
             "mdb_engine.core.connection.AsyncIOMotorClient",
@@ -39,20 +37,14 @@ class TestMongoDBEngineInitialization:
             await engine.shutdown()
 
     @pytest.mark.asyncio
-    async def test_engine_initialization_failure_connection(
-        self, mongodb_engine_config
-    ):
+    async def test_engine_initialization_failure_connection(self, mongodb_engine_config):
         """Test engine initialization failure due to connection error."""
         from pymongo.errors import ConnectionFailure
 
         mock_client = MagicMock()
-        mock_client.admin.command = AsyncMock(
-            side_effect=ConnectionFailure("Connection failed")
-        )
+        mock_client.admin.command = AsyncMock(side_effect=ConnectionFailure("Connection failed"))
 
-        with patch(
-            "mdb_engine.core.connection.AsyncIOMotorClient", return_value=mock_client
-        ):
+        with patch("mdb_engine.core.connection.AsyncIOMotorClient", return_value=mock_client):
             engine = MongoDBEngine(**mongodb_engine_config)
 
             with pytest.raises(InitializationError) as exc_info:
@@ -88,9 +80,7 @@ class TestMongoDBEngineInitialization:
         await mongodb_engine.shutdown()  # Should not raise
 
     @pytest.mark.asyncio
-    async def test_engine_context_manager(
-        self, mock_mongo_client, mongodb_engine_config
-    ):
+    async def test_engine_context_manager(self, mock_mongo_client, mongodb_engine_config):
         """Test engine as async context manager."""
         with patch(
             "mdb_engine.core.connection.AsyncIOMotorClient",
@@ -107,9 +97,7 @@ class TestMongoDBEngineProperties:
     """Test MongoDBEngine property accessors."""
 
     @pytest.mark.asyncio
-    async def test_mongo_client_property_uninitialized(
-        self, uninitialized_mongodb_engine
-    ):
+    async def test_mongo_client_property_uninitialized(self, uninitialized_mongodb_engine):
         """Test accessing mongo_client before initialization raises error."""
         with pytest.raises(RuntimeError, match="not initialized"):
             _ = uninitialized_mongodb_engine.mongo_client
@@ -185,9 +173,7 @@ class TestMongoDBEngineManifestValidation:
     @pytest.mark.asyncio
     async def test_validate_manifest_invalid(self, mongodb_engine, invalid_manifest):
         """Test validation of an invalid manifest."""
-        is_valid, error, paths = await mongodb_engine.validate_manifest(
-            invalid_manifest
-        )
+        is_valid, error, paths = await mongodb_engine.validate_manifest(invalid_manifest)
 
         assert is_valid is False
         assert error is not None
@@ -195,9 +181,7 @@ class TestMongoDBEngineManifestValidation:
         assert len(paths) > 0
 
     @pytest.mark.asyncio
-    async def test_load_manifest_from_file(
-        self, mongodb_engine, tmp_path, sample_manifest
-    ):
+    async def test_load_manifest_from_file(self, mongodb_engine, tmp_path, sample_manifest):
         """Test loading manifest from file."""
         import json
 
@@ -238,9 +222,7 @@ class TestMongoDBEngineTenantRegistration:
     @pytest.mark.asyncio
     async def test_register_app_success(self, mongodb_engine, sample_manifest):
         """Test successful app registration."""
-        result = await mongodb_engine.register_app(
-            sample_manifest, create_indexes=False
-        )
+        result = await mongodb_engine.register_app(sample_manifest, create_indexes=False)
 
         assert result is True
         assert sample_manifest["slug"] in mongodb_engine._apps
@@ -257,9 +239,7 @@ class TestMongoDBEngineTenantRegistration:
         assert len(mongodb_engine._apps) == 0
 
     @pytest.mark.asyncio
-    async def test_register_app_invalid_manifest(
-        self, mongodb_engine, invalid_manifest
-    ):
+    async def test_register_app_invalid_manifest(self, mongodb_engine, invalid_manifest):
         """Test registration with invalid manifest."""
         result = await mongodb_engine.register_app(invalid_manifest)
 
@@ -267,9 +247,7 @@ class TestMongoDBEngineTenantRegistration:
         assert len(mongodb_engine._apps) == 0
 
     @pytest.mark.asyncio
-    async def test_register_app_uninitialized(
-        self, uninitialized_mongodb_engine, sample_manifest
-    ):
+    async def test_register_app_uninitialized(self, uninitialized_mongodb_engine, sample_manifest):
         """Test registration before initialization raises error."""
         with pytest.raises(RuntimeError, match="not initialized"):
             await uninitialized_mongodb_engine.register_app(sample_manifest)
@@ -309,9 +287,7 @@ class TestMongoDBEngineWebSocket:
         """Test getting WebSocket config when available."""
         # Mock service initializer with websocket config
         websocket_config = {"endpoint1": {"path": "/ws"}}
-        mongodb_engine._service_initializer._websocket_configs["test_app"] = (
-            websocket_config
-        )
+        mongodb_engine._service_initializer._websocket_configs["test_app"] = websocket_config
 
         config = mongodb_engine.get_websocket_config("test_app")
         assert config == websocket_config
@@ -323,9 +299,7 @@ class TestMongoDBEngineWebSocket:
         assert config is None
 
     @pytest.mark.asyncio
-    async def test_get_websocket_config_uninitialized(
-        self, uninitialized_mongodb_engine
-    ):
+    async def test_get_websocket_config_uninitialized(self, uninitialized_mongodb_engine):
         """Test getting WebSocket config before initialization."""
         # When uninitialized, _service_initializer is None, so should return None
         config = uninitialized_mongodb_engine.get_websocket_config("test_app")
@@ -338,18 +312,13 @@ class TestMongoDBEngineWebSocket:
         # No websocket config set, should return early
         mongodb_engine.register_websocket_routes(mock_app, "nonexistent_app")
         # Should not have called any FastAPI methods
-        assert (
-            not hasattr(mock_app, "include_router")
-            or not mock_app.include_router.called
-        )
+        assert not hasattr(mock_app, "include_router") or not mock_app.include_router.called
 
     @pytest.mark.asyncio
     async def test_register_websocket_routes_import_error(self, mongodb_engine):
         """Test registering WebSocket routes when FastAPI is not available."""
         websocket_config = {"endpoint1": {"path": "/ws"}}
-        mongodb_engine._service_initializer._websocket_configs["test_app"] = (
-            websocket_config
-        )
+        mongodb_engine._service_initializer._websocket_configs["test_app"] = websocket_config
 
         mock_app = MagicMock()
         # Simulate ImportError by replacing the module with one that raises ImportError
@@ -383,9 +352,7 @@ class TestMongoDBEngineWebSocket:
                 "ping_interval": 20,
             }
         }
-        mongodb_engine._service_initializer._websocket_configs["test_app"] = (
-            websocket_config
-        )
+        mongodb_engine._service_initializer._websocket_configs["test_app"] = websocket_config
 
         mock_app = MagicMock()
         mock_app.routes = []
@@ -403,9 +370,7 @@ class TestMongoDBEngineWebSocket:
                 mock_app.include_router.assert_called_once()
 
     @pytest.mark.asyncio
-    async def test_register_websocket_routes_auth_configs(
-        self, mongodb_engine, sample_manifest
-    ):
+    async def test_register_websocket_routes_auth_configs(self, mongodb_engine, sample_manifest):
         """Test WebSocket route registration with different auth config formats."""
         # Register app first
         await mongodb_engine.register_app(sample_manifest, create_indexes=False)
@@ -434,9 +399,7 @@ class TestMongoDBEngineWebSocket:
                 assert call_kwargs["require_auth"] is False
 
         # Test top-level require_auth (backward compatibility)
-        websocket_config_top_level = {
-            "endpoint2": {"path": "/ws/endpoint2", "require_auth": False}
-        }
+        websocket_config_top_level = {"endpoint2": {"path": "/ws/endpoint2", "require_auth": False}}
         mongodb_engine._service_initializer._websocket_configs["test_experiment"] = (
             websocket_config_top_level
         )
@@ -451,14 +414,10 @@ class TestMongoDBEngineWebSocket:
                 assert call_kwargs["require_auth"] is False
 
     @pytest.mark.asyncio
-    async def test_register_websocket_routes_handler_creation_error(
-        self, mongodb_engine
-    ):
+    async def test_register_websocket_routes_handler_creation_error(self, mongodb_engine):
         """Test WebSocket route registration when handler creation fails."""
         websocket_config = {"endpoint1": {"path": "/ws"}}
-        mongodb_engine._service_initializer._websocket_configs["test_app"] = (
-            websocket_config
-        )
+        mongodb_engine._service_initializer._websocket_configs["test_app"] = websocket_config
 
         mock_app = MagicMock()
         mock_app.routes = []
@@ -474,9 +433,7 @@ class TestMongoDBEngineWebSocket:
     async def test_register_websocket_routes_registration_error(self, mongodb_engine):
         """Test WebSocket route registration when FastAPI registration fails."""
         websocket_config = {"endpoint1": {"path": "/ws"}}
-        mongodb_engine._service_initializer._websocket_configs["test_app"] = (
-            websocket_config
-        )
+        mongodb_engine._service_initializer._websocket_configs["test_app"] = websocket_config
 
         mock_app = MagicMock()
         mock_app.routes = []
@@ -506,9 +463,7 @@ class TestMongoDBEngineAppManagement:
         assert len(mongodb_engine.list_apps()) == 1
 
         # Mock the reload_apps method to return count
-        with patch.object(
-            mongodb_engine._app_registration_manager, "reload_apps", return_value=1
-        ):
+        with patch.object(mongodb_engine._app_registration_manager, "reload_apps", return_value=1):
             count = await mongodb_engine.reload_apps()
             assert count == 1
 
@@ -669,9 +624,7 @@ class TestMongoDBEngineHealthMetrics:
                     sys.modules.clear()
                     sys.modules.update(original_modules)
                     if connection_module:
-                        sys.modules["mdb_engine.database.connection"] = (
-                            connection_module
-                        )
+                        sys.modules["mdb_engine.database.connection"] = connection_module
 
     @pytest.mark.asyncio
     async def test_get_metrics(self, mongodb_engine):
@@ -771,9 +724,7 @@ class TestMongoDBEngineHealthMetrics:
             return_value=mock_handler,
         ) as mock_create:
             with patch("fastapi.APIRouter", return_value=mock_router):
-                mongodb_engine.register_websocket_routes(
-                    mock_app, sample_manifest["slug"]
-                )
+                mongodb_engine.register_websocket_routes(mock_app, sample_manifest["slug"])
                 # Check that require_auth was False from app's auth_policy
                 call_kwargs = mock_create.call_args[1]
                 assert call_kwargs["require_auth"] is False
@@ -802,9 +753,7 @@ class TestMongoDBEngineHealthMetrics:
                     "mdb_engine.database.connection.get_pool_metrics",
                     return_value=mock_pool_metrics,
                 ):
-                    with patch(
-                        "mdb_engine.core.engine.check_pool_health"
-                    ) as mock_pool_check:
+                    with patch("mdb_engine.core.engine.check_pool_health") as mock_pool_check:
                         mock_pool_result = MagicMock()
                         mock_pool_result.status.value = "healthy"
                         mock_pool_check.return_value = mock_pool_result
@@ -863,15 +812,12 @@ class TestMongoDBEngineHealthMetrics:
                     assert health is not None
                 finally:
                     if original_connection:
-                        sys.modules["mdb_engine.database.connection"] = (
-                            original_connection
-                        )
+                        sys.modules["mdb_engine.database.connection"] = original_connection
 
     @pytest.mark.asyncio
     async def test_get_health_status_import_error_handled(self, mongodb_engine):
         """Test get_health_status handles ImportError when registering pool check."""
-        from mdb_engine.observability.health import (HealthCheckResult,
-                                                     HealthStatus)
+        from mdb_engine.observability.health import HealthCheckResult, HealthStatus
 
         mock_health_result = HealthCheckResult(
             name="test",
@@ -918,8 +864,7 @@ class TestMongoDBEngineHealthMetrics:
     @pytest.mark.asyncio
     async def test_get_health_status_pool_check_import_error(self, mongodb_engine):
         """Test get_health_status handles ImportError when pool check import fails."""
-        from mdb_engine.observability.health import (HealthCheckResult,
-                                                     HealthStatus)
+        from mdb_engine.observability.health import HealthCheckResult, HealthStatus
 
         mock_health_result = HealthCheckResult(
             name="test",
@@ -966,9 +911,7 @@ class TestMongoDBEngineCallbackErrors:
     """Test error handling in register_app callbacks."""
 
     @pytest.mark.asyncio
-    async def test_register_app_index_callback_error(
-        self, mongodb_engine, sample_manifest
-    ):
+    async def test_register_app_index_callback_error(self, mongodb_engine, sample_manifest):
         """Test handling index creation callback errors."""
         # Mock index manager to raise error
         with patch.object(
@@ -977,16 +920,12 @@ class TestMongoDBEngineCallbackErrors:
             side_effect=Exception("Index error"),
         ):
             # Should still register app, but index creation fails
-            result = await mongodb_engine.register_app(
-                sample_manifest, create_indexes=True
-            )
+            result = await mongodb_engine.register_app(sample_manifest, create_indexes=True)
             # Registration should succeed even if callbacks fail
             assert result is True
 
     @pytest.mark.asyncio
-    async def test_register_app_seed_callback_error(
-        self, mongodb_engine, sample_manifest
-    ):
+    async def test_register_app_seed_callback_error(self, mongodb_engine, sample_manifest):
         """Test handling seeding callback errors."""
         manifest_with_seed = {
             **sample_manifest,
@@ -997,16 +936,12 @@ class TestMongoDBEngineCallbackErrors:
         # So we need to ensure the callback doesn't raise, or test that
         # registration succeeds despite callback errors
         # Actually, let's test that the callback error doesn't prevent registration
-        result = await mongodb_engine.register_app(
-            manifest_with_seed, create_indexes=False
-        )
+        result = await mongodb_engine.register_app(manifest_with_seed, create_indexes=False)
         # Registration should succeed even if seeding has issues (it's handled internally)
         assert result is True
 
     @pytest.mark.asyncio
-    async def test_register_app_memory_callback_error(
-        self, mongodb_engine, sample_manifest
-    ):
+    async def test_register_app_memory_callback_error(self, mongodb_engine, sample_manifest):
         """Test handling memory initialization callback errors."""
         manifest_with_memory = {
             **sample_manifest,
@@ -1019,9 +954,7 @@ class TestMongoDBEngineCallbackErrors:
             side_effect=Exception("Memory error"),
         ):
             # Should still register app
-            result = await mongodb_engine.register_app(
-                manifest_with_memory, create_indexes=False
-            )
+            result = await mongodb_engine.register_app(manifest_with_memory, create_indexes=False)
             assert result is True
 
     @pytest.mark.asyncio
@@ -1042,9 +975,7 @@ class TestMongoDBEngineCallbackErrors:
         await mongodb_engine.register_app(manifest_with_memory, create_indexes=False)
 
     @pytest.mark.asyncio
-    async def test_register_app_websocket_callback_error(
-        self, mongodb_engine, sample_manifest
-    ):
+    async def test_register_app_websocket_callback_error(self, mongodb_engine, sample_manifest):
         """Test handling WebSocket callback errors."""
         manifest_with_websockets = {
             **sample_manifest,
@@ -1056,16 +987,12 @@ class TestMongoDBEngineCallbackErrors:
             raise Exception("WebSocket error")
 
         # Register app - the callback error should be caught internally
-        result = await mongodb_engine.register_app(
-            manifest_with_websockets, create_indexes=False
-        )
+        result = await mongodb_engine.register_app(manifest_with_websockets, create_indexes=False)
         # Registration should succeed even if callbacks fail
         assert result is True
 
     @pytest.mark.asyncio
-    async def test_register_app_observability_callback_error(
-        self, mongodb_engine, sample_manifest
-    ):
+    async def test_register_app_observability_callback_error(self, mongodb_engine, sample_manifest):
         """Test handling observability callback errors."""
         manifest_with_observability = {
             **sample_manifest,

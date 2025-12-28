@@ -27,9 +27,9 @@ We use automated tools to maintain consistent code style:
 # Install development dependencies
 pip install -e ".[test]"
 
-# Install pre-commit hooks (recommended)
-pip install pre-commit
-pre-commit install
+# Run code quality checks
+make lint
+make format
 ```
 
 ### Using the Makefile (Recommended)
@@ -225,32 +225,27 @@ For authentication operations, catch specific exceptions like `jwt.ExpiredSignat
 
 See [`docs/guides/error_handling.md`](docs/guides/error_handling.md) for detailed patterns and examples.
 
-## Pre-commit Hooks
+## Code Quality Checks
 
-We use pre-commit hooks to automatically check code quality before commits. The hooks check for:
+We use `make lint` and `make format` to ensure code quality. The checks include:
 
 - Code formatting (Black)
 - Import sorting (isort)
 - Linting (flake8)
 - Exception handling best practices (custom checker)
 
-### Running Pre-commit Hooks Manually
+### Running Quality Checks
 
 ```bash
-# Run on all files
-pre-commit run --all-files
+# Format code (auto-fixes formatting and imports)
+make format
 
-# Run on staged files only
-pre-commit run
+# Check code quality (does not modify files)
+make lint
 
-# Run specific hook
-pre-commit run flake8 --all-files
-pre-commit run check-exception-handling --all-files
+# Quick check (lint + unit tests)
+make check
 ```
-
-### Bypassing Pre-commit Hooks
-
-**Only bypass hooks in emergencies** and document why:
 
 ```bash
 git commit --no-verify -m "Emergency fix (bypassing hooks)"
@@ -315,10 +310,10 @@ async def test_insert_one_operation_failure_raises_mongodb_engine_error():
     """Test that OperationFailure is caught and re-raised as MongoDBEngineError."""
     collection = Collection(mock_scoped_collection)
     mock_scoped_collection.insert_one.side_effect = OperationFailure("Error", 1)
-    
+
     with pytest.raises(MongoDBEngineError) as exc_info:
         await collection.insert_one({"test": "data"})
-    
+
     assert "Failed to insert document" in str(exc_info.value)
     assert exc_info.value.__cause__ is not None  # Context preserved
 ```
@@ -332,9 +327,10 @@ async def test_insert_one_operation_failure_raises_mongodb_engine_error():
 
 2. **Make your changes** following the guidelines above
 
-3. **Run pre-commit hooks**:
+3. **Run code quality checks**:
    ```bash
-   pre-commit run --all-files
+   make format  # Auto-fix formatting
+   make lint    # Check for issues
    ```
 
 4. **Write/update tests** for your changes
@@ -398,4 +394,3 @@ If you have questions about contributing, please:
 4. Reach out to maintainers
 
 Thank you for contributing to MDB Engine! 🚀
-

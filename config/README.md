@@ -10,5 +10,4 @@ This directory contains project configuration files.
 
 ## Note
 
-Currently, configuration files are kept in the project root (`.flake8`, `.pre-commit-config.yaml`, `pytest.ini`, `pyproject.toml`) following Python project conventions. This directory is reserved for future configuration organization if needed.
-
+Currently, configuration files are kept in the project root (`.flake8`, `pytest.ini`, `pyproject.toml`) following Python project conventions. This directory is reserved for future configuration organization if needed.

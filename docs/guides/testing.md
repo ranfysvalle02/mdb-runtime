@@ -189,10 +189,10 @@ async def test_insert_one_operation_failure_raises_mongodb_engine_error(mock_sco
     """Test that OperationFailure is caught and re-raised as MongoDBEngineError."""
     collection = Collection(mock_scoped_collection)
     mock_scoped_collection.insert_one.side_effect = OperationFailure("Error", 1)
-    
+
     with pytest.raises(MongoDBEngineError) as exc_info:
         await collection.insert_one({"test": "data"})
-    
+
     assert "Failed to insert document" in str(exc_info.value)
     assert exc_info.value.__cause__ is not None  # Context preserved
 ```
@@ -211,10 +211,10 @@ async def test_real_mongodb_connection(mongodb_container):
         mongo_uri=mongodb_container.get_connection_url(),
         db_name="test_db"
     )
-    
+
     await engine.initialize()
     assert engine._initialized is True
-    
+
     # Test actual database operation
     db = engine.get_scoped_db("test_app")
     result = await db.test_collection.insert_one({"test": "data"})
@@ -228,7 +228,7 @@ async def test_real_mongodb_connection(mongodb_container):
    async def test_insert_one_success():
        # Test successful insertion
        pass
-   
+
    async def test_insert_one_failure():
        # Test failure handling
        pass
@@ -239,7 +239,7 @@ async def test_real_mongodb_connection(mongodb_container):
    # Good
    assert result.inserted_id is not None
    assert "Failed to insert" in str(exc_info.value)
-   
+
    # Avoid
    assert result
    assert exc_info.value
@@ -321,37 +321,37 @@ on: [push, pull_request]
 jobs:
   test:
     runs-on: ubuntu-latest
-    
+
     steps:
     - uses: actions/checkout@v3
-    
+
     - name: Set up Python
       uses: actions/setup-python@v4
       with:
         python-version: '3.11'
-    
+
     - name: Install dependencies
       run: make install-dev
-    
+
     - name: Run linting
       run: make lint
-    
+
     - name: Run unit tests
       run: make test-unit
-    
+
     - name: Run integration tests
       run: make test-integration
-    
+
     - name: Generate coverage report
       run: make test-coverage
-    
+
     - name: Upload coverage
       uses: codecov/codecov-action@v3
       with:
         files: ./htmlcov/index.html
 ```
 
-### Pre-commit Checks
+### Code Quality Checks
 
 Before committing, run:
 
@@ -457,4 +457,3 @@ If you have questions about testing:
 2. Review [CONTRIBUTING.md](../../CONTRIBUTING.md) for guidelines
 3. Open an issue for discussion
 4. Reach out to maintainers
-

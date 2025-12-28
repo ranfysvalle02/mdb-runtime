@@ -72,16 +72,16 @@ async def get_pool_metrics(client: AsyncIOMotorClient) -> Dict[str, Any]:
     try:
         server_status = await client.admin.command("serverStatus")
         connections = server_status.get("connections", {})
-        
+
         # Get pool config from client options
         max_pool_size = getattr(client.options, 'maxPoolSize', None) or 100
-        
+
         current = connections.get("current", 0)
         available = connections.get("available", 0)
         total_created = connections.get("totalCreated", 0)
-        
+
         usage_percent = (current / max_pool_size * 100) if max_pool_size else None
-        
+
         return {
             "status": "connected",
             "max_pool_size": max_pool_size,
@@ -117,11 +117,11 @@ async def get_pool_metrics(client: Optional[AsyncIOMotorClient] = None):
     """Get metrics from specific client, shared client, or registered clients."""
     if client is not None:
         return await _get_client_pool_metrics(client)
-    
+
     # Try shared client first
     if _shared_client is not None:
         return await _get_client_pool_metrics(_shared_client)
-    
+
     # Try registered clients (e.g., RuntimeEngine's dedicated client)
     for registered_client in _registered_clients:
         try:
@@ -129,7 +129,7 @@ async def get_pool_metrics(client: Optional[AsyncIOMotorClient] = None):
                 return await _get_client_pool_metrics(registered_client)
         except Exception:
             continue
-    
+
     # No client available - return UNKNOWN, not error
     return {
         "status": "no_client",
@@ -159,7 +159,7 @@ async def check_pool_health(get_metrics_func: Callable) -> HealthCheckResult:
     """Check connection pool health with proper status classification."""
     metrics = await get_metrics_func()
     status_value = metrics.get("status")
-    
+
     if status_value != "connected":
         # Missing metrics but client might still work - use UNKNOWN
         if status_value in ["no_client", "error"]:
@@ -176,7 +176,7 @@ async def check_pool_health(get_metrics_func: Callable) -> HealthCheckResult:
             message=f"Pool status: {status_value}",
             details=metrics,
         )
-    
+
     # Check usage percentage
     usage = metrics.get("pool_usage_percent")
     if usage is None:
@@ -187,7 +187,7 @@ async def check_pool_health(get_metrics_func: Callable) -> HealthCheckResult:
             message="Connected (detailed metrics unavailable)",
             details=metrics,
         )
-    
+
     if usage > 90:
         status = HealthStatus.UNHEALTHY
         message = f"Pool usage critical: {usage}%"
@@ -197,7 +197,7 @@ async def check_pool_health(get_metrics_func: Callable) -> HealthCheckResult:
     else:
         status = HealthStatus.HEALTHY
         message = f"Pool usage normal: {usage}%"
-    
+
     return HealthCheckResult(
         name="connection_pool",
         status=status,
@@ -220,11 +220,11 @@ class PoolLogger(ConnectionPoolListener):
     def connection_checked_out(self, event):
         # ✅ OK: Lightweight logging
         logger.debug(f"Connection checked out: {event.connection_id}")
-        
+
         # ❌ BAD: Heavy operations block the loop
         # requests.post("https://api.metrics.com", data=...)  # BLOCKS!
         # time.sleep(0.1)  # BLOCKS!
-    
+
     def connection_checked_in(self, event):
         logger.debug(f"Connection checked in: {event.connection_id}")
 
@@ -338,7 +338,7 @@ async def wait_for_search_index(collection, index_name: str, timeout: int = 300)
     while time.time() - start < timeout:
         # Fetch status via aggregation
         cursor = collection.aggregate([{"$listSearchIndexes": {"name": index_name}}])
-        
+
         # Cursor might be empty initially if index creation just started
         # We use a flag to track if we found the index in the list
         found = False
@@ -349,10 +349,10 @@ async def wait_for_search_index(collection, index_name: str, timeout: int = 300)
                 return True
             elif index_info.get("status") == "FAILED":
                 raise Exception(f"Index build failed: {index_info}")
-        
+
         # Wait before retrying
         await asyncio.sleep(5)
-    
+
     raise TimeoutError(f"Index {index_name} not ready within {timeout} seconds.")
 ```
 
@@ -380,7 +380,7 @@ async def ensure_index(collection, model):
              print(f"Index {model.name} already exists. Proceeding.")
         else:
             raise e
-    
+
     # 3. Always wait for it to be ready before proceeding
     print(f"Waiting for index {model.name} to be queryable...")
     await wait_for_search_index(collection, model.name)

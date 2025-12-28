@@ -117,10 +117,10 @@ Define your indexes in your manifest, and MDB_ENGINE ensures they exist on start
 ```json
 "managed_indexes": {
   "tasks": [
-    { 
+    {
       "type": "regular",
-      "keys": {"status": 1, "created_at": -1}, 
-      "name": "status_sort" 
+      "keys": {"status": 1, "created_at": -1},
+      "name": "status_sort"
     },
     {
       "type": "vectorSearch",
@@ -370,7 +370,7 @@ from typing import Dict, Any, Optional
 
 class CustomAuthProvider:
     """Custom authorization provider implementing the protocol."""
-    
+
     async def check(
         self,
         subject: str,
@@ -868,4 +868,3 @@ docker-compose up
 ---
 
 *MDB_ENGINE is open source and available on GitHub. Contributions welcome.*
-

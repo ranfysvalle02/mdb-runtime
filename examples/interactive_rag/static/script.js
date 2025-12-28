@@ -62,7 +62,7 @@ function initDOMReferences() {
 // Modal Logic
 // -----------
 function showModal({ title, text, contentHTML, onSubmit, onCancel, submitText, cancelText, hideCancel }) {
- 
+
  if (!modalTitle || !modalText || !modalContentHost || !modalOverlay || !modalContainer) {
   console.error("[showModal] Modal elements not found!", {
     modalTitle: !!modalTitle,
@@ -73,21 +73,21 @@ function showModal({ title, text, contentHTML, onSubmit, onCancel, submitText, c
   });
   return;
  }
- 
+
  // Handle HTML in title
  if (title && title.includes('<')) {
   modalTitle.innerHTML = title;
  } else {
  modalTitle.textContent = title || "Modal Title";
  }
- 
+
  // Handle HTML in text
  if (text && text.includes('<')) {
   modalText.innerHTML = text;
  } else {
  modalText.textContent = text || "";
  }
- 
+
  modalContentHost.innerHTML = contentHTML || "";
 
  // Handle submit button FIRST (before cancel to ensure proper state)
@@ -98,7 +98,7 @@ function showModal({ title, text, contentHTML, onSubmit, onCancel, submitText, c
   } else {
    modalSubmitBtn.textContent = "Submit";
   }
-  
+
   if (onSubmit) {
   modalSubmitBtn.onclick = () => {
    onSubmit();
@@ -136,38 +136,38 @@ function showModal({ title, text, contentHTML, onSubmit, onCancel, submitText, c
    }
   }
  }
- 
+
  // Show modal with animation
  const overlayClassesBefore = modalOverlay.className;
  const containerClassesBefore = modalContainer.className;
- 
+
  // FORCE SHOW - Remove hiding classes FIRST
  modalOverlay.classList.remove("invisible", "opacity-0");
  modalContainer.classList.remove("scale-95", "opacity-0");
- 
+
  // Then set inline styles with !important to override everything
  modalOverlay.style.setProperty("display", "flex", "important");
  modalOverlay.style.setProperty("visibility", "visible", "important");
  modalOverlay.style.setProperty("opacity", "1", "important");
  modalOverlay.style.setProperty("z-index", "9999", "important");
- 
+
  // Force container to be visible too
  modalContainer.style.setProperty("opacity", "1", "important");
  modalContainer.style.setProperty("transform", "scale(1)", "important");
- 
+
  // Force a reflow to ensure styles are applied
  void modalOverlay.offsetWidth;
  void modalContainer.offsetWidth;
- 
+
 }
 
 function hideModal(immediate = false) {
- 
+
  if (!modalOverlay || !modalContainer || !modalTitle || !modalText || !modalContentHost) {
   console.warn("[hideModal] Modal elements not found");
   return;
  }
- 
+
  if (immediate) {
   // FORCE HIDE IMMEDIATELY - no animation
   modalOverlay.style.display = "none";
@@ -175,7 +175,7 @@ function hideModal(immediate = false) {
   modalOverlay.style.opacity = "0";
   modalOverlay.style.zIndex = "";
   modalOverlay.classList.add("invisible", "opacity-0");
-  
+
   // Reset button states
   if (modalCancelBtn) {
     modalCancelBtn.style.display = "block";
@@ -187,14 +187,14 @@ function hideModal(immediate = false) {
     modalSubmitBtn.style.visibility = "visible";
     modalSubmitBtn.textContent = "Submit";
   }
-  
+
   // Clear content immediately
   modalTitle.textContent = "";
   modalText.textContent = "";
   modalContentHost.innerHTML = "";
   if (modalSubmitBtn) modalSubmitBtn.onclick = null;
   if (modalCancelBtn) modalCancelBtn.onclick = null;
-  
+
   // Restore overlay click handler
   if (modalOverlay) {
     modalOverlay.onclick = (e) => {
@@ -203,10 +203,10 @@ function hideModal(immediate = false) {
       }
     };
   }
-  
+
   return;
  }
- 
+
  // Normal hide with animation
  // Reset button states
  if (modalCancelBtn) {
@@ -219,7 +219,7 @@ function hideModal(immediate = false) {
   modalSubmitBtn.style.visibility = "visible";
   modalSubmitBtn.textContent = "Submit";
  }
- 
+
  // Restore overlay click handler
  if (modalOverlay) {
   modalOverlay.onclick = (e) => {
@@ -228,27 +228,27 @@ function hideModal(immediate = false) {
     }
   };
  }
- 
+
  // Remove inline styles that override classes (so classes can take effect)
  modalOverlay.style.opacity = "";
  modalOverlay.style.visibility = "";
- 
+
  // Add classes for fade out animation immediately
  modalOverlay.classList.add("opacity-0", "invisible");
  modalContainer.classList.add("scale-95", "opacity-0");
- 
+
  // Wait for animation to complete before clearing content and resetting remaining styles
  setTimeout(() => {
   // Reset remaining inline styles
   modalOverlay.style.zIndex = "";
   modalOverlay.style.display = "";
-  
+
   modalTitle.textContent = "";
   modalText.textContent = "";
   modalContentHost.innerHTML = "";
   if (modalSubmitBtn) modalSubmitBtn.onclick = null;
   if (modalCancelBtn) modalCancelBtn.onclick = null;
-  
+
  }, 300); // Match transition duration
 }
 
@@ -260,7 +260,7 @@ function openSourceBrowser() {
   console.error("Source browser elements not found");
   return;
  }
- 
+
  sourceBrowserOverlay.classList.remove("opacity-0", "invisible");
  sourceBrowserContainer.classList.remove("scale-95", "opacity-0");
  if (sourceBrowserTotalChunks) sourceBrowserTotalChunks.textContent = "";
@@ -273,7 +273,7 @@ function openSourceBrowser() {
    sourceListEl.innerHTML = "";
    chunkListEl.innerHTML = "";
    chunkListPlaceholder.style.display = "block";
-  
+
    if (!data || data.length === 0) {
     sourceListEl.innerHTML = "<p class='text-gray-400 text-sm p-2'>No sources found.</p>";
     return;
@@ -283,11 +283,11 @@ function openSourceBrowser() {
    let totalChunks = 0;
    data.forEach(src => totalChunks += (src.chunk_count || 0));
    sourceBrowserTotalChunks.textContent = `(${totalChunks.toLocaleString()} Total Chunks)`;
-  
+
    data.forEach((src) => {
     const btn = document.createElement("button");
     btn.className = "source-item";
-   
+
     const chunkCount = src.chunk_count !== undefined ? `${src.chunk_count}` : '?';
     const sourceName = src.name + (src.type ? ` (${src.type})` : "");
 
@@ -312,7 +312,7 @@ function openSourceBrowser() {
 
 function loadChunksForSource(sourceUrl) {
   if (!sourceBrowserSelectedChunkCount || !chunkListEl) return;
-  
+
   sourceBrowserSelectedChunkCount.textContent = "Loading...";
   fetch(`/chunks?session_id=${encodeURIComponent(currentSessionId)}&source_url=` + encodeURIComponent(sourceUrl))
    .then((r) => r.json())
@@ -362,7 +362,7 @@ function loadChunksForSource(sourceUrl) {
 // Event listener for chunk buttons - will be attached after DOM ready
 function attachChunkListListeners() {
   if (!chunkListEl) return;
-  
+
   chunkListEl.addEventListener('click', (event) => {
     const editButton = event.target.closest('.chunk-edit-btn');
     if (editButton) {
@@ -404,7 +404,7 @@ function attachSourceBrowserListeners() {
 
 function closeSourceBrowser() {
  if (!sourceBrowserOverlay || !sourceBrowserContainer) return;
- 
+
  sourceBrowserOverlay.classList.add("opacity-0", "invisible");
  sourceBrowserContainer.classList.add("scale-95", "opacity-0");
  if (sourceListEl) sourceListEl.innerHTML = "";
@@ -421,7 +421,7 @@ function closeSourceBrowser() {
 
 function startChunkEdit(chunkId) {
     if (!chunkListEl) return;
-    
+
     const chunkCard = chunkListEl.querySelector(`.chunk-card[data-chunk-id='${chunkId}']`);
     if (!chunkCard || chunkCard.classList.contains('is-editing')) return;
 
@@ -458,7 +458,7 @@ function startChunkEdit(chunkId) {
 
 function cancelChunkEdit(chunkId) {
     if (!chunkListEl) return;
-    
+
     const chunkCard = chunkListEl.querySelector(`.chunk-card[data-chunk-id='${chunkId}']`);
     if (!chunkCard || !chunkCard.classList.contains('is-editing')) return;
 
@@ -475,7 +475,7 @@ function cancelChunkEdit(chunkId) {
 
 function saveChunkEdit(chunkId) {
     if (!chunkListEl) return;
-    
+
     const chunkCard = chunkListEl.querySelector(`.chunk-card[data-chunk-id='${chunkId}']`);
     if (!chunkCard) return;
 
@@ -487,7 +487,7 @@ function saveChunkEdit(chunkId) {
 
     const formData = new FormData();
     formData.append('content', newText);
-    
+
     fetch("/chunk/" + encodeURIComponent(chunkId), {
         method: "PUT",
         body: formData,
@@ -506,7 +506,7 @@ function saveChunkEdit(chunkId) {
 
         const contentHost = chunkCard.querySelector('.chunk-content');
         const actionsHost = chunkCard.querySelector('.chunk-actions');
-        
+
         contentHost.innerHTML = marked.parse(newText);
         actionsHost.innerHTML = chunkCard.dataset.originalActions;
 
@@ -604,7 +604,7 @@ function addBotMessage(message) {
   let sourceLinksHTML = sources.map(source => {
    const href = `/source_content?session_id=${encodeURIComponent(currentSessionId)}&source=${encodeURIComponent(source)}`;
    const target = `target="_blank" rel="noopener noreferrer"`;
-  
+
    let displayName = source;
    try {
     if (source.startsWith('http')) displayName = new URL(source).hostname;
@@ -623,14 +623,14 @@ function addBotMessage(message) {
 
   const sourcesContainer = document.createElement("div");
   sourcesContainer.className = "source-links mt-4 pt-4 border-t border-gray-600";
-  
+
   // Check if we have chunks for this message
   const hasChunksForDisplay = messageId && window.messageChunksMap && window.messageChunksMap.get(messageId) && window.messageChunksMap.get(messageId).length > 0;
   const chunkCount = hasChunksForDisplay ? window.messageChunksMap.get(messageId).length : 0;
-  
+
   // Create prominent inspect button that shows chunk count
   const inspectButton = messageId ? `
-    <button onclick="inspectRetrievedChunks('${messageId}')" 
+    <button onclick="inspectRetrievedChunks('${messageId}')"
             class="flex items-center gap-2 text-xs ${hasChunksForDisplay ? 'bg-mongodb-green-500/20 hover:bg-mongodb-green-500/30 text-mongodb-green-400 shadow-sm shadow-mongodb-green-500/20 border border-mongodb-green-500/30' : 'bg-gray-600/20 hover:bg-gray-600/30 text-gray-400 border border-gray-600/30'} px-3 py-2 rounded-lg transition-all duration-200 hover:scale-105 font-medium">
       <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4">
         <path stroke-linecap="round" stroke-linejoin="round" d="M2.036 12.322a1.012 1.012 0 010-.639l4.43-7.29a1.125 1.125 0 011.906 0l4.43 7.29c.356.586.356 1.35 0 1.936l-4.43 7.29a4.5 4.5 0 01-6.364-6.364l1.757-1.757m13.35-.622l1.757-1.757a4.5 4.5 0 00-6.364-6.364l-4.5 4.5a4.5 4.5 0 001.242 7.244" />
@@ -639,7 +639,7 @@ function addBotMessage(message) {
       ${hasChunksForDisplay ? '<span class="ml-0.5 w-2 h-2 bg-mongodb-green-400 rounded-full animate-pulse"></span>' : ''}
     </button>
   ` : '';
-  
+
   sourcesContainer.innerHTML = `
     <div class="flex justify-between items-center mb-3">
       <div class="flex items-center gap-3">
@@ -668,7 +668,7 @@ function addBotMessage(message) {
 
 function addUserMessage(content) {
  if (!chatBox) return;
- 
+
  const messageEl = document.createElement("div");
  messageEl.className = "message user-message bg-gray-600 p-3 rounded-lg animate-fade-in-up text-right";
  messageEl.textContent = content;
@@ -678,7 +678,7 @@ function addUserMessage(content) {
 
 function addSystemMessage(content) {
  if (!chatBox) return;
- 
+
  const div = document.createElement("div");
  div.className = "message system-message bg-yellow-900/50 text-yellow-300 border-l-4 border-yellow-500 p-3 rounded-r-lg animate-fade-in-up";
  div.innerHTML = `<strong>System:</strong> ${content}`;
@@ -688,7 +688,7 @@ function addSystemMessage(content) {
 
 function setThinking(isThinking) {
  if (!thinkingIndicator || !chatBox) return;
- 
+
  if (isThinking) {
   thinkingIndicator.classList.remove("invisible", "opacity-0");
   chatBox.scrollTop = chatBox.scrollHeight;
@@ -701,7 +701,7 @@ function setThinking(isThinking) {
 // Session Switching UI Control
 // -------------------------
 function showSessionSwitchModal(sessionName, isCreating = false) {
-  
+
   // Check if modal elements exist
   if (!modalTitle || !modalText || !modalContentHost || !modalOverlay || !modalContainer) {
     console.error("[showSessionSwitchModal] Modal elements not found!", {
@@ -713,12 +713,12 @@ function showSessionSwitchModal(sessionName, isCreating = false) {
     });
     return;
   }
-  
+
   const title = isCreating ? "Creating Session" : "Establishing Session";
-  const message = isCreating 
+  const message = isCreating
     ? `Please wait while we set up your new session: <span class="text-mongodb-green-400 font-semibold">${escapeHtml(sessionName)}</span>`
     : `Please wait while we establish your session: <span class="text-mongodb-green-400 font-semibold">${escapeHtml(sessionName)}</span>`;
-  
+
   const loadingHTML = `
     <div class="flex flex-col items-center justify-center py-8">
       <div class="mb-6">
@@ -734,8 +734,8 @@ function showSessionSwitchModal(sessionName, isCreating = false) {
       </div>
     </div>
   `;
-  
-  
+
+
   showModal({
     title: title,
     text: message,
@@ -744,7 +744,7 @@ function showSessionSwitchModal(sessionName, isCreating = false) {
     submitText: "Close",
     onSubmit: null // No action on submit for loading modal
   });
-  
+
   // Hide submit button completely for loading modal (user can't close it)
   if (modalSubmitBtn) {
     modalSubmitBtn.style.display = "none";
@@ -752,70 +752,70 @@ function showSessionSwitchModal(sessionName, isCreating = false) {
   } else {
     console.warn("[showSessionSwitchModal] modalSubmitBtn not found!");
   }
-  
+
   // Mark modal as non-dismissible during session switch
   if (modalOverlay) {
     modalOverlay.setAttribute("data-session-switching", "true");
   } else {
     console.warn("[showSessionSwitchModal] modalOverlay not found!");
   }
-  
+
   // Force a reflow to ensure modal is visible
   void modalOverlay.offsetWidth;
 }
 
 function showSessionSwitchOverlay(sessionName, isCreating = false) {
   if (!sessionSwitchOverlay || !sessionSwitchTitle || !sessionSwitchName || !appContainer) return;
-  
+
   // Update overlay content
   if (sessionSwitchTitle) {
     sessionSwitchTitle.textContent = isCreating ? "Creating Session" : "Switching Session";
   }
   if (sessionSwitchMessage) {
-    sessionSwitchMessage.innerHTML = isCreating 
+    sessionSwitchMessage.innerHTML = isCreating
       ? `Setting up <span id="session-switch-name" class="text-mongodb-green-400 font-semibold">${escapeHtml(sessionName)}</span>`
       : `Loading <span id="session-switch-name" class="text-mongodb-green-400 font-semibold">${escapeHtml(sessionName)}</span>`;
     // Re-get the name element since we replaced it
     sessionSwitchName = document.getElementById("session-switch-name");
   }
-  
+
   // Disable UI elements
   if (sessionSelector) sessionSelector.disabled = true;
   if (newSessionBtn) newSessionBtn.disabled = true;
   if (clearHistoryBtn) clearHistoryBtn.disabled = true;
   if (chatForm) chatForm.style.pointerEvents = "none";
   if (userInput) userInput.disabled = true;
-  
+
   // Disable all tool buttons
   if (toolButtonsContainer) {
     const buttons = toolButtonsContainer.querySelectorAll("button");
     buttons.forEach(btn => btn.disabled = true);
   }
-  
+
   // Fade out app container slightly
   if (appContainer) {
     appContainer.style.opacity = "0.3";
     appContainer.style.pointerEvents = "none";
   }
-  
+
   // Show overlay with animation
   sessionSwitchOverlay.classList.remove("invisible", "opacity-0");
   sessionSwitchOverlay.classList.add("opacity-100");
-  
+
   // Force reflow for smooth animation
   void sessionSwitchOverlay.offsetWidth;
 }
 
 function hideSessionSwitchOverlay() {
-  
+
   // Remove session switching flag from modal
   if (modalOverlay) {
     modalOverlay.removeAttribute("data-session-switching");
   }
-  
+
   // FORCE HIDE MODAL IMMEDIATELY - no animation delay
   hideModal(true);
-  
+
   // Hide overlay immediately too
   if (sessionSwitchOverlay) {
     sessionSwitchOverlay.style.display = "none";
@@ -823,7 +823,7 @@ function hideSessionSwitchOverlay() {
     sessionSwitchOverlay.style.opacity = "0";
     sessionSwitchOverlay.classList.add("invisible", "opacity-0");
   }
-  
+
   // Re-enable UI elements immediately
   if (sessionSelector) sessionSelector.disabled = false;
   if (newSessionBtn) newSessionBtn.disabled = false;
@@ -833,19 +833,19 @@ function hideSessionSwitchOverlay() {
     userInput.disabled = false;
     userInput.focus();
   }
-  
+
   // Re-enable tool buttons
   if (toolButtonsContainer) {
     const buttons = toolButtonsContainer.querySelectorAll("button");
     buttons.forEach(btn => btn.disabled = false);
   }
-  
+
   // Restore app container
   if (appContainer) {
     appContainer.style.opacity = "1";
     appContainer.style.pointerEvents = "";
   }
-  
+
 }
 
 // -------------------------
@@ -859,14 +859,14 @@ function updateSessionDropdown() {
     console.warn("[updateSessionDropdown] sessionSelector not found!");
     return;
   }
-  
+
   const previousValue = sessionSelector.value;
   sessionSelector.innerHTML = "";
-  
+
   // Ensure we always have at least "default" in the list
   const sessionsToShow = allSessions.length > 0 ? allSessions : ["default"];
-  
-  
+
+
   sessionsToShow.forEach((session) => {
     const opt = document.createElement("option");
     opt.value = session;
@@ -876,7 +876,7 @@ function updateSessionDropdown() {
     }
     sessionSelector.appendChild(opt);
   });
-  
+
   // Ensure currentSessionId is selected even if it's not in the list
   if (currentSessionId && !sessionsToShow.includes(currentSessionId)) {
     const opt = document.createElement("option");
@@ -885,11 +885,11 @@ function updateSessionDropdown() {
     opt.selected = true;
     sessionSelector.insertBefore(opt, sessionSelector.firstChild);
   }
-  
+
   // If the value changed, log it for debugging
   if (previousValue !== sessionSelector.value) {
   }
-  
+
 }
 
 function loadSessionsAndState() {
@@ -899,19 +899,19 @@ function loadSessionsAndState() {
   .then((data) => {
    const previousSessions = [...allSessions];
    const previousCurrentSession = currentSessionId;
-   
+
    // Update sessions list - merge with existing to preserve newly created sessions
    const stateSessions = data.all_sessions || [];
    const mergedSessions = [...new Set([...allSessions, ...stateSessions])].sort();
    allSessions = mergedSessions;
-   
+
    // Ensure "default" is always in the list
    if (!allSessions.includes("default")) {
      allSessions.unshift("default");
    }
-   
+
    availableModels = data.available_embedding_models || [];
-   
+
    // Update currentSessionId from state, but preserve if we have a non-default session
    // that's not in the state yet (newly created session)
    if (data.current_session) {
@@ -921,13 +921,13 @@ function loadSessionsAndState() {
    } else {
      currentSessionId = "default";
    }
-   
+
    indexStatusCache = data.index_status || {};
-   
-  
+
+
    // Update session dropdown
    updateSessionDropdown();
-  
+
    if (embeddingModelSelector) {
      const selectedModel = embeddingModelSelector.value;
      embeddingModelSelector.innerHTML = "";
@@ -941,7 +941,7 @@ function loadSessionsAndState() {
        embeddingModelSelector.value = selectedModel;
      }
    }
-   
+
    updateIndexStatusIndicator();
    return data; // Return data for promise chaining
   })
@@ -953,32 +953,32 @@ function loadSessionsAndState() {
 
 function updateIndexStatusIndicator() {
   if (!embeddingModelSelector) return;
-  
+
   const model = embeddingModelSelector.value;
   const status = indexStatusCache[model];
-  
+
   const existing = document.getElementById('index-status-indicator');
   if (existing) existing.remove();
-  
+
   if (!status) {
     return;
   }
-  
+
   const isReady = status.index_ready;
   const docCount = status.document_count || 0;
   const indexStatus = status.index_status || 'UNKNOWN';
   const indexQueryable = status.index_queryable || false;
-  
+
   if (docCount === 0) {
     return;
   }
-  
+
   const indicator = document.createElement('div');
   indicator.id = 'index-status-indicator';
   indicator.className = 'index-status-badge';
-  
+
   let statusConfig = {};
-  
+
   if (isReady && indexQueryable) {
     statusConfig = {
       variant: 'success',
@@ -1033,7 +1033,7 @@ function updateIndexStatusIndicator() {
   } else {
     return;
   }
-  
+
   indicator.innerHTML = `
     <div class="index-status-content ${statusConfig.pulse ? 'pulse-animation' : ''}">
       <span class="index-status-icon">${statusConfig.icon}</span>
@@ -1046,9 +1046,9 @@ function updateIndexStatusIndicator() {
       </button>
     </div>
   `;
-  
+
   indicator.setAttribute('data-variant', statusConfig.variant);
-  
+
   const parent = embeddingModelSelector.parentElement;
   if (parent) {
     parent.insertBefore(indicator, embeddingModelSelector.nextSibling);
@@ -1058,7 +1058,7 @@ function updateIndexStatusIndicator() {
 function checkIndexReady(embeddingModel, maxWait = 30000, pollInterval = 2000) {
   return new Promise((resolve) => {
     const startTime = Date.now();
-    
+
     const check = () => {
       fetch(`/index_status?session_id=${encodeURIComponent(currentSessionId)}&embedding_model=${encodeURIComponent(embeddingModel)}&auto_create=true`)
         .then(r => r.json())
@@ -1067,7 +1067,7 @@ function checkIndexReady(embeddingModel, maxWait = 30000, pollInterval = 2000) {
             resolve(true);
             return;
           }
-          
+
           if (data.index_status === 'CREATING' || data.index_status === 'BUILDING' || data.index_status === 'PENDING') {
             if (Date.now() - startTime > maxWait) {
               resolve(false);
@@ -1076,12 +1076,12 @@ function checkIndexReady(embeddingModel, maxWait = 30000, pollInterval = 2000) {
             setTimeout(check, pollInterval);
             return;
           }
-          
+
           if (Date.now() - startTime > maxWait) {
             resolve(false);
             return;
           }
-          
+
           setTimeout(check, pollInterval);
         })
         .catch(() => {
@@ -1092,17 +1092,17 @@ function checkIndexReady(embeddingModel, maxWait = 30000, pollInterval = 2000) {
           }
         });
     };
-    
+
     check();
   });
 }
 
 function switchSession(sessionId, skipModal = false) {
-  
+
   // Show modal and disable UI (unless already shown)
   if (!skipModal) {
     showSessionSwitchModal(sessionId, false);
-    
+
     // Disable UI elements
     if (sessionSelector) sessionSelector.disabled = true;
     if (newSessionBtn) newSessionBtn.disabled = true;
@@ -1117,13 +1117,13 @@ function switchSession(sessionId, skipModal = false) {
       appContainer.style.opacity = "0.3";
       appContainer.style.pointerEvents = "none";
     }
-    
+
     // Ensure modal is on top
     if (modalOverlay) {
       modalOverlay.style.zIndex = "9999";
     }
   }
-  
+
   // Small delay to let modal animation start (if we just showed it)
   const delay = skipModal ? 0 : 200;
   setTimeout(() => {
@@ -1143,7 +1143,7 @@ function switchSession(sessionId, skipModal = false) {
         alert("Error switching session: " + data.error);
         return;
       }
-      
+
       // Update session list and currentSessionId from session_update response
       if (data.session_update) {
         if (data.session_update.all_sessions) {
@@ -1156,33 +1156,33 @@ function switchSession(sessionId, skipModal = false) {
         // Fallback: use sessionId parameter
         currentSessionId = sessionId;
       }
-      
+
       // Update session dropdown immediately
       updateSessionDropdown();
-      
+
       // FORCE HIDE MODAL IMMEDIATELY - no delay
       hideSessionSwitchOverlay();
-      
+
       // Show message immediately after modal is hidden
       // Clear and update chat box with fade animation
       if (chatBox) {
         // Fade out current content
         chatBox.style.opacity = "0";
         chatBox.style.transition = "opacity 0.3s ease-out";
-        
+
         setTimeout(() => {
           chatBox.innerHTML = '';
           const welcomeDiv = document.createElement("div");
           welcomeDiv.className = "message system-message animate-fade-in-up bg-yellow-900/50 text-yellow-300 border-l-4 border-yellow-500 p-4 rounded-r-lg";
           welcomeDiv.innerHTML = `<b>Switched to session: ${sessionId}</b>`;
           chatBox.appendChild(welcomeDiv);
-          
+
           // Fade in new content
           chatBox.style.opacity = "1";
           chatBox.style.transition = "opacity 0.5s ease-in";
         }, 300);
       }
-      
+
       // Refresh full state to get index status and other info
       loadSessionsAndState();
      })
@@ -1195,10 +1195,10 @@ function switchSession(sessionId, skipModal = false) {
 }
 
 function createSession(newSessionName) {
- 
+
  // Show modal and disable UI
  showSessionSwitchModal(newSessionName, true);
- 
+
  // Disable UI elements
  if (sessionSelector) sessionSelector.disabled = true;
  if (newSessionBtn) newSessionBtn.disabled = true;
@@ -1213,12 +1213,12 @@ function createSession(newSessionName) {
    appContainer.style.opacity = "0.3";
    appContainer.style.pointerEvents = "none";
  }
- 
+
  // Ensure modal is on top
  if (modalOverlay) {
    modalOverlay.style.zIndex = "9999";
  }
- 
+
  // Small delay to let modal animation start
  setTimeout(() => {
    fetch("/chat", {
@@ -1231,58 +1231,58 @@ function createSession(newSessionName) {
    })
     .then((r) => r.json())
     .then((data) => {
-     
+
      if (data.error) {
       console.error("Error creating session:", data.error);
       hideSessionSwitchOverlay();
       alert("Error creating session: " + data.error);
       return;
      }
-     
+
      // ALWAYS update currentSessionId to the new session (don't trust backend response)
      currentSessionId = newSessionName;
-     
+
      // Update session list from session_update if available
      if (data.session_update && data.session_update.all_sessions) {
        allSessions = [...data.session_update.all_sessions]; // Copy array
      }
-     
+
      // CRITICAL: ALWAYS ensure the new session is in the list (backend might not include it yet)
      if (!allSessions.includes(newSessionName)) {
        allSessions.push(newSessionName);
        allSessions.sort();
      }
-     
+
      // IMPORTANT: Don't trust current_session from response when creating a new session
      // The backend might return the old session. Always use the new session name we created.
      if (data.session_update && data.session_update.current_session === newSessionName) {
      } else if (data.session_update) {
      }
-     
+
      // ALWAYS update session dropdown immediately with the new session
      updateSessionDropdown();
-     
+
      // FORCE HIDE MODAL IMMEDIATELY - no delay
      hideSessionSwitchOverlay();
-     
+
      // Show message immediately after modal is hidden
      // Clear and update chat box with fade animation
      if (chatBox) {
        chatBox.style.opacity = "0";
        chatBox.style.transition = "opacity 0.3s ease-out";
-       
+
        setTimeout(() => {
          chatBox.innerHTML = '';
          const welcomeDiv = document.createElement("div");
          welcomeDiv.className = "message system-message animate-fade-in-up bg-yellow-900/50 text-yellow-300 border-l-4 border-yellow-500 p-4 rounded-r-lg";
          welcomeDiv.innerHTML = `<b>Created and switched to new session: ${newSessionName}</b>`;
          chatBox.appendChild(welcomeDiv);
-         
+
          chatBox.style.opacity = "1";
          chatBox.style.transition = "opacity 0.5s ease-in";
        }, 300);
      }
-     
+
      // Refresh full state to sync with backend
      loadSessionsAndState();
     })
@@ -1303,21 +1303,21 @@ function startIndexStatusRefresh() {
   if (indexStatusRefreshInterval) {
     clearInterval(indexStatusRefreshInterval);
   }
-  
+
   indexStatusRefreshInterval = setInterval(() => {
     if (!embeddingModelSelector) return;
-    
+
     const model = embeddingModelSelector.value;
     const status = indexStatusCache[model];
-    
+
     if (status && status.document_count > 0) {
-      const needsRefresh = !status.index_ready || 
-                          status.index_status === 'CREATING' || 
-                          status.index_status === 'BUILDING' || 
+      const needsRefresh = !status.index_ready ||
+                          status.index_status === 'CREATING' ||
+                          status.index_status === 'BUILDING' ||
                           status.index_status === 'PENDING' ||
                           status.index_status === 'STALE' ||
                           status.index_status === 'NOT_FOUND';
-      
+
       if (needsRefresh) {
         loadSessionsAndState();
       }
@@ -1339,14 +1339,14 @@ function initializeEventListeners() {
      }
     });
   }
-  
+
   // Source browser listeners
   attachSourceBrowserListeners();
   attachChunkListListeners();
-  
+
   // Chat listeners
   attachChatListeners();
-  
+
   // Session selector dropdown
   if (sessionSelector) {
     sessionSelector.addEventListener("change", () => {
@@ -1397,7 +1397,7 @@ function initializeEventListeners() {
       .catch((err) => console.error("Failed to clear history:", err));
     });
   }
-  
+
   // Embedding model selector
   if (embeddingModelSelector) {
     embeddingModelSelector.addEventListener("change", () => {
@@ -1409,13 +1409,13 @@ function initializeEventListeners() {
 document.addEventListener("DOMContentLoaded", () => {
   initDOMReferences();
   initializeEventListeners();
-  
+
   // Initialize dropdown with at least "default" before loading state
   if (allSessions.length === 0) {
     allSessions = ["default"];
   }
   updateSessionDropdown();
-  
+
   loadSessionsAndState();
   startIndexStatusRefresh();
 });
@@ -1425,7 +1425,7 @@ function attachChatListeners() {
     chatForm.addEventListener("submit", async (event) => {
      event.preventDefault();
      if (!userInput) return;
-     
+
      const text = userInput.value.trim();
      if (!text) return;
 
@@ -1517,11 +1517,11 @@ function attachChatListeners() {
      handleToolAction(action);
     });
   }
-  
+
   if (previewRagBtn) {
     previewRagBtn.addEventListener("click", () => {
      if (!userInput) return;
-     
+
      const text = userInput.value.trim();
      if (!text) {
       alert("Type your query in the box first.");
@@ -1564,18 +1564,18 @@ function attachChatListeners() {
         });
         return;
        }
-       
+
        // Calculate score statistics
        const scores = filteredData.map(r => r.score || 0);
        const maxScore = scores.length > 0 ? Math.max(...scores) : 1;
        const minScoreFound = scores.length > 0 ? Math.min(...scores) : 0;
-       
+
        // Build clean tab navigation
        const tabNavHTML = filteredData.map((res, idx) => {
          const score = res.score !== undefined ? res.score.toFixed(3) : 'N/A';
          const scoreNum = res.score || 0;
          const scorePercent = maxScore > 0 ? (scoreNum / maxScore) * 100 : 0;
-         
+
          let scoreColor = 'text-gray-400';
          if (scorePercent >= 80) {
            scoreColor = 'text-green-400';
@@ -1584,11 +1584,11 @@ function attachChatListeners() {
          } else if (scorePercent >= 40) {
            scoreColor = 'text-orange-400';
          }
-         
+
          return `
            <li class="nav-item" role="presentation">
-             <button onclick="switchPreviewTab('preview-${idx}')" 
-                     class="nav-link chunk-tab ${idx === 0 ? 'active' : ''}" 
+             <button onclick="switchPreviewTab('preview-${idx}')"
+                     class="nav-link chunk-tab ${idx === 0 ? 'active' : ''}"
                      id="preview-tab-${idx}"
                      type="button"
                      role="tab"
@@ -1600,13 +1600,13 @@ function attachChatListeners() {
            </li>
          `;
        }).join('');
-       
+
        // Build preview panels
        const previewPanelsHTML = filteredData.map((res, idx) => {
          const score = res.score !== undefined ? res.score.toFixed(4) : 'N/A';
          const source = escapeHtml(res.source || 'N/A');
          const content = escapeHtml(res.content || '');
-         
+
          let sourceDisplay = source;
          try {
            if (res.source && res.source.startsWith('http')) {
@@ -1614,7 +1614,7 @@ function attachChatListeners() {
              sourceDisplay = url.hostname.replace('www.', '');
            }
          } catch (e) {}
-         
+
          const scoreNum = res.score || 0;
          const scorePercent = maxScore > 0 ? (scoreNum / maxScore) * 100 : 0;
          let scoreTextColor = 'text-gray-400';
@@ -1625,11 +1625,11 @@ function attachChatListeners() {
          } else if (scorePercent >= 40) {
            scoreTextColor = 'text-orange-400';
          }
-         
+
          return `
-           <div class="tab-pane fade ${idx === 0 ? 'show active' : ''}" 
-                id="preview-panel-${idx}" 
-                role="tabpanel" 
+           <div class="tab-pane fade ${idx === 0 ? 'show active' : ''}"
+                id="preview-panel-${idx}"
+                role="tabpanel"
                 aria-labelledby="preview-tab-${idx}">
              <div class="chunk-panel-content flex flex-col h-full">
                <div class="flex items-center justify-between mb-4 pb-3 border-b border-gray-700 flex-shrink-0">
@@ -1638,8 +1638,8 @@ function attachChatListeners() {
                    <span class="text-xs font-mono ${scoreTextColor}">${score}</span>
                  </div>
                  <div class="flex items-center gap-2">
-                   <a href="/source_content?session_id=${encodeURIComponent(currentSessionId)}&source=${encodeURIComponent(res.source)}" 
-                      target="_blank" 
+                   <a href="/source_content?session_id=${encodeURIComponent(currentSessionId)}&source=${encodeURIComponent(res.source)}"
+                      target="_blank"
                       class="text-xs text-blue-400 hover:text-blue-300 transition-colors">
                      ${sourceDisplay}
                    </a>
@@ -1654,7 +1654,7 @@ function attachChatListeners() {
            </div>
          `;
        }).join('');
-       
+
        showModal({
         title: `
           <div class="flex items-center gap-3">
@@ -1682,7 +1682,7 @@ function attachChatListeners() {
         hideCancel: true,
         submitText: "Close"
        });
-       
+
        // Initialize first tab
        setTimeout(() => {
          if (filteredData.length > 0) {
@@ -1695,13 +1695,13 @@ function attachChatListeners() {
       });
     });
   }
-  
+
   if (minScoreInput && minScoreValue) {
     minScoreInput.addEventListener("input", () => {
      minScoreValue.textContent = parseFloat(minScoreInput.value).toFixed(2);
     });
   }
-  
+
   if (maxCharsInput && maxCharsValue) {
     maxCharsInput.addEventListener("input", () => {
      maxCharsValue.textContent = parseInt(maxCharsInput.value);
@@ -1752,7 +1752,7 @@ function handleToolAction(action) {
 // Due to length, I'm including the core structure. The full version would include:
 // - renderChunkPreview
 // - handleReadFile
-// - handleReadUrlAndChunking  
+// - handleReadUrlAndChunking
 // - handleWebSearch
 // - pollIngestionTask
 // - Debug modal functions
@@ -1807,7 +1807,7 @@ async function renderChunkPreview(content, chunkSize, chunkOverlap, targetElemen
             <div class="chunk-content">${escapeHtml(c)}</div>
           </div>
     `).join('');
-   
+
     targetEl.innerHTML = `<div class="chunk-list-container animate-fade-in-up">${chunkHtml}</div>`;
     countEl.textContent = `Total Chunks: ${data.chunks.length}`;
     return true;
@@ -1922,7 +1922,7 @@ function handleReadFile() {
   const processFile = (file) => {
     if (!file) return;
     currentFile = file;
-    
+
     fileNameDisplay.textContent = file.name;
     dropZonePrompt.classList.add('hidden');
     dropZoneDisplay.classList.remove('hidden');
@@ -1940,7 +1940,7 @@ function handleReadFile() {
         }
         sourceName = data.filename;
         contentTextarea.value = data.content;
-       
+
         const chunkSize = parseInt(document.getElementById('ingestion-chunk-size').value);
         const chunkOverlap = parseInt(document.getElementById('ingestion-chunk-overlap').value);
         renderChunkPreview(data.content, chunkSize, chunkOverlap, 'ingestion-chunk-preview-host', 'ingestion-chunk-count');
@@ -1981,7 +1981,7 @@ function handleReadFile() {
       rechunkBtn.classList.remove('needs-update');
     });
   }
- 
+
   if (contentTextarea) {
     contentTextarea.addEventListener('input', () => {
       if (rechunkBtn) rechunkBtn.classList.add('needs-update');
@@ -2033,7 +2033,7 @@ function handleReadUrlAndChunking(initialUrl = '') {
       </div>
       <button id="ingestion-rechunk-btn" class="btn btn-secondary w-full">Update Chunk Preview</button>
     </div>`;
- 
+
   showModal({
     title: "Add URL to Knowledge Base",
     text: "Fetch content, edit if needed, adjust chunking, and submit to ingest.",
@@ -2052,7 +2052,7 @@ function handleReadUrlAndChunking(initialUrl = '') {
         alert("Chunk overlap must be less than chunk size.");
         return;
       }
-     
+
       fetch("/ingest", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -2084,7 +2084,7 @@ function handleReadUrlAndChunking(initialUrl = '') {
     const url = urlInput.value.trim();
     if (!url) return;
     contentTextarea.value = 'Loading URL content...';
-   
+
     fetch(`/preview_url?url=${encodeURIComponent(url)}`)
       .then(r => r.json()).then(data => {
         if (data.error) {
@@ -2092,7 +2092,7 @@ function handleReadUrlAndChunking(initialUrl = '') {
           return;
         }
         contentTextarea.value = data.markdown;
-       
+
         const chunkSize = parseInt(document.getElementById('ingestion-chunk-size').value);
         const chunkOverlap = parseInt(document.getElementById('ingestion-chunk-overlap').value);
         renderChunkPreview(data.markdown, chunkSize, chunkOverlap, 'ingestion-chunk-preview-host', 'ingestion-chunk-count');
@@ -2112,7 +2112,7 @@ function handleReadUrlAndChunking(initialUrl = '') {
       rechunkBtn.classList.remove('needs-update');
     });
   }
- 
+
   if (contentTextarea) {
     contentTextarea.addEventListener('input', () => {
       if (rechunkBtn) rechunkBtn.classList.add('needs-update');
@@ -2146,7 +2146,7 @@ function handleWebSearch() {
    hideModal();
    addUserMessage(`web_search ${query}`);
    setThinking(true);
-  
+
    fetch("/search", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -2166,7 +2166,7 @@ function handleWebSearch() {
          host = new URL(url).hostname;
         } catch (e) { }
        }
-      
+
        return `
           <div class="web-result-card animate-fade-in-up">
            <div class="flex justify-between items-start mb-2">
@@ -2187,7 +2187,7 @@ function handleWebSearch() {
       }).join('');
 
       addBotMessage({ content: `<div><p>Web Search Results:</p><div class="mt-4">${resultsHtml}</div></div>` });
-     
+
       document.querySelectorAll('.read-url-btn').forEach(button => {
        button.addEventListener('click', (e) => {
         const url = e.target.closest('button').getAttribute('data-url');
@@ -2220,7 +2220,7 @@ let ingestionStatusInterval = null;
 
 function createIngestionOverlay() {
   if (ingestionOverlay) return ingestionOverlay;
-  
+
   const overlay = document.createElement('div');
   overlay.id = 'ingestion-overlay';
   overlay.className = 'fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 z-50';
@@ -2255,7 +2255,7 @@ function hideIngestionOverlay() {
     ingestionOverlay.classList.add('hidden');
     ingestionOverlay.style.display = 'none';
   }
-  
+
   if (ingestionStatusInterval) {
     clearInterval(ingestionStatusInterval);
     ingestionStatusInterval = null;
@@ -2265,7 +2265,7 @@ function hideIngestionOverlay() {
 function updateIngestionStatus(status, step, progress = 0) {
   const statusText = document.getElementById('ingestion-status-text');
   const progressBar = document.getElementById('ingestion-progress-bar');
-  
+
   if (statusText) {
     const stepMessages = {
       'pending': 'Initializing...',
@@ -2273,7 +2273,7 @@ function updateIngestionStatus(status, step, progress = 0) {
       'complete': 'Complete!',
       'failed': 'Failed'
     };
-    
+
     let message = stepMessages[status] || status;
     if (status === 'processing' && step) {
       message = step;
@@ -2282,17 +2282,17 @@ function updateIngestionStatus(status, step, progress = 0) {
     } else if (status === 'failed') {
       message = `❌ Ingestion failed: ${step || 'Unknown error'}`;
     }
-    
+
     statusText.textContent = message;
   }
-  
+
   if (progressBar) {
     let progressPercent = progress;
     if (status === 'pending') progressPercent = 10;
     else if (status === 'processing') progressPercent = Math.max(20, Math.min(90, progress));
     else if (status === 'complete') progressPercent = 100;
     else if (status === 'failed') progressPercent = 0;
-    
+
     progressBar.style.width = `${progressPercent}%`;
   }
 }
@@ -2300,10 +2300,10 @@ function updateIngestionStatus(status, step, progress = 0) {
 function pollIngestionTask(taskId) {
   showIngestionOverlay();
   updateIngestionStatus('pending', 'Starting ingestion...', 10);
-  
+
   let pollCount = 0;
   const maxPolls = 300;
-  
+
   const checkStatus = () => {
     pollCount++;
     if (pollCount > maxPolls) {
@@ -2311,13 +2311,13 @@ function pollIngestionTask(taskId) {
       addSystemMessage(`Ingestion timeout: Task ${taskId} took too long. Please check server logs.`);
       return;
     }
-    
+
     fetch(`/ingest/status/${taskId}`)
      .then(r => r.json())
      .then(data => {
       const status = data.status || 'pending';
       const step = data.step || data.message || '';
-      
+
       let progress = 20;
       if (step.includes('Chunking')) progress = 30;
       else if (step.includes('Generating embeddings')) progress = 50;
@@ -2325,9 +2325,9 @@ function pollIngestionTask(taskId) {
       else if (step.includes('Preparing')) progress = 70;
       else if (step.includes('Saving')) progress = 85;
       else if (step.includes('Verifying')) progress = 95;
-      
+
       updateIngestionStatus(status, step, progress);
-      
+
       if (status === 'complete') {
         hideIngestionOverlay();
         addSystemMessage(`✅ Ingestion successful! ${data.message || ''}`);
@@ -2344,7 +2344,7 @@ function pollIngestionTask(taskId) {
       ingestionStatusInterval = setTimeout(checkStatus, 2000);
      });
   };
-  
+
   ingestionStatusInterval = setTimeout(checkStatus, 1000);
 }
 
@@ -2359,26 +2359,26 @@ window.openDebugModal = function() {
 };
 
 window.inspectRetrievedChunks = function(messageId) {
-  
+
   const query = messageQueryMap.get(messageId);
   const chunks = (window.messageChunksMap && window.messageChunksMap.get(messageId)) || [];
-  
-  
+
+
   if (!query) {
     alert('Query information not available for this message.');
     return;
   }
-  
+
   if (!chunks || chunks.length === 0) {
     console.warn('[Chunk Inspection] No chunks found for message:', messageId);
     console.warn('[Chunk Inspection] Available message IDs in chunks map:', window.messageChunksMap ? Array.from(window.messageChunksMap.keys()) : 'map does not exist');
     console.warn('[Chunk Inspection] Available message IDs in query map:', Array.from(messageQueryMap.keys()));
-    
+
     // Show debug info
-    const debugInfo = window.messageChunksMap ? 
+    const debugInfo = window.messageChunksMap ?
       `Map has ${window.messageChunksMap.size} entries. Keys: ${Array.from(window.messageChunksMap.keys()).join(', ')}` :
       'Chunks map does not exist';
-    
+
   showModal({
     title: "Retrieved Chunks",
     text: `Query: ${query}`,
@@ -2397,18 +2397,18 @@ window.inspectRetrievedChunks = function(messageId) {
     });
     return;
   }
-  
+
   // Calculate score statistics for visualization
   const scores = chunks.map(c => c.score || 0).filter(s => s > 0);
   const maxScore = scores.length > 0 ? Math.max(...scores) : 1;
   const minScore = scores.length > 0 ? Math.min(...scores) : 0;
-  
+
   // Build clean, minimal tab navigation
   const tabNavHTML = chunks.map((chunk, index) => {
     const score = chunk.score !== undefined ? chunk.score.toFixed(3) : 'N/A';
     const scoreNum = chunk.score || 0;
     const scorePercent = maxScore > 0 ? (scoreNum / maxScore) * 100 : 0;
-    
+
     // Simple color based on score
     let scoreColor = 'text-gray-400';
     let scoreBg = 'bg-gray-600';
@@ -2422,11 +2422,11 @@ window.inspectRetrievedChunks = function(messageId) {
       scoreColor = 'text-orange-400';
       scoreBg = 'bg-orange-500';
     }
-    
+
     return `
       <li class="nav-item" role="presentation">
-        <button onclick="switchChunkTab('${messageId}', ${index})" 
-                class="nav-link chunk-tab ${index === 0 ? 'active' : ''}" 
+        <button onclick="switchChunkTab('${messageId}', ${index})"
+                class="nav-link chunk-tab ${index === 0 ? 'active' : ''}"
                 id="chunk-tab-${messageId}-${index}"
                 type="button"
                 role="tab"
@@ -2438,7 +2438,7 @@ window.inspectRetrievedChunks = function(messageId) {
       </li>
     `;
   }).join('');
-  
+
   // Build chunk content panels (Bootstrap tab content style)
   const chunkPanelsHTML = chunks.map((chunk, index) => {
     const score = chunk.score !== undefined ? chunk.score.toFixed(4) : 'N/A';
@@ -2449,7 +2449,7 @@ window.inspectRetrievedChunks = function(messageId) {
     const previewLength = 600;
     const displayText = isLong ? text.substring(0, previewLength) : text;
     const remainingText = isLong ? text.substring(previewLength) : '';
-    
+
     // Calculate score visualization
     const scorePercent = maxScore > 0 ? (scoreNum / maxScore) * 100 : 0;
     let scoreBadgeColor = 'bg-gray-500';
@@ -2464,7 +2464,7 @@ window.inspectRetrievedChunks = function(messageId) {
       scoreBadgeColor = 'bg-gradient-to-r from-orange-500 to-red-500';
       scoreTextColor = 'text-orange-400';
     }
-    
+
     // Extract domain from source URL
     let sourceDisplay = source;
     try {
@@ -2473,14 +2473,14 @@ window.inspectRetrievedChunks = function(messageId) {
         sourceDisplay = url.hostname.replace('www.', '');
       }
     } catch (e) {}
-    
+
     const chunkId = `chunk-${messageId}-${index}`;
     const panelId = `chunk-panel-${messageId}-${index}`;
-    
+
     return `
-      <div class="tab-pane fade ${index === 0 ? 'show active' : ''}" 
-           id="${panelId}" 
-           role="tabpanel" 
+      <div class="tab-pane fade ${index === 0 ? 'show active' : ''}"
+           id="${panelId}"
+           role="tabpanel"
            aria-labelledby="chunk-tab-${messageId}-${index}">
         <div class="chunk-panel-content flex flex-col h-full">
           <!-- Clean header -->
@@ -2490,18 +2490,18 @@ window.inspectRetrievedChunks = function(messageId) {
               <span class="text-xs font-mono ${scoreTextColor}">${score}</span>
             </div>
             <div class="flex items-center gap-2">
-              <a href="/source_content?session_id=${encodeURIComponent(currentSessionId)}&source=${encodeURIComponent(chunk.source)}" 
-                 target="_blank" 
+              <a href="/source_content?session_id=${encodeURIComponent(currentSessionId)}&source=${encodeURIComponent(chunk.source)}"
+                 target="_blank"
                  class="text-xs text-blue-400 hover:text-blue-300 transition-colors">
                 ${sourceDisplay}
               </a>
-              <button onclick="copyChunkText('${chunkId}')" 
+              <button onclick="copyChunkText('${chunkId}')"
                       class="text-xs text-gray-400 hover:text-mongodb-green-400 transition-colors px-2 py-1">
                 Copy
               </button>
             </div>
           </div>
-          
+
           <!-- Chunk content - fixed height with scroll -->
           <div class="chunk-content-area flex-1 overflow-y-auto">
             <div class="text-sm text-gray-200 leading-relaxed whitespace-pre-wrap bg-gray-900/50 rounded p-4 border border-gray-700" id="chunk-text-${chunkId}">
@@ -2511,7 +2511,7 @@ window.inspectRetrievedChunks = function(messageId) {
               <div id="chunk-expanded-${chunkId}" class="hidden mt-2">
                 <div class="text-sm text-gray-200 leading-relaxed whitespace-pre-wrap bg-gray-900/50 rounded p-4 border border-gray-700">${remainingText}</div>
               </div>
-              <button onclick="toggleChunkExpand('${chunkId}')" 
+              <button onclick="toggleChunkExpand('${chunkId}')"
                       class="mt-2 text-xs text-mongodb-green-400 hover:text-mongodb-green-300 transition-colors">
                 <span class="expand-text">Show more</span>
               </button>
@@ -2521,7 +2521,7 @@ window.inspectRetrievedChunks = function(messageId) {
       </div>
     `;
   }).join('');
-  
+
   showModal({
     title: `
       <div class="flex items-center gap-3">
@@ -2541,7 +2541,7 @@ window.inspectRetrievedChunks = function(messageId) {
         <ul class="nav nav-tabs chunk-tabs-nav border-b border-gray-700 mb-4" role="tablist">
           ${tabNavHTML}
         </ul>
-        
+
         <!-- Tab content - fixed height container -->
         <div class="tab-content chunk-tab-content" style="height: 500px;">
           ${chunkPanelsHTML}
@@ -2551,7 +2551,7 @@ window.inspectRetrievedChunks = function(messageId) {
     hideCancel: true,
     submitText: "Close"
   });
-  
+
   // Force button updates immediately after modal is shown
   setTimeout(() => {
     if (modalCancelBtn) {
@@ -2562,7 +2562,7 @@ window.inspectRetrievedChunks = function(messageId) {
       modalSubmitBtn.textContent = "Close";
     }
   }, 0);
-  
+
   // Initialize first tab as active
   setTimeout(() => {
     if (chunks.length > 0) {
@@ -2574,24 +2574,24 @@ window.inspectRetrievedChunks = function(messageId) {
 // Preview tab switching function
 window.switchPreviewTab = function(tabId) {
   const tabIndex = parseInt(tabId.replace('preview-', ''));
-  
+
   // Hide all preview panels
   document.querySelectorAll('[id^="preview-panel-"]').forEach(panel => {
     panel.classList.remove('show', 'active');
   });
-  
+
   // Remove active from all preview tab buttons
   document.querySelectorAll('[id^="preview-tab-"]').forEach(btn => {
     btn.classList.remove('active');
     btn.setAttribute('aria-selected', 'false');
   });
-  
+
   // Show selected panel
   const selectedPanel = document.getElementById(`preview-panel-${tabIndex}`);
   if (selectedPanel) {
     selectedPanel.classList.add('show', 'active');
   }
-  
+
   // Activate selected tab button
   const selectedTab = document.getElementById(`preview-tab-${tabIndex}`);
   if (selectedTab) {
@@ -2607,19 +2607,19 @@ window.switchChunkTab = function(messageId, tabIndex) {
   document.querySelectorAll(`[id^="chunk-panel-${messageId}-"]`).forEach(panel => {
     panel.classList.remove('show', 'active');
   });
-  
+
   // Remove active from all tab buttons
   document.querySelectorAll(`[id^="chunk-tab-${messageId}-"]`).forEach(btn => {
     btn.classList.remove('active');
     btn.setAttribute('aria-selected', 'false');
   });
-  
+
   // Show selected panel
   const selectedPanel = document.getElementById(`chunk-panel-${messageId}-${tabIndex}`);
   if (selectedPanel) {
     selectedPanel.classList.add('show', 'active');
   }
-  
+
   // Activate selected tab button
   const selectedTab = document.getElementById(`chunk-tab-${messageId}-${tabIndex}`);
   if (selectedTab) {
@@ -2636,7 +2636,7 @@ window.toggleChunkExpand = function(chunkId) {
   const button = event.target.closest('button');
   const expandText = button.querySelector('.expand-text');
   const expandIcon = button.querySelector('.expand-icon');
-  
+
   if (expandedDiv && expandedDiv.classList.contains('hidden')) {
     expandedDiv.classList.remove('hidden');
     expandText.textContent = 'Show less';
@@ -2651,15 +2651,15 @@ window.toggleChunkExpand = function(chunkId) {
 
 window.copyChunkText = function(chunkId) {
   const button = event.target.closest('button');
-  
+
   // Extract messageId and chunkIndex from chunkId (format: chunk-msg-123-0)
   const parts = chunkId.split('-');
   const chunkIndex = parseInt(parts[parts.length - 1]);
   const messageId = parts.slice(1, -1).join('-');
-  
+
   const chunks = (window.messageChunksMap && window.messageChunksMap.get(messageId)) || [];
   const chunk = chunks[chunkIndex];
-  
+
   if (chunk && chunk.text) {
     navigator.clipboard.writeText(chunk.text).then(() => {
       const originalHTML = button.innerHTML;
@@ -2684,12 +2684,12 @@ window.copyChunkText = function(chunkId) {
 window.toggleSection = function(sectionId) {
   const section = document.getElementById(sectionId);
   if (!section) return;
-  
+
   const header = section.previousElementSibling;
   const chevron = header?.querySelector('.section-chevron');
-  
+
   const isCollapsed = section.classList.contains('collapsed');
-  
+
   if (isCollapsed) {
     section.classList.remove('collapsed');
     if (chevron) chevron.classList.remove('rotated');
@@ -2697,7 +2697,7 @@ window.toggleSection = function(sectionId) {
     section.classList.add('collapsed');
     if (chevron) chevron.classList.add('rotated');
   }
-  
+
   // Save state to localStorage
   try {
     localStorage.setItem(`section-${sectionId}`, isCollapsed ? 'expanded' : 'collapsed');

@@ -6,43 +6,45 @@ used in the current conversation app. The conversation app uses the LLM
 service directly without these prompt templates.
 """
 
-from typing import List, Dict, Any, Optional
 from datetime import datetime
+from typing import Any, Dict, List, Optional
 
 
 def get_system_prompt(
     user_name: Optional[str] = None,
     task_count: int = 0,
-    recent_tasks: Optional[List[Dict[str, Any]]] = None
+    recent_tasks: Optional[List[Dict[str, Any]]] = None,
 ) -> str:
     """
     Generate system prompt for AI assistant.
-    
+
     Args:
         user_name: Current user's name
         task_count: Total number of tasks
         recent_tasks: List of recent tasks (for context)
-    
+
     Returns:
         System prompt string
     """
     context_parts = []
-    
+
     if user_name:
         context_parts.append(f"- User: {user_name}")
-    
+
     context_parts.append(f"- Total tasks: {task_count}")
-    
+
     if recent_tasks:
-        recent_summary = "\n".join([
-            f"  - {task.get('title', 'Untitled')} ({task.get('status', 'unknown')})"
-            for task in recent_tasks[:5]
-        ])
+        recent_summary = "\n".join(
+            [
+                f"  - {task.get('title', 'Untitled')} ({task.get('status', 'unknown')})"
+                for task in recent_tasks[:5]
+            ]
+        )
         context_parts.append(f"- Recent tasks:\n{recent_summary}")
-    
+
     context = "\n".join(context_parts) if context_parts else "No context available"
-    
-    return f"""You are an AI assistant for a task management application. 
+
+    return f"""You are an AI assistant for a task management application.
 You help users create, organize, and analyze tasks.
 
 Current context:
@@ -72,10 +74,10 @@ Always be professional, friendly, and focused on helping users manage their task
 def get_task_creation_prompt(user_message: str) -> str:
     """
     Generate prompt for parsing natural language into tasks.
-    
+
     Args:
         user_message: User's natural language request
-    
+
     Returns:
         Prompt string for task creation
     """
@@ -114,20 +116,22 @@ Return ONLY the JSON array:"""
 def get_task_analysis_prompt(tasks: List[Dict[str, Any]]) -> str:
     """
     Generate prompt for analyzing tasks.
-    
+
     Args:
         tasks: List of task dictionaries
-    
+
     Returns:
         Prompt string for task analysis
     """
-    tasks_summary = "\n".join([
-        f"- {task.get('title', 'Untitled')} | Status: {task.get('status', 'unknown')} | "
-        f"Priority: {task.get('priority', 'medium')} | "
-        f"Due: {task.get('due_date', 'No due date') if task.get('due_date') else 'No due date'}"
-        for task in tasks
-    ])
-    
+    tasks_summary = "\n".join(
+        [
+            f"- {task.get('title', 'Untitled')} | Status: {task.get('status', 'unknown')} | "
+            f"Priority: {task.get('priority', 'medium')} | "
+            f"Due: {task.get('due_date', 'No due date') if task.get('due_date') else 'No due date'}"
+            for task in tasks
+        ]
+    )
+
     return f"""Analyze the following tasks and provide insights:
 
 Tasks:
@@ -169,10 +173,10 @@ Return ONLY valid JSON, no additional text."""
 def get_task_breakdown_prompt(task_description: str) -> str:
     """
     Generate prompt for breaking down a complex task into subtasks.
-    
+
     Args:
         task_description: Description of the complex task
-    
+
     Returns:
         Prompt string for task breakdown
     """
@@ -209,17 +213,14 @@ Now break down: "{task_description}"
 Return ONLY the JSON array:"""
 
 
-def get_chat_prompt(
-    user_message: str,
-    chat_history: Optional[List[Dict[str, Any]]] = None
-) -> str:
+def get_chat_prompt(user_message: str, chat_history: Optional[List[Dict[str, Any]]] = None) -> str:
     """
     Generate prompt for general chat interactions.
-    
+
     Args:
         user_message: Current user message
         chat_history: Previous messages in conversation
-    
+
     Returns:
         Prompt string for chat
     """
@@ -231,7 +232,7 @@ def get_chat_prompt(
             content = msg.get("content", "")
             history_parts.append(f"{role.capitalize()}: {content}")
         history_text = "\n".join(history_parts)
-    
+
     if history_text:
         return f"""Previous conversation:
 {history_text}
@@ -241,4 +242,3 @@ Assistant:"""
     else:
         return f"""User: {user_message}
 Assistant:"""
-

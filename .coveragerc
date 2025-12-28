@@ -16,4 +16,3 @@ exclude_lines =
     class .*\bProtocol\):
     @(abc\.)?abstractmethod
 fail_under = 70
-

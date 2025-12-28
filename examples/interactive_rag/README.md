@@ -369,4 +369,3 @@ Supported chat models:
 - [MDB_ENGINE Documentation](../../README.md)
 - [EmbeddingService Documentation](../../mdb_engine/embeddings/README.md)
 - [MongoDB Atlas Vector Search](https://www.mongodb.com/docs/atlas/atlas-vector-search/)
-

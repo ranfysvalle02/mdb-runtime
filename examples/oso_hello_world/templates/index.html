@@ -22,7 +22,7 @@
         }
 
         * { margin: 0; padding: 0; box-sizing: border-box; }
-        
+
         body {
             font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
             background-color: var(--bg);
@@ -45,7 +45,7 @@
             text-align: center;
             margin-bottom: 2.5rem;
         }
-        
+
         h1 {
             font-size: 2.5rem;
             font-weight: 800;
@@ -53,7 +53,7 @@
             margin-bottom: 0.5rem;
             letter-spacing: -0.025em;
         }
-        
+
         .subtitle {
             color: var(--text-muted);
             font-size: 1.1rem;
@@ -100,7 +100,7 @@
             transition: all 0.2s;
             text-align: center;
         }
-        
+
         .user-option:hover {
             border-color: var(--primary);
             background: #EEF2FF;
@@ -207,7 +207,7 @@
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
 
         .hidden { display: none !important; }
-        
+
         .no-perm-box {
             background: #FEF3C7; color: #92400E; padding: 1rem;
             border-radius: 0.5rem; border-left: 4px solid #F59E0B;
@@ -245,7 +245,7 @@
 
         <div id="loginView" class="card hidden">
             <h2 style="text-align: center; margin-bottom: 2rem;">Select a Demo User</h2>
-            
+
             <div class="login-grid">
                 <div class="user-option" onclick="handleLogin('alice@example.com')">
                     <div class="user-avatar" style="background: #DCFCE7; color: #166534;">
@@ -265,7 +265,7 @@
                     <p style="color: var(--text-muted); font-size: 0.9rem;">Can only Read documents</p>
                 </div>
             </div>
-            
+
             <p style="text-align: center; margin-top: 2rem; font-size: 0.875rem; color: var(--text-muted);">
                 Password auto-filled: <code>password123</code>
             </p>
@@ -374,10 +374,10 @@
                     body: formData
                 });
                 const data = await res.json();
-                
+
                 if (data.success) {
                     // Reload to ensure clean state and fresh server context
-                    window.location.reload(); 
+                    window.location.reload();
                 } else {
                     showToast(data.detail || "Login failed", "error");
                     showLoader(false);
@@ -410,7 +410,7 @@
         async function fetchDocuments() {
             const listEl = document.getElementById('docList');
             listEl.innerHTML = '<div style="text-align:center; padding: 2rem; color: #6B7280"><i class="fas fa-spinner fa-spin"></i> Loading...</div>';
-            
+
             try {
                 const res = await fetch('/api/documents');
                 if (res.ok) {
@@ -443,7 +443,7 @@
                     headers: {'Content-Type': 'application/json'},
                     body: JSON.stringify(payload)
                 });
-                
+
                 if (res.ok) {
                     showToast("Document created!", "success");
                     e.target.reset();

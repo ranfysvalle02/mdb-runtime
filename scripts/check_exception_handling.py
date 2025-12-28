@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Custom pre-commit hook to enforce exception handling best practices.
+Custom script to enforce exception handling best practices.
 
 This script enforces Miguel Grinberg's error handling framework:
 1. Type 1: New Recoverable - Handle internally, don't raise
@@ -17,7 +17,7 @@ This script checks for:
 
 Usage:
     python scripts/check_exception_handling.py file1.py file2.py ...
-    Or use as pre-commit hook (automatically called with filenames)
+    Or run via: make lint (automatically checks all files)
 """
 
 import ast
@@ -52,9 +52,7 @@ def _has_logger_exception(node: ast.ExceptHandler) -> bool:
                 if stmt.func.attr == "exception":
                     return True
                 elif stmt.func.attr == "error" and any(
-                    kw.arg == "exc_info"
-                    and isinstance(kw.value, ast.Constant)
-                    and kw.value.value
+                    kw.arg == "exc_info" and isinstance(kw.value, ast.Constant) and kw.value.value
                     for kw in (stmt.keywords or [])
                 ):
                     return True
@@ -217,9 +215,7 @@ class ExceptionHandlerChecker(ast.NodeVisitor):
         if is_exception_catch and self.current_function:
             function_name = (
                 self.current_function.name
-                if isinstance(
-                    self.current_function, (ast.FunctionDef, ast.AsyncFunctionDef)
-                )
+                if isinstance(self.current_function, (ast.FunctionDef, ast.AsyncFunctionDef))
                 else None
             )
             if function_name and function_name in self.top_level_handlers:
@@ -299,9 +295,7 @@ class ExceptionHandlerChecker(ast.NodeVisitor):
             function_name = (
                 self.current_function.name
                 if self.current_function
-                and isinstance(
-                    self.current_function, (ast.FunctionDef, ast.AsyncFunctionDef)
-                )
+                and isinstance(self.current_function, (ast.FunctionDef, ast.AsyncFunctionDef))
                 else None
             )
             # MongoDB operations should catch MongoDB-specific exceptions
@@ -380,9 +374,7 @@ def main():
         sys.exit(1)
     else:
         if files_checked:
-            print(
-                f"✅ Exception handling checks passed for {len(files_checked)} file(s)"
-            )
+            print(f"✅ Exception handling checks passed for {len(files_checked)} file(s)")
         sys.exit(0)
 
 

@@ -25,4 +25,3 @@ numpy
 # Optional: for standalone demo
 ollama
 langchain-ollama
-

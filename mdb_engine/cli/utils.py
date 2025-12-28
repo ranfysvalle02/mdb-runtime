@@ -50,7 +50,7 @@ def save_manifest_file(file_path: Path, manifest: Dict[str, Any]) -> None:
     try:
         with open(file_path, "w", encoding="utf-8") as f:
             json.dump(manifest, f, indent=2, ensure_ascii=False)
-    except (IOError, OSError) as e:
+    except OSError as e:
         raise click.ClickException(f"Failed to write manifest file: {e}")
 
 

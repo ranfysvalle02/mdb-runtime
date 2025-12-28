@@ -138,7 +138,7 @@ Get current user information and permissions.
 ### GET `/api/documents`
 List all documents.
 
-**Auth:** Required  
+**Auth:** Required
 **Permission:** `read` on `documents`
 
 **Response:**
@@ -160,7 +160,7 @@ List all documents.
 ### POST `/api/documents`
 Create a new document.
 
-**Auth:** Required  
+**Auth:** Required
 **Permission:** `write` on `documents`
 
 **Request Body:**
@@ -360,4 +360,3 @@ Ensure `main.polar` exists and is valid.
 - [OSO Cloud Documentation](https://www.osohq.com/docs)
 - [OSO Cloud Python SDK](https://pypi.org/project/oso-cloud/)
 - [Polar Policy Language](https://docs.osohq.com/polar-syntax)
-

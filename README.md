@@ -125,7 +125,7 @@ engine = MongoDBEngine(mongo_uri="mongodb://localhost:27017", db_name="my_databa
 @app.on_event("startup")
 async def startup():
     await engine.initialize()
-    
+
     # Load and register app from manifest
     manifest_path = Path("manifest.json")
     manifest = await engine.load_manifest(manifest_path)
@@ -136,7 +136,7 @@ async def startup():
 async def create_task(task: dict):
     # This DB instance is physically and logically sandboxed to 'my_app'
     db = engine.get_scoped_db("my_app")
-    
+
     # Auto-tagged with app_id; indexes auto-managed
     result = await db.tasks.insert_one(task)
     return {"id": str(result.inserted_id)}
@@ -214,7 +214,7 @@ MDB_ENGINE provides optional security helpers and decorators that you can opt-in
 * **`@rate_limit_auth`** - Rate limiting for authentication endpoints
   ```python
   from mdb_engine.auth import rate_limit_auth
-  
+
   @app.post("/login")
   @rate_limit_auth(max_attempts=5, window_seconds=300)
   async def login(credentials: dict):
@@ -224,7 +224,7 @@ MDB_ENGINE provides optional security helpers and decorators that you can opt-in
 * **`@token_security`** - CSRF protection and HTTPS enforcement
   ```python
   from mdb_engine.auth import token_security
-  
+
   @app.post("/sensitive")
   @token_security(enforce_https=True, check_csrf=True)
   async def sensitive_operation(user: dict = Depends(get_current_user)):
@@ -234,7 +234,7 @@ MDB_ENGINE provides optional security helpers and decorators that you can opt-in
 * **`@require_auth`** - Authentication requirement decorator
   ```python
   from mdb_engine.auth import require_auth
-  
+
   @app.get("/dashboard")
   @require_auth(redirect_to="/login")
   async def dashboard(request: Request):
@@ -247,7 +247,7 @@ MDB_ENGINE provides optional security helpers and decorators that you can opt-in
 * **`SecurityMiddleware`** - Security headers and CSRF token management
   ```python
   from mdb_engine.auth import SecurityMiddleware
-  
+
   app.add_middleware(
       SecurityMiddleware,
       require_https=True,
@@ -336,13 +336,13 @@ We welcome contributions! Please read our [Contributing Guide](CONTRIBUTING.md) 
 - Exception handling best practices (Staff Engineer level)
 - Code style guidelines
 - Makefile commands for development
-- Pre-commit hooks setup
+- Code quality checks (`make lint`, `make format`)
 - Testing requirements
 - Pull request process
 
 **Key Requirements:**
 - All exception handling must follow our [best practices](CONTRIBUTING.md#exception-handling-best-practices)
-- Pre-commit hooks must pass before submitting PRs
+- Code quality checks must pass (`make lint`) before submitting PRs
 - Tests must be included for new features
 
 **Quick Start for Contributors:**

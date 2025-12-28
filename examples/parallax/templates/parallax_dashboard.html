@@ -17,7 +17,7 @@
                 transform: translateY(0);
             }
         }
-        
+
         @keyframes slideInRight {
             from {
                 opacity: 0;
@@ -28,7 +28,7 @@
                 transform: translateX(0);
             }
         }
-        
+
         @keyframes fadeOut {
             from {
                 opacity: 1;
@@ -37,26 +37,26 @@
                 opacity: 0;
             }
         }
-        
+
         .animate-fade-in {
             animation: fadeIn 0.4s ease-out;
         }
-        
+
         .animate-slide-in-right {
             animation: slideInRight 0.3s ease-out;
         }
-        
+
         @keyframes shimmer {
             0% { background-position: -1000px 0; }
             100% { background-position: 1000px 0; }
         }
-        
+
         .shimmer {
             background: linear-gradient(90deg, transparent, rgba(255,255,255,0.1), transparent);
             background-size: 1000px 100%;
             animation: shimmer 2s infinite;
         }
-        
+
         @keyframes scaleIn {
             from {
                 opacity: 0;
@@ -67,58 +67,58 @@
                 transform: scale(1);
             }
         }
-        
+
         .scale-in {
             animation: scaleIn 0.3s ease-out;
         }
-        
+
         /* Enhanced card hover effects */
         .parallax-card {
             transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
         }
-        
+
         .parallax-card:hover {
             transform: translateY(-4px);
             box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4), 0 0 20px rgba(96, 165, 250, 0.1);
             border-color: rgba(96, 165, 250, 0.3);
         }
-        
+
         /* Smooth button interactions */
         button {
             transition: all 0.2s ease;
         }
-        
+
         button:active {
             transform: scale(0.98);
         }
-        
+
         /* Better focus states */
         button:focus-visible,
         select:focus-visible {
             outline: 2px solid rgba(96, 165, 250, 0.6);
             outline-offset: 2px;
         }
-        
+
         /* Improved empty state */
         .empty-state {
             animation: fadeIn 0.6s ease-out;
         }
-        
+
         /* Enhanced progress indicator */
         .progress-glow {
             box-shadow: 0 0 10px rgba(96, 165, 250, 0.5);
         }
-        
+
         /* Smooth scroll behavior */
         html {
             scroll-behavior: smooth;
         }
-        
+
         /* Better badge hover effects */
         .keyword-badge {
             transition: all 0.2s ease;
         }
-        
+
         .keyword-badge:hover {
             transform: translateY(-2px) scale(1.05);
         }
@@ -140,29 +140,29 @@
             from { opacity: 0; transform: translateY(20px); }
             to { opacity: 1; transform: translateY(0); }
         }
-        
+
         .float { animation: float 3s ease-in-out infinite; }
         .pulse-glow { animation: pulse-glow 2s ease-in-out infinite; }
         .slide-in { animation: slide-in 0.5s ease-out; }
-        
-        .glass { 
-            background: rgba(30, 41, 59, 0.7); 
-            backdrop-filter: blur(10px); 
+
+        .glass {
+            background: rgba(30, 41, 59, 0.7);
+            backdrop-filter: blur(10px);
             border: 1px solid rgba(148, 163, 184, 0.1);
         }
-        
-        .gradient-text { 
-            background: linear-gradient(to right, #60a5fa, #c084fc, #f472b6); 
-            -webkit-background-clip: text; 
+
+        .gradient-text {
+            background: linear-gradient(to right, #60a5fa, #c084fc, #f472b6);
+            -webkit-background-clip: text;
             background-clip: text;
             color: transparent;
         }
-        
+
         .tag-input:focus {
             transform: scale(1.02);
             box-shadow: 0 0 0 3px rgba(96, 165, 250, 0.2);
         }
-        
+
         /* Sort Selector Styles */
         #sortSelector {
             background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23cbd5e1' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
@@ -171,33 +171,33 @@
             background-size: 16px;
             padding-right: 2.5rem;
         }
-        
+
         #sortSelector:hover {
             background-color: rgba(30, 41, 59, 0.9);
             border-color: rgba(96, 165, 250, 0.5);
         }
-        
+
         #sortSelector:focus {
             background-color: rgba(30, 41, 59, 0.95);
             border-color: rgba(96, 165, 250, 1);
             box-shadow: 0 0 0 3px rgba(96, 165, 250, 0.2);
         }
-        
+
         /* NEW Badge Animation */
         @keyframes pulse-glow-green {
-            0%, 100% { 
+            0%, 100% {
                 box-shadow: 0 0 10px rgba(16, 185, 129, 0.3);
             }
-            50% { 
+            50% {
                 box-shadow: 0 0 20px rgba(16, 185, 129, 0.6);
             }
         }
-        
+
         .new-badge {
             animation: pulse-glow-green 2s ease-in-out infinite;
         }
-        
-        
+
+
         .lens-card {
             transition: transform 0.2s ease, box-shadow 0.2s ease;
         }
@@ -214,13 +214,13 @@
             left: -10%;
             width: 120%;
             height: 120%;
-            background: 
+            background:
                 radial-gradient(circle at 20% 30%, rgba(96, 165, 250, 0.1) 0%, transparent 50%),
                 radial-gradient(circle at 80% 70%, rgba(192, 132, 252, 0.1) 0%, transparent 50%),
                 radial-gradient(circle at 50% 50%, rgba(244, 114, 182, 0.05) 0%, transparent 70%);
             pointer-events: none;
             z-index: -1;
-            transform: 
+            transform:
                 translateX(calc((var(--mouse-x) - 0.5) * 30px))
                 translateY(calc((var(--mouse-y) - 0.5) * 30px))
                 translateY(calc(var(--scroll-y) * 0.3px));
@@ -233,12 +233,12 @@
             transform: translateY(50px);
             transition: opacity 0.5s ease-out, transform 0.5s ease-out;
         }
-        
+
         .parallax-card.visible {
             opacity: 1 !important;
             transform: translateY(0) !important;
         }
-        
+
         /* Override opacity for animated cards - must be visible */
         .parallax-card.animate-fade-in {
             opacity: 1 !important;
@@ -261,7 +261,7 @@
             pointer-events: none;
             z-index: -2;
             opacity: 0.05;
-            background-image: 
+            background-image:
                 linear-gradient(rgba(96, 165, 250, 0.04) 1px, transparent 1px),
                 linear-gradient(90deg, rgba(96, 165, 250, 0.04) 1px, transparent 1px);
             background-size: 60px 60px;
@@ -274,7 +274,7 @@
             border: 1px solid rgba(148, 163, 184, 0.2);
             box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.1);
         }
-        
+
         /* Popover/Tooltip Styles */
         .popover-trigger {
             position: relative;
@@ -282,7 +282,7 @@
             align-items: center;
             cursor: help;
         }
-        
+
         .popover-content {
             position: absolute;
             bottom: 100%;
@@ -304,14 +304,14 @@
             line-height: 1.5;
             color: #cbd5e1;
         }
-        
+
         .popover-trigger:hover .popover-content,
         .popover-trigger.active .popover-content {
             opacity: 1;
             pointer-events: auto;
             transform: translateX(-50%) translateY(0);
         }
-        
+
         .popover-content::after {
             content: '';
             position: absolute;
@@ -321,7 +321,7 @@
             border: 6px solid transparent;
             border-top-color: rgba(15, 23, 42, 0.95);
         }
-        
+
         .popover-content strong {
             color: #60a5fa;
             display: block;
@@ -330,10 +330,10 @@
     </style>
 </head>
 <body class="bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 text-slate-200 min-h-screen font-sans">
-    
+
     <!-- Subtle Background Effects -->
     <div class="grid-overlay"></div>
-    
+
     <nav class="glass-enhanced border-b border-slate-800 sticky top-0 z-50 backdrop-blur-md" id="mainNav">
         <div class="max-w-7xl mx-auto px-6 py-4 flex justify-between items-center">
             <div class="flex items-center gap-3">
@@ -341,11 +341,11 @@
                 <h1 class="text-2xl font-bold tracking-tight gradient-text">PARALLAX</h1>
             </div>
             <div class="flex items-center gap-3">
-                <button onclick="openSettings()" 
+                <button onclick="openSettings()"
                     class="bg-slate-800 hover:bg-slate-700 text-slate-200 px-4 py-2 rounded-lg text-sm font-semibold transition-all flex items-center gap-2 border border-slate-700 hover:border-slate-600 hover:shadow-lg hover:scale-105">
                     <i class="fa-solid fa-sliders-h"></i> Configure
                 </button>
-                <button onclick="refreshData()" id="refreshBtn" 
+                <button onclick="refreshData()" id="refreshBtn"
                     class="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-500 hover:to-purple-500 text-white px-4 py-2 rounded-lg text-sm font-semibold transition-all flex items-center gap-2 shadow-lg hover:shadow-xl hover:scale-105 pulse-glow">
                     <i class="fa-solid fa-radar"></i> Scan
                 </button>
@@ -363,19 +363,19 @@
                     <i class="fa-solid fa-times text-xl"></i>
                 </button>
             </div>
-            
+
             <!-- Main Tabs -->
             <div class="flex gap-1 mb-4 border-b border-slate-700">
-                <button onclick="switchMainTab('watchlist')" id="mainTabWatchlist" 
+                <button onclick="switchMainTab('watchlist')" id="mainTabWatchlist"
                     class="px-4 py-2 text-sm font-semibold border-b-2 border-blue-500 text-blue-400 transition">
                     <i class="fa-solid fa-bullseye mr-2"></i>Watchlist
                 </button>
-                <button onclick="switchMainTab('lenses')" id="mainTabLenses" 
+                <button onclick="switchMainTab('lenses')" id="mainTabLenses"
                     class="px-4 py-2 text-sm font-semibold border-b-2 border-transparent text-slate-400 hover:text-slate-300 transition">
                     <i class="fa-solid fa-eye mr-2"></i>Lenses
                 </button>
             </div>
-            
+
             <!-- Watchlist Tab Content -->
             <div id="tabContentWatchlist" class="flex-1 overflow-y-auto">
                 <div class="space-y-4">
@@ -394,9 +394,9 @@
                             <!-- Tags will be inserted here -->
                         </div>
                         <div class="flex gap-2 mt-2">
-                            <input 
-                                type="text" 
-                                id="newWatchlistItem" 
+                            <input
+                                type="text"
+                                id="newWatchlistItem"
                                 placeholder="Add keyword (e.g., MongoDB, vector, AI)"
                                 class="tag-input flex-1 bg-slate-800 border border-slate-700 rounded-lg px-4 py-2 text-white placeholder-slate-500 focus:outline-none focus:border-blue-500"
                                 onkeypress="if(event.key === 'Enter') addWatchlistItem()"
@@ -406,7 +406,7 @@
                             </button>
                         </div>
                     </div>
-                    
+
                     <div class="pt-4 border-t border-slate-700">
                         <div class="flex items-center gap-2 mb-2">
                             <label class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Scan Limit</label>
@@ -420,18 +420,18 @@
                         </div>
                         <p class="text-xs text-slate-300 mb-2">Number of repositories to search per keyword (1-500)</p>
                         <div class="flex items-center gap-3">
-                            <input 
-                                type="number" 
-                                id="scanLimit" 
-                                min="1" 
-                                max="500" 
+                            <input
+                                type="number"
+                                id="scanLimit"
+                                min="1"
+                                max="500"
                                 value="50"
                                 class="w-24 bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-200 focus:outline-none focus:border-blue-500"
                             >
                             <span class="text-xs text-slate-400">repos per keyword</span>
                         </div>
                     </div>
-                    
+
                     <div class="pt-4 border-t border-slate-700">
                         <div class="flex items-center gap-2 mb-2">
                             <label class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Minimum Stars</label>
@@ -445,18 +445,18 @@
                         </div>
                         <p class="text-xs text-slate-300 mb-2">Minimum stars required (0-100000)</p>
                         <div class="flex items-center gap-3">
-                            <input 
-                                type="number" 
-                                id="minStars" 
-                                min="0" 
-                                max="100000" 
+                            <input
+                                type="number"
+                                id="minStars"
+                                min="0"
+                                max="100000"
                                 value="50"
                                 class="w-24 bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-200 focus:outline-none focus:border-blue-500"
                             >
                             <span class="text-xs text-slate-400">⭐ stars</span>
                         </div>
                     </div>
-                    
+
                     <div class="pt-4 border-t border-slate-700">
                         <div class="flex items-center gap-2 mb-2">
                             <label class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Language Filter</label>
@@ -469,9 +469,9 @@
                             </div>
                         </div>
                         <p class="text-xs text-slate-300 mb-2">Filter by programming language (optional)</p>
-                        <input 
-                            type="text" 
-                            id="languageFilter" 
+                        <input
+                            type="text"
+                            id="languageFilter"
                             placeholder="e.g., python, javascript, typescript"
                             class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-200 placeholder-slate-500 focus:outline-none focus:border-blue-500"
                         >
@@ -483,16 +483,16 @@
             <div id="tabContentLenses" class="flex-1 overflow-y-auto hidden">
                 <!-- Lens Sub-Tabs -->
                 <div class="flex gap-1 mb-4 border-b border-slate-700">
-                    <button onclick="switchLensTab('Relevance')" id="tabRelevance" 
+                    <button onclick="switchLensTab('Relevance')" id="tabRelevance"
                         class="px-4 py-2 text-sm font-semibold border-b-2 border-amber-500 text-amber-400 transition">
                         Relevance
                     </button>
-                    <button onclick="switchLensTab('Technical')" id="tabTechnical" 
+                    <button onclick="switchLensTab('Technical')" id="tabTechnical"
                         class="px-4 py-2 text-sm font-semibold border-b-2 border-transparent text-slate-400 hover:text-slate-300 transition">
                         Technical
                     </button>
                 </div>
-                
+
                 <!-- Relevance Lens Config -->
                 <div id="lensConfigRelevance" class="lens-config-panel">
                     <div class="space-y-4">
@@ -507,15 +507,15 @@
                                     </div>
                                 </div>
                             </div>
-                            <textarea 
-                                id="relevancePrompt" 
+                            <textarea
+                                id="relevancePrompt"
                                 rows="5"
                                 class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-xs text-slate-200 font-mono focus:outline-none focus:border-amber-500"
                                 placeholder="You are the {role} Specialist. Analyze this GitHub repository and its AGENTS.md/LLMs.md file in context of watchlist: {watchlist}...\n\n{format_instructions}"
                             ></textarea>
                             <p class="text-xs text-slate-300 mt-1">Use {role}, {watchlist}, {format_instructions}</p>
                         </div>
-                        
+
                         <div>
                             <div class="flex justify-between items-center mb-2">
                                 <div class="flex items-center gap-2">
@@ -538,7 +538,7 @@
                         </div>
                     </div>
                 </div>
-                
+
                 <!-- Technical Lens Config -->
                 <div id="lensConfigTechnical" class="lens-config-panel hidden">
                     <div class="space-y-4">
@@ -553,15 +553,15 @@
                                     </div>
                                 </div>
                             </div>
-                            <textarea 
-                                id="technicalPrompt" 
+                            <textarea
+                                id="technicalPrompt"
                                 rows="5"
                                 class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-xs text-slate-200 font-mono focus:outline-none focus:border-cyan-500"
                                 placeholder="You are the {role} Specialist. Provide concise technical assessment...\n\n{format_instructions}"
                             ></textarea>
                             <p class="text-xs text-slate-300 mt-1">Use {role}, {format_instructions}</p>
                         </div>
-                        
+
                         <div>
                             <div class="flex justify-between items-center mb-2">
                                 <div class="flex items-center gap-2">
@@ -584,7 +584,7 @@
                         </div>
                     </div>
                 </div>
-                
+
             </div>
 
             <!-- Footer Actions -->
@@ -600,7 +600,7 @@
     </div>
 
     <main class="max-w-7xl mx-auto px-6 py-10 space-y-12">
-        
+
         <!-- Filters and Sort - Sticky (sticks below nav) -->
         <div class="sticky top-[73px] z-40 mb-6 space-y-4 py-4 -mx-6 px-6 bg-slate-950/98 backdrop-blur-lg border-b border-slate-800/50 shadow-xl">
             <div class="flex items-center justify-between flex-wrap gap-4">
@@ -608,13 +608,13 @@
                 <div class="flex items-center gap-3">
                     <span class="text-sm text-slate-400 font-semibold">Filter by keyword:</span>
                     <div class="flex flex-wrap gap-2">
-                        <button onclick="filterByKeyword(null)" 
+                        <button onclick="filterByKeyword(null)"
                             class="px-3 py-1.5 text-xs font-semibold rounded-lg transition-all hover:scale-105
                             {% if not selected_keyword %} bg-blue-600 text-white shadow-lg {% else %} bg-slate-800 text-slate-400 hover:bg-slate-700 hover:text-white {% endif %}">
                             All
                         </button>
                         {% for kw in watchlist %}
-                        <button onclick="filterByKeyword('{{ kw }}')" 
+                        <button onclick="filterByKeyword('{{ kw }}')"
                             class="px-3 py-1.5 text-xs font-semibold rounded-lg transition-all hover:scale-105
                             {% if selected_keyword == kw %} bg-green-600 text-white shadow-lg {% else %} bg-slate-800 text-slate-400 hover:bg-slate-700 hover:text-white {% endif %}">
                             {{ kw }}
@@ -622,15 +622,15 @@
                         {% endfor %}
                     </div>
                 </div>
-                
+
                 <!-- Sort Selector -->
                 <div class="flex items-center gap-3">
                     <i class="fa-solid fa-arrow-down-wide-short text-slate-400 text-sm"></i>
-                    <select id="sortSelector" onchange="updateSort()" 
-                        class="px-4 py-2 bg-slate-800/70 border border-slate-700 rounded-lg text-sm text-slate-300 
-                        focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 
+                    <select id="sortSelector" onchange="updateSort()"
+                        class="px-4 py-2 bg-slate-800/70 border border-slate-700 rounded-lg text-sm text-slate-300
+                        focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500
                         hover:bg-slate-800 transition-colors cursor-pointer appearance-none
-                        bg-[url('data:image/svg+xml;charset=UTF-8,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22 fill=%22none%22 stroke=%22%23cbd5e1%22 stroke-width=%222%22 stroke-linecap=%22round%22 stroke-linejoin=%22round%22%3E%3Cpolyline points=%226 9 12 15 18 9%22%3E%3C/polyline%3E%3C/svg%3E')] 
+                        bg-[url('data:image/svg+xml;charset=UTF-8,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22 fill=%22none%22 stroke=%22%23cbd5e1%22 stroke-width=%222%22 stroke-linecap=%22round%22 stroke-linejoin=%22round%22%3E%3Cpolyline points=%226 9 12 15 18 9%22%3E%3C/polyline%3E%3C/svg%3E')]
                         bg-no-repeat bg-right bg-[length:16px] pr-8">
                         <option value="date_desc" {% if sort_by == 'date_desc' or not sort_by %}selected{% endif %}>Date (Newest First)</option>
                         <option value="date_asc" {% if sort_by == 'date_asc' %}selected{% endif %}>Date (Oldest First)</option>
@@ -639,7 +639,7 @@
                 </div>
             </div>
         </div>
-        
+
         {% if not reports %}
         <div class="text-center py-20 empty-state">
             {% if selected_keyword %}
@@ -683,7 +683,7 @@
         <div id="reportsContainer" class="space-y-6">
         {% for r in reports %}
         <div class="group relative glass-enhanced border border-slate-800 rounded-2xl overflow-hidden transition-all duration-300 shadow-2xl parallax-card hover:shadow-2xl">
-            
+
             <!-- Enhanced Card Header -->
             <div class="relative bg-gradient-to-br from-slate-800/60 via-slate-800/50 to-slate-900/50 p-4 border-b border-slate-700/80 backdrop-blur-sm">
                 <!-- Header Top Row: Source Detected + Matched Keywords -->
@@ -703,7 +703,7 @@
                         </div>
                         {% endif %}
                     </div>
-                    
+
                     <!-- Right: NEW Badge + Timestamp -->
                     <div class="flex items-center gap-3">
                         {% if r.is_fresh %}
@@ -719,7 +719,7 @@
                         </div>
                     </div>
                 </div>
-                
+
                 <!-- Title Section -->
                 <div class="mb-3">
                     <a href="{{ r.url }}" target="_blank" class="group block">
@@ -782,7 +782,7 @@
             </div>
 
             <div class="grid grid-cols-1 md:grid-cols-2 divide-y md:divide-y-0 md:divide-x divide-slate-800">
-                
+
                 <!-- Relevance Lens -->
                 <div class="p-4 hover:bg-slate-800/30 transition lens-card">
                     <div class="flex items-center justify-between mb-3 pb-2 border-b border-slate-700/50">
@@ -899,7 +899,7 @@
             newWatchlistItem: null,
             watchlistDisplay: null
         };
-        
+
         // Initialize DOM cache
         function initElements() {
             elements.settingsModal = document.getElementById('settingsModal');
@@ -911,14 +911,14 @@
             elements.newWatchlistItem = document.getElementById('newWatchlistItem');
             elements.watchlistDisplay = document.getElementById('watchlistDisplay');
         }
-        
+
         let currentWatchlist = {{ watchlist|tojson }};
         let currentLensConfigs = {};
         let currentLensTab = 'Relevance';
         let currentScanLimit = 50;
         let currentMinStars = 50;
         let currentLanguageFilter = '';
-        
+
         // Load watchlist on page load
         async function loadWatchlist() {
             try {
@@ -940,7 +940,7 @@
                 console.error('Failed to load watchlist:', e);
             }
         }
-        
+
         // Load lens configurations
         async function loadLensConfigs() {
             try {
@@ -956,51 +956,51 @@
                 console.error('Failed to load lens configs:', e);
             }
         }
-        
+
         function renderLensConfigs() {
             ['Relevance', 'Technical'].forEach(lensName => {
                 const config = currentLensConfigs[lensName] || {};
-                
+
                 // Set prompt
                 const promptEl = document.getElementById(`${lensName.toLowerCase()}Prompt`);
                 if(promptEl) promptEl.value = config.prompt_template || '';
-                
+
                 // Render schema fields
                 renderSchemaFields(lensName, config.schema_fields || []);
             });
         }
-        
+
         function renderSchemaFields(lensName, fields) {
             const container = document.getElementById(`${lensName.toLowerCase()}SchemaFields`);
             if(!container) return;
-            
+
             container.innerHTML = '';
-            
+
             fields.forEach((field, index) => {
                 const fieldEl = createSchemaFieldElement(lensName, field, index);
                 container.appendChild(fieldEl);
             });
-            
+
             if(fields.length === 0) {
                 container.innerHTML = '<p class="text-xs text-slate-300 italic">No fields defined. Click "Add Field" to create one.</p>';
             }
         }
-        
+
         function createSchemaFieldElement(lensName, field, index) {
             const div = document.createElement('div');
             div.className = 'bg-slate-900/50 p-2 rounded border border-slate-700';
-            
+
             // Escape HTML to prevent XSS
             const escapeHtml = (str) => (str || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
             const name = escapeHtml(field.name || '');
             const desc = escapeHtml(field.description || '');
             const literalVals = field.literal_values ? escapeHtml(field.literal_values.join(', ')) : '';
             const isLiteral = field.type === 'Literal';
-            
+
             div.innerHTML = `
                 <div class="grid grid-cols-12 gap-2 items-center">
                     <div class="col-span-4">
-                        <input type="text" 
+                        <input type="text"
                             class="schema-field-name w-full bg-slate-800 border border-slate-700 rounded px-2 py-1.5 text-xs text-slate-200 focus:outline-none focus:border-blue-500"
                             placeholder="name"
                             value="${name}"
@@ -1025,7 +1025,7 @@
                         </select>
                     </div>
                     <div class="col-span-5">
-                        <input type="text" 
+                        <input type="text"
                             class="schema-field-desc w-full bg-slate-800 border border-slate-700 rounded px-2 py-1.5 text-xs text-slate-200 focus:outline-none focus:border-blue-500"
                             placeholder="description"
                             value="${desc}"
@@ -1036,8 +1036,8 @@
                         >
                     </div>
                     <div class="col-span-1">
-                        <button onclick="removeSchemaField('${lensName}', ${index})" 
-                            class="w-full bg-red-600/20 hover:bg-red-600/40 text-red-400 px-2 py-1.5 rounded text-xs transition border border-red-800/50" 
+                        <button onclick="removeSchemaField('${lensName}', ${index})"
+                            class="w-full bg-red-600/20 hover:bg-red-600/40 text-red-400 px-2 py-1.5 rounded text-xs transition border border-red-800/50"
                             aria-label="Remove field">
                             <i class="fa-solid fa-trash"></i>
                         </button>
@@ -1045,7 +1045,7 @@
                 </div>
                 ${isLiteral ? `
                     <div class="mt-2">
-                        <input type="text" 
+                        <input type="text"
                             class="schema-field-literal w-full bg-slate-800 border border-slate-700 rounded px-2 py-1 text-xs text-slate-200 focus:outline-none focus:border-blue-500"
                             placeholder="Values (comma-separated)"
                             value="${literalVals}"
@@ -1058,19 +1058,19 @@
             `;
             return div;
         }
-        
+
         function updateSchemaField(lensName, index) {
             if(!currentLensConfigs[lensName] || !currentLensConfigs[lensName].schema_fields) return;
-            
+
             const field = currentLensConfigs[lensName].schema_fields[index];
             if(!field) return;
-            
+
             // Update from inputs
             const nameInput = document.querySelector(`input[data-lens="${lensName}"][data-index="${index}"][data-field="name"]`);
             const typeInput = document.querySelector(`select[data-lens="${lensName}"][data-index="${index}"][data-field="type"]`);
             const descInput = document.querySelector(`input[data-lens="${lensName}"][data-index="${index}"][data-field="description"]`);
             const literalInput = document.querySelector(`input[data-lens="${lensName}"][data-index="${index}"].schema-field-literal`);
-            
+
             if(nameInput) field.name = nameInput.value;
             if(typeInput) {
                 field.type = typeInput.value;
@@ -1085,7 +1085,7 @@
                 field.literal_values = values;
             }
         }
-        
+
         function addSchemaField(lensName) {
             if(!currentLensConfigs[lensName]) {
                 currentLensConfigs[lensName] = {lens_name: lensName, schema_fields: []};
@@ -1093,26 +1093,26 @@
             if(!currentLensConfigs[lensName].schema_fields) {
                 currentLensConfigs[lensName].schema_fields = [];
             }
-            
+
             currentLensConfigs[lensName].schema_fields.push({
                 name: '',
                 type: 'str',
                 description: '',
                 default: null
             });
-            
+
             renderSchemaFields(lensName, currentLensConfigs[lensName].schema_fields);
         }
-        
+
         function removeSchemaField(lensName, index) {
             if(currentLensConfigs[lensName] && currentLensConfigs[lensName].schema_fields) {
                 currentLensConfigs[lensName].schema_fields.splice(index, 1);
                 renderSchemaFields(lensName, currentLensConfigs[lensName].schema_fields);
             }
         }
-        
+
         let currentMainTab = 'watchlist';
-        
+
         // Cache tab elements
         const tabElements = {
             watchlistTab: null,
@@ -1120,20 +1120,20 @@
             watchlistContent: null,
             lensesContent: null
         };
-        
+
         function initTabElements() {
             tabElements.watchlistTab = document.getElementById('mainTabWatchlist');
             tabElements.lensesTab = document.getElementById('mainTabLenses');
             tabElements.watchlistContent = document.getElementById('tabContentWatchlist');
             tabElements.lensesContent = document.getElementById('tabContentLenses');
         }
-        
+
         function switchMainTab(tabName) {
             if(!tabElements.watchlistTab) initTabElements();
-            
+
             const active = tabName === 'watchlist';
             const inactive = !active;
-            
+
             // Update watchlist tab
             if(tabElements.watchlistTab) {
                 if(active) {
@@ -1144,7 +1144,7 @@
                     tabElements.watchlistTab.classList.add('border-transparent', 'text-slate-400');
                 }
             }
-            
+
             // Update lenses tab
             if(tabElements.lensesTab) {
                 if(inactive) {
@@ -1155,7 +1155,7 @@
                     tabElements.lensesTab.classList.add('border-transparent', 'text-slate-400');
                 }
             }
-            
+
             // Update content
             if(tabElements.watchlistContent) {
                 tabElements.watchlistContent.classList.toggle('hidden', !active);
@@ -1164,20 +1164,20 @@
                 tabElements.lensesContent.classList.toggle('hidden', active);
             }
         }
-        
+
         function switchLensTab(lensName) {
             currentLensTab = lensName;
-            
+
             ['Relevance', 'Technical'].forEach(name => {
                 const tab = document.getElementById(`tab${name}`);
                 const panel = document.getElementById(`lensConfig${name}`);
                 if(!tab || !panel) return;
-                
+
                 const isActive = name === lensName;
-                
+
                 // Reset all tab styles
                 tab.classList.remove('border-amber-500', 'text-amber-400', 'border-cyan-500', 'text-cyan-400', 'border-transparent', 'text-slate-400');
-                
+
                 if (isActive) {
                     if (name === 'Relevance') {
                         tab.classList.add('border-amber-500', 'text-amber-400');
@@ -1187,16 +1187,16 @@
                 } else {
                     tab.classList.add('border-transparent', 'text-slate-400');
                 }
-                
+
                 panel.classList.toggle('hidden', !isActive);
             });
         }
-        
+
         function renderWatchlistTags() {
             if(!elements.watchlistTags) return;
             const container = elements.watchlistTags;
             container.innerHTML = '';
-            
+
             currentWatchlist.forEach((tag, index) => {
                 const tagEl = document.createElement('div');
                 tagEl.className = 'flex items-center gap-2 bg-blue-900/30 text-blue-300 px-3 py-1.5 rounded-lg border border-blue-800/50 text-sm';
@@ -1208,12 +1208,12 @@
                 `;
                 container.appendChild(tagEl);
             });
-            
+
             if(elements.watchlistDisplay) {
                 elements.watchlistDisplay.textContent = currentWatchlist.join(', ');
             }
         }
-        
+
         function addWatchlistItem() {
             if(!elements.newWatchlistItem) return;
             const value = elements.newWatchlistItem.value.trim();
@@ -1223,12 +1223,12 @@
                 elements.newWatchlistItem.value = '';
             }
         }
-        
+
         function removeWatchlistItem(index) {
             currentWatchlist.splice(index, 1);
             renderWatchlistTags();
         }
-        
+
         function openSettings() {
             if(elements.settingsModal) {
                 elements.settingsModal.classList.remove('hidden');
@@ -1236,47 +1236,47 @@
                 loadLensConfigs();
             }
         }
-        
+
         function closeSettings() {
             if(elements.settingsModal) {
                 elements.settingsModal.classList.add('hidden');
             }
         }
-        
+
         async function saveSettings() {
             try {
                 // Collect lens configs from UI
                 ['Relevance', 'Technical'].forEach(lensName => {
                     const promptEl = document.getElementById(`${lensName.toLowerCase()}Prompt`);
                     if(!promptEl) return;
-                    
+
                     const prompt = promptEl.value;
-                    
+
                     if(!currentLensConfigs[lensName]) {
                         currentLensConfigs[lensName] = {lens_name: lensName, schema_fields: []};
                     }
-                    
+
                     currentLensConfigs[lensName].prompt_template = prompt;
-                    
+
                     if(!currentLensConfigs[lensName].schema_fields) {
                         currentLensConfigs[lensName].schema_fields = [];
                     }
-                    
+
                     // Update all fields from UI before saving
                     currentLensConfigs[lensName].schema_fields.forEach((field, index) => {
                         updateSchemaField(lensName, index);
                     });
-                    
+
                     // Filter out empty fields
                     currentLensConfigs[lensName].schema_fields = currentLensConfigs[lensName].schema_fields.filter(f => f.name && f.name.trim());
                 });
-                
+
                 // Save watchlist and search config
                 const scanLimit = elements.scanLimit ? parseInt(elements.scanLimit.value) || 50 : 50;
                 const minStars = elements.minStars ? parseInt(elements.minStars.value) || 50 : 50;
                 const languageFilter = elements.languageFilter ? elements.languageFilter.value.trim() : '';
                 const maxLimit = elements.maxLimit ? parseInt(elements.maxLimit.value) || null : null;
-                
+
                 const watchlistRes = await fetch('/api/watchlist', {
                     method: 'POST',
                     headers: {'Content-Type': 'application/json'},
@@ -1288,13 +1288,13 @@
                         max_limit: maxLimit
                     })
                 });
-                
+
                 const watchlistData = await watchlistRes.json();
                 if(!watchlistData.success) {
                     alert('Failed to save watchlist: ' + (watchlistData.error || 'Unknown error'));
                     return;
                 }
-                
+
                 // Save lens configs
                 let allSaved = true;
                 for(const [lensName, config] of Object.entries(currentLensConfigs)) {
@@ -1303,14 +1303,14 @@
                         headers: {'Content-Type': 'application/json'},
                         body: JSON.stringify(config)
                     });
-                    
+
                     const lensData = await lensRes.json();
                     if(!lensData.success) {
                         console.error(`Failed to save ${lensName}:`, lensData.error);
                         allSaved = false;
                     }
                 }
-                
+
                 if(allSaved) {
                     closeSettings();
                     alert('Configuration saved! Changes will take effect on the next scan.');
@@ -1323,39 +1323,39 @@
                 alert('Failed to save configuration: ' + e.message);
             }
         }
-        
+
         let wsConnection = null;
         let isScanning = false;
-        
+
         // Function to render a report card from data
         function renderReportCard(report) {
             const container = document.getElementById('reportsContainer');
             if (!container) return;
-            
+
             // Format timestamp
             const timestamp = report.timestamp ? new Date(report.timestamp).toISOString().split('T')[0] : 'Unknown';
             const isFresh = report.is_fresh || false;
-            
+
             // Build matched keywords HTML
             let keywordsHTML = '';
             if (report.matched_keywords && report.matched_keywords.length > 0) {
-                keywordsHTML = report.matched_keywords.map(kw => 
+                keywordsHTML = report.matched_keywords.map(kw =>
                     `<span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[11px] font-semibold bg-gradient-to-r from-green-600/20 to-emerald-600/20 text-green-300 border border-green-500/40 uppercase tracking-wide shadow-sm hover:shadow-md hover:border-green-500/60 transition-all duration-200">
                         <i class="fa-solid fa-tag text-[9px]"></i>${kw}
                     </span>`
                 ).join('');
             }
-            
+
             // Build relevance keywords used HTML
             let relevanceKeywordsHTML = '';
             if (report.relevance && report.relevance.keywords_used && report.relevance.keywords_used.length > 0) {
-                relevanceKeywordsHTML = report.relevance.keywords_used.map(kw => 
+                relevanceKeywordsHTML = report.relevance.keywords_used.map(kw =>
                     `<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-semibold bg-green-600/20 text-green-300 border border-green-500/40">
                         <i class="fa-solid fa-check text-[8px]"></i>${kw}
                     </span>`
                 ).join('');
             }
-            
+
             const cardHTML = `
                 <div class="group relative glass-enhanced border border-slate-800 rounded-2xl overflow-hidden hover:border-slate-700 transition duration-500 shadow-2xl animate-fade-in">
                     <!-- Enhanced Card Header -->
@@ -1369,7 +1369,7 @@
                                 </span>
                                 ${keywordsHTML ? `<div class="flex items-center gap-2 flex-wrap">${keywordsHTML}</div>` : ''}
                             </div>
-                            
+
                             <!-- Right: NEW Badge + Timestamp -->
                             <div class="flex items-center gap-3">
                                 ${isFresh ? `<span class="new-badge inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-bold bg-gradient-to-r from-green-600/90 to-emerald-600/90 text-white border border-green-500/60 uppercase tracking-wider shadow-lg shadow-green-500/30 backdrop-blur-sm">
@@ -1381,7 +1381,7 @@
                                 </div>
                             </div>
                         </div>
-                        
+
                         <!-- Title Section -->
                         <div class="mb-3">
                             <a href="${report.url || '#'}" target="_blank" class="group block">
@@ -1516,71 +1516,71 @@
                     </div>
                 </div>
             `;
-            
+
             // Create element and add with animation
             const tempDiv = document.createElement('div');
             tempDiv.innerHTML = cardHTML.trim();
             const cardElement = tempDiv.firstElementChild;
-            
+
             // Remove the parallax-card class that sets opacity: 0
             cardElement.classList.remove('parallax-card');
             // Add animation class
             cardElement.classList.add('animate-fade-in');
-            
+
             // Force visibility with inline styles (overrides any CSS)
             cardElement.style.setProperty('opacity', '1', 'important');
             cardElement.style.setProperty('transform', 'translateY(0)', 'important');
-            
+
             // Insert at the top of container
             if (container.firstChild) {
                 container.insertBefore(cardElement, container.firstChild);
             } else {
                 container.appendChild(cardElement);
             }
-            
+
             // Scroll to top smoothly if needed
             setTimeout(() => {
                 cardElement.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
             }, 100);
         }
-        
+
         function getUrgencyClass(urgency) {
             if (urgency === 'High') return 'bg-orange-500/20 text-orange-400 border border-orange-800/50';
             if (urgency === 'Medium') return 'bg-yellow-500/20 text-yellow-400 border border-yellow-800/50';
             return 'bg-slate-500/20 text-slate-400 border border-slate-700/50';
         }
-        
+
         function getComplexityClass(complexity) {
             if (complexity === 'High') return 'bg-red-500/20 text-red-400 border border-red-800/50';
             if (complexity === 'Medium') return 'bg-yellow-500/20 text-yellow-400 border border-yellow-800/50';
             return 'bg-green-500/20 text-green-400 border border-green-800/50';
         }
-        
+
         function getReadinessClass(readiness) {
             if (readiness === 'Production') return 'bg-green-500/20 text-green-400 border border-green-800/50';
             if (readiness === 'Beta') return 'bg-blue-500/20 text-blue-400 border border-blue-800/50';
             return 'bg-orange-500/20 text-orange-400 border border-orange-800/50';
         }
-        
+
         async function refreshData() {
             if(isScanning) {
                 showNotification('Scan already in progress', 'info');
                 return;
             }
-            
+
             const btn = document.getElementById('refreshBtn');
             const originalHTML = btn.innerHTML;
             btn.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin"></i> Scanning...';
             btn.disabled = true;
             isScanning = true;
             btn.classList.add('opacity-75', 'cursor-not-allowed');
-            
+
             // Remove empty state if present
             const emptyState = document.querySelector('.text-center.py-20');
             if (emptyState) {
                 emptyState.style.display = 'none';
             }
-            
+
             // Ensure reports container exists
             let container = document.getElementById('reportsContainer');
             if (!container) {
@@ -1592,7 +1592,7 @@
                     mainContent.appendChild(container);
                 }
             }
-            
+
             // Create elegant progress indicator
             const progressDiv = document.createElement('div');
             progressDiv.id = 'scanProgress';
@@ -1614,41 +1614,41 @@
                 <div class="text-xs text-slate-400 mt-2" id="scanProgressStats">0 repositories found</div>
             `;
             document.body.appendChild(progressDiv);
-            
+
             try {
                 // Connect to WebSocket
                 const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
                 const wsUrl = `${protocol}//${window.location.host}/ws/scan`;
                 wsConnection = new WebSocket(wsUrl);
-                
+
                 wsConnection.onopen = () => {
                     console.log('WebSocket connected');
                     wsConnection.send(JSON.stringify({action: 'start_scan'}));
                 };
-                
+
                 wsConnection.onmessage = async (event) => {
                     const data = JSON.parse(event.data);
                     const progressText = document.getElementById('scanProgressText');
                     const progressBar = document.getElementById('scanProgressBar');
                     const progressStats = document.getElementById('scanProgressStats');
-                    
+
                     if(data.type === 'scan_started') {
                         progressText.textContent = 'Searching GitHub repositories...';
                         progressBar.style.width = '5%';
                         progressStats.textContent = '0 repositories found';
                     } else if(data.type === 'report_complete') {
                         const {repo_id, repo_name, stars, files_analyzed, total_processed, total_found} = data;
-                        
+
                         // Update progress UI
                         progressText.innerHTML = `
-                            <span class="text-green-400">✓</span> 
-                            <strong class="text-white">${repo_name}</strong> 
+                            <span class="text-green-400">✓</span>
+                            <strong class="text-white">${repo_name}</strong>
                             <span class="text-slate-400">(⭐ ${stars})</span>
                         `;
                         const progress = total_found > 0 ? Math.min(95, (total_processed / total_found) * 95) : 50;
                         progressBar.style.width = `${progress}%`;
                         progressStats.textContent = `${total_processed}/${total_found} repositories analyzed`;
-                        
+
                         // Fetch and render the report card immediately (with small delay to ensure DB write completes)
                         setTimeout(async () => {
                             try {
@@ -1689,7 +1689,7 @@
                         progressBar.style.width = '100%';
                         progressStats.textContent = `${data.total_reports || 0} repositories analyzed`;
                         showNotification(`Analysis complete: ${data.total_reports || 0} repositories`, 'success');
-                        
+
                         // Close progress modal after delay
                         setTimeout(() => {
                             closeProgressModal();
@@ -1708,13 +1708,13 @@
                         setTimeout(() => closeProgressModal(), 3000);
                     }
                 };
-                
+
                 wsConnection.onerror = (error) => {
                     console.error('WebSocket error:', error);
                     showNotification('Connection error. Falling back to regular scan...', 'error');
                     fallbackRefresh();
                 };
-                
+
                 wsConnection.onclose = () => {
                     console.log('WebSocket closed');
                     if (!isScanning) return; // Already handled
@@ -1722,14 +1722,14 @@
                         closeProgressModal();
                     }, 1000);
                 };
-                
+
             } catch(e) {
                 console.error('WebSocket setup error:', e);
                 showNotification('WebSocket not available. Using fallback...', 'info');
                 fallbackRefresh();
             }
         }
-        
+
         function closeProgressModal() {
             const progressDiv = document.getElementById('scanProgress');
             if (progressDiv) {
@@ -1737,11 +1737,11 @@
                 setTimeout(() => progressDiv.remove(), 300);
             }
         }
-        
+
         async function fallbackRefresh() {
             const btn = document.getElementById('refreshBtn');
             const originalHTML = btn.innerHTML;
-            
+
             try {
                 const res = await fetch('/api/refresh', {method: 'POST'});
                 const data = await res.json();
@@ -1761,12 +1761,12 @@
                 isScanning = false;
             }
         }
-        
+
         function showNotification(message, type = 'info') {
             // Create notification element
             const notification = document.createElement('div');
             notification.className = `fixed top-4 right-4 z-50 px-4 py-3 rounded-lg shadow-lg border backdrop-blur-sm slide-in ${
-                type === 'info' ? 'bg-blue-900/80 border-blue-700 text-blue-200' : 
+                type === 'info' ? 'bg-blue-900/80 border-blue-700 text-blue-200' :
                 type === 'success' ? 'bg-green-900/80 border-green-700 text-green-200' :
                 'bg-red-900/80 border-red-700 text-red-200'
             }`;
@@ -1776,9 +1776,9 @@
                     <span class="text-sm font-medium">${message}</span>
                 </div>
             `;
-            
+
             document.body.appendChild(notification);
-            
+
             // Remove after 5 seconds
             setTimeout(() => {
                 notification.style.opacity = '0';
@@ -1786,7 +1786,7 @@
                 setTimeout(() => notification.remove(), 300);
             }, 5000);
         }
-        
+
         // Initialize popover click handlers
         function initPopovers() {
             document.querySelectorAll('.popover-trigger').forEach(trigger => {
@@ -1800,7 +1800,7 @@
                     trigger.classList.toggle('active');
                 });
             });
-            
+
             // Close popovers when clicking outside
             document.addEventListener('click', (e) => {
                 if(!e.target.closest('.popover-trigger')) {
@@ -1810,7 +1810,7 @@
                 }
             });
         }
-        
+
         // Initialize on DOM ready
         if(document.readyState === 'loading') {
             document.addEventListener('DOMContentLoaded', () => {
@@ -1825,17 +1825,17 @@
             loadWatchlist();
             initPopovers();
         }
-        
+
         // Close modal on outside click
         document.addEventListener('click', (e) => {
             if(elements.settingsModal && e.target === elements.settingsModal) {
                 closeSettings();
             }
         });
-        
+
         function updateSort() {
             const sortValue = document.getElementById('sortSelector').value;
-            
+
             // Update URL and reload
             const url = new URL(window.location);
             url.searchParams.set('sort_by', sortValue);
@@ -1846,7 +1846,7 @@
             }
             window.location.href = url.toString();
         }
-        
+
         function filterByKeyword(keyword) {
             // Update URL and reload
             const url = new URL(window.location);
@@ -1862,7 +1862,7 @@
             }
             window.location.href = url.toString();
         }
-        
+
         // Load reports dynamically when sort changes (for future AJAX implementation)
         async function loadReports(sortBy = 'date_desc') {
             try {
@@ -1885,20 +1885,20 @@
             }
             return [];
         }
-        
+
         // --- PARALLAX EFFECTS ---
-        
+
         // 1. Subtle Background Parallax (throttled for performance)
         let mouseX = 0.5;
         let mouseY = 0.5;
         let rafId = null;
-        
+
         function updateMouseParallax() {
             document.documentElement.style.setProperty('--mouse-x', mouseX);
             document.documentElement.style.setProperty('--mouse-y', mouseY);
             rafId = null;
         }
-        
+
         document.addEventListener('mousemove', (e) => {
             mouseX = e.clientX / window.innerWidth;
             mouseY = e.clientY / window.innerHeight;
@@ -1906,23 +1906,23 @@
                 rafId = requestAnimationFrame(updateMouseParallax);
             }
         }, { passive: true });
-        
+
         // 2. Scroll Parallax (throttled)
         let scrollY = 0;
         let scrollRafId = null;
-        
+
         function updateScrollParallax() {
             document.documentElement.style.setProperty('--scroll-y', scrollY);
             scrollRafId = null;
         }
-        
+
         window.addEventListener('scroll', () => {
             scrollY = window.scrollY;
             if(!scrollRafId) {
                 scrollRafId = requestAnimationFrame(updateScrollParallax);
             }
         }, { passive: true });
-        
+
         // 3. Intersection Observer for Card Reveals
         const cardObserver = new IntersectionObserver((entries) => {
             entries.forEach(entry => {
@@ -1935,14 +1935,14 @@
             threshold: 0.1,
             rootMargin: '0px 0px -50px 0px'
         });
-        
+
         // Observe cards after DOM ready
         if(document.readyState === 'loading') {
             document.addEventListener('DOMContentLoaded', initCardObserver);
         } else {
             initCardObserver();
         }
-        
+
         function initCardObserver() {
             document.querySelectorAll('.parallax-card').forEach(card => {
                 cardObserver.observe(card);

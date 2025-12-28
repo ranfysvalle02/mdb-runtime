@@ -25,8 +25,8 @@ make install-dev
 # Or install manually:
 # pip install -e ".[dev,test]"
 
-# Install pre-commit hooks
-pre-commit install
+# Verify setup with code quality checks
+make lint
 ```
 
 ## Makefile
@@ -80,32 +80,9 @@ make install-dev
 make check
 
 # Or verify individual components:
-pre-commit run --all-files  # Pre-commit hooks
-make test-unit             # Unit tests
-make lint                  # Linting checks
-```
-
-## Pre-commit Hooks
-
-Pre-commit hooks automatically run before each commit to ensure code quality:
-
-- **Code formatting** (Black)
-- **Import sorting** (isort)
-- **Linting** (flake8)
-- **Exception handling checks** (custom)
-
-### Running Hooks Manually
-
-```bash
-# Run all hooks on staged files
-pre-commit run
-
-# Run all hooks on all files
-pre-commit run --all-files
-
-# Run specific hook
-pre-commit run flake8 --all-files
-pre-commit run check-exception-handling --all-files
+make format      # Format code (auto-fix)
+make lint        # Linting checks
+make test-unit   # Unit tests
 ```
 
 ### Bypassing Hooks (Not Recommended)
@@ -244,4 +221,3 @@ Check `.flake8` configuration. Some errors may be acceptable (e.g., in `__init__
 - Read [CONTRIBUTING.md](CONTRIBUTING.md) for detailed contribution guidelines
 - Review exception handling best practices in CONTRIBUTING.md
 - Check existing issues and PRs before starting work
-

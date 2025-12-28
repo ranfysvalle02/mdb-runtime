@@ -18,10 +18,9 @@ max-complexity = 20
 # See docs/guides/error_handling.md for the four error types framework
 select = E,W,F,B,C,I
 # Disable specific checks (if needed)
-# ignore = 
+# ignore =
 # Per-file ignores
 per-file-ignores =
     __init__.py:F401
     tests/*:D
     examples/*:D
-

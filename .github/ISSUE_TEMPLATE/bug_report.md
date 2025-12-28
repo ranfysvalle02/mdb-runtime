@@ -10,9 +10,9 @@ assignees: ''
 <!-- A clear and concise description of what the bug is -->
 
 ## Steps to Reproduce
-1. 
-2. 
-3. 
+1.
+2.
+3.
 
 ## Expected Behavior
 <!-- What you expected to happen -->
@@ -36,4 +36,3 @@ assignees: ''
 
 ## Exception Handling
 <!-- If this involves exception handling, describe the issue -->
-

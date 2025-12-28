@@ -8,7 +8,7 @@
 
 **The reasoning:**
 
-1. **Authorization vs Authentication**: 
+1. **Authorization vs Authentication**:
    - **Authentication** (`auth.users`) = "Who are you?" (user accounts, sessions, login)
    - **Authorization** (`auth.policy`) = "What can you access?" (permissions, roles, access rules)
 
@@ -313,4 +313,3 @@ user = await get_app_user(request, slug_id, db, config)
   }
 }
 ```
-

@@ -16,16 +16,13 @@ jobs:
         with:
           python-version: '3.11'
           cache: 'pip'
-      
+
       - name: Install dependencies
         run: |
           pip install -e ".[dev,test]"
-      
-      - name: Run pre-commit hooks
-        run: pre-commit run --all-files
-      
-      - name: Check exception handling
-        run: python scripts/check_exception_handling.py mdb_engine/
+
+      - name: Run linting and formatting checks
+        run: make lint
 
   test:
     name: Test
@@ -40,28 +37,27 @@ jobs:
           --health-interval 10s
           --health-timeout 5s
           --health-retries 5
-    
+
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
           cache: 'pip'
-      
+
       - name: Install dependencies
         run: |
           pip install -e ".[test]"
-      
+
       - name: Run tests
         env:
           MONGO_URI: mongodb://localhost:27017
           DB_NAME: test_mdb_engine
         run: |
           pytest --cov=mdb_engine --cov-report=xml --cov-report=term
-      
+
       - name: Upload coverage
         uses: codecov/codecov-action@v3
         with:
           file: ./coverage.xml
           fail_ci_if_error: false
-

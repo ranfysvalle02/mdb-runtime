@@ -6,4 +6,3 @@ mdb-engine[oso]>=0.1.0
 fastapi>=0.104.0
 uvicorn[standard]>=0.24.0
 python-multipart>=0.0.6
-

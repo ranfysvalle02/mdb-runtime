@@ -192,7 +192,7 @@ Tests should be run in CI/CD pipelines:
 - **Minimum threshold**: 70% (enforced by Makefile)
 - **Target**: 80%+ coverage
 - **Critical paths**: 90%+ coverage
-- **Coverage modules**: 
+- **Coverage modules**:
   - `mdb_engine/core` - Core engine functionality
   - `mdb_engine/database` - Database abstraction and scoping
 - **Focus areas**:
@@ -206,4 +206,3 @@ Tests should be run in CI/CD pipelines:
 Coverage reports are generated in:
 - **Terminal**: `make test-coverage` - Shows coverage summary in terminal
 - **HTML**: `make test-coverage-html` - Generates `htmlcov/index.html` with detailed line-by-line coverage
-

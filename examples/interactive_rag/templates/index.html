@@ -33,7 +33,7 @@
     </div>
    </div>
   </div>
-  
+
   <div
    id="app-container"
    class="w-full max-w-7xl h-full bg-gray-800 rounded-xl shadow-2xl flex gap-4 overflow-hidden border border-gray-700 p-4 transition-opacity duration-300"
@@ -70,7 +70,7 @@
       </h1>
      </div>
     </div>
-   
+
     <div id="chat-box" class="flex-grow p-4 md:p-6 overflow-y-auto space-y-6">
      <div
       class="message system-message animate-fade-in-up bg-yellow-900/50 text-yellow-300 border-l-4 border-yellow-500 p-4 rounded-r-lg"
@@ -79,7 +79,7 @@
       sessions, add data, and fine-tune retrieval settings.
      </div>
     </div>
-   
+
     <div
      id="thinking-indicator"
      class="p-4 flex items-center gap-2 text-gray-400 invisible opacity-0 transition-opacity duration-300"
@@ -89,7 +89,7 @@
      <div class="typing-dot"></div>
      <span>Agent is thinking...</span>
     </div>
-   
+
     <div id="input-area" class="p-4 border-t border-gray-700 flex-shrink-0">
      <div class="mb-3">
       <div class="flex items-center justify-between mb-2">
@@ -149,7 +149,7 @@
         <span class="text-xs text-gray-300">Add URL</span>
        </button>
       </div>
-     
+
       <div class="tooltip-container">
        <button
         data-action="read_file"
@@ -172,7 +172,7 @@
         <span class="text-xs text-gray-300">Add File</span>
        </button>
       </div>
-     
+
       <div class="tooltip-container">
        <button
         data-action="browse_sources"
@@ -195,7 +195,7 @@
         <span class="text-xs text-gray-300">Browse DB</span>
        </button>
       </div>
-     
+
       <div class="tooltip-container">
        <button
         data-action="search_web"
@@ -218,7 +218,7 @@
         <span class="text-xs text-gray-300">Search Web</span>
        </button>
       </div>
-     
+
       <div class="tooltip-container">
        <button
         data-action="list_sources"
@@ -241,7 +241,7 @@
         <span class="text-xs text-gray-300">List Sources</span>
        </button>
       </div>
-     
+
       <div class="tooltip-container">
        <button
         data-action="remove_all"
@@ -266,7 +266,7 @@
       </div>
       </div>
      </div>
-    
+
      <form id="chat-form" class="relative flex items-center">
       <textarea
        id="user-input"
@@ -296,7 +296,7 @@
      </form>
     </div>
    </div>
-  
+
    <div class="flex flex-col w-96 h-full flex-shrink-0 space-y-3 overflow-y-auto p-2">
     <div class="control-panel-section">
      <button class="control-panel-header w-full flex items-center justify-between p-3 rounded-lg hover:bg-gray-800/50 transition-colors" onclick="toggleSection('session-section')">
@@ -333,7 +333,7 @@
       </div>
      </div>
     </div>
-   
+
     <div class="control-panel-section">
      <button class="control-panel-header w-full flex items-center justify-between p-3 rounded-lg hover:bg-gray-800/50 transition-colors" onclick="toggleSection('retrieval-section')">
       <h3 class="control-panel-title m-0">Retrieval Settings</h3>
@@ -358,7 +358,7 @@
         class="w-full bg-gray-800 border border-gray-600 rounded-md px-3 py-2 text-sm text-gray-200 focus:ring-2 focus:ring-mongodb-green-500 focus:border-mongodb-green-500 focus:outline-none transition-all"
        ></select>
       </div>
-     
+
       <!-- Top K & Min Score Combined -->
       <div class="bg-gray-900/50 rounded-lg p-3 border border-gray-700/50">
        <div class="grid grid-cols-2 gap-4">
@@ -386,7 +386,7 @@
           </div>
          </div>
         </div>
-        
+
         <!-- Min Score -->
         <div>
          <div class="flex items-center justify-between mb-2">
@@ -415,7 +415,7 @@
         </div>
        </div>
       </div>
-     
+
       <!-- Max Chars -->
       <div class="bg-gray-900/50 rounded-lg p-3 border border-gray-700/50">
        <div class="flex items-center justify-between mb-3">
@@ -447,7 +447,7 @@
     </div>
    </div>
   </div>
- 
+
   <div
    id="modal-overlay"
    class="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 z-50 opacity-0 invisible transition-opacity duration-300"
@@ -465,7 +465,7 @@
     </div>
    </div>
   </div>
- 
+
   <div
    id="source-browser-overlay"
    class="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 z-50 opacity-0 invisible transition-opacity duration-300"

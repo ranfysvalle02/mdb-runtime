@@ -89,13 +89,13 @@ class AuthorizationProvider(Protocol):
     ) -> bool:
         """
         Checks if a subject is allowed to perform an action on a resource.
-        
+
         Args:
             subject: The entity requesting access (typically user ID or email)
             resource: The resource being accessed (e.g., "documents", "admin_panel")
             action: The action being performed (e.g., "read", "write", "delete")
             user_object: Optional full user object for context-aware authorization
-        
+
         Returns:
             True if authorized, False otherwise
         """
@@ -321,10 +321,10 @@ async def protected_route(
         resource="documents",
         action="read"
     )
-    
+
     if not allowed:
         raise HTTPException(status_code=403, detail="Access denied")
-    
+
     return {"message": "Access granted"}
 ```
 
@@ -334,16 +334,16 @@ async def protected_route(
 @app.get("/protected")
 async def protected_route(request: Request):
     authz = request.app.state.authz_provider
-    
+
     allowed = await authz.check(
         subject="user@example.com",
         resource="documents",
         action="read"
     )
-    
+
     if not allowed:
         raise HTTPException(status_code=403)
-    
+
     return {"message": "OK"}
 ```
 
@@ -414,10 +414,10 @@ async def get_document(
         action="read",
         user_object=user  # Pass full user object for context-aware auth
     )
-    
+
     if not allowed:
         raise HTTPException(status_code=403)
-    
+
     return await get_document_from_db(doc_id)
 ```
 
@@ -432,7 +432,7 @@ async def can_user_access_resource(user_email: str, resource: str, action: str) 
     """Helper function to check authorization."""
     # Get provider from app state (requires app context)
     authz = app.state.authz_provider
-    
+
     return await authz.check(
         subject=user_email,
         resource=resource,
@@ -564,17 +564,17 @@ class SimpleRuleProvider:
     Simple rule-based authorization provider.
     Implements AuthorizationProvider protocol.
     """
-    
+
     def __init__(self, rules: Dict[str, Dict[str, list]]):
         """
         Initialize with rules.
-        
+
         Args:
             rules: Dict mapping resources to actions to allowed subjects
                   Example: {"documents": {"read": ["user", "admin"]}}
         """
         self.rules = rules
-    
+
     async def check(
         self,
         subject: str,
@@ -587,20 +587,20 @@ class SimpleRuleProvider:
         """
         # Get rules for resource
         resource_rules = self.rules.get(resource, {})
-        
+
         # Get allowed subjects for action
         allowed_subjects = resource_rules.get(action, [])
-        
+
         # Check if subject is in allowed list
         if subject in allowed_subjects:
             return True
-        
+
         # Check if user has role in allowed list (from user_object)
         if user_object:
             user_role = user_object.get("role")
             if user_role and user_role in allowed_subjects:
                 return True
-        
+
         return False
 
 # Usage
@@ -628,11 +628,11 @@ class DatabaseAuthProvider:
     """
     Authorization provider that checks permissions from MongoDB.
     """
-    
+
     def __init__(self, db: AsyncIOMotorDatabase, collection: str = "permissions"):
         self.db = db
         self.collection = db[collection]
-    
+
     async def check(
         self,
         subject: str,
@@ -649,10 +649,10 @@ class DatabaseAuthProvider:
             "resource": resource,
             "action": action
         })
-        
+
         if permission:
             return permission.get("allowed", False)
-        
+
         # Check role-based permissions if user_object provided
         if user_object:
             role = user_object.get("role")
@@ -664,7 +664,7 @@ class DatabaseAuthProvider:
                 })
                 if role_permission:
                     return role_permission.get("allowed", False)
-        
+
         return False
 ```
 
@@ -678,12 +678,12 @@ class ExternalAPIAuthProvider:
     """
     Authorization provider that calls an external API.
     """
-    
+
     def __init__(self, api_url: str, api_key: str):
         self.api_url = api_url
         self.api_key = api_key
         self.client = httpx.AsyncClient()
-    
+
     async def check(
         self,
         subject: str,
@@ -711,7 +711,7 @@ class ExternalAPIAuthProvider:
         except Exception as e:
             logger.error(f"Authorization check failed: {e}")
             return False  # Fail closed
-    
+
     async def close(self):
         """Clean up HTTP client."""
         await self.client.aclose()
@@ -764,20 +764,20 @@ async def initialize_custom_provider_from_manifest(
 ) -> Optional[AuthorizationProvider]:
     """
     Factory function to create custom provider from manifest.
-    
+
     This follows the same pattern as CasbinAdapter and OsoAdapter.
     """
     auth_policy = auth_config.get("auth_policy", {})
     provider = auth_policy.get("provider", "casbin")
-    
+
     # Only proceed if provider is "custom"
     if provider != "custom":
         return None
-    
+
     # Get configuration
     authorization = auth_policy.get("authorization", {})
     rules = authorization.get("rules", {})
-    
+
     # Create and return provider
     return SimpleRuleProvider(rules)
 
@@ -840,11 +840,11 @@ class CachedAuthProvider:
         self.ttl = ttl
         self._cache: Dict[Tuple[str, str, str], Tuple[bool, float]] = {}
         self._cache_lock = asyncio.Lock()
-    
+
     async def check(self, subject: str, resource: str, action: str, user_object=None) -> bool:
         cache_key = (subject, resource, action)
         current_time = time.time()
-        
+
         # Check cache
         async with self._cache_lock:
             if cache_key in self._cache:
@@ -852,14 +852,14 @@ class CachedAuthProvider:
                 if current_time - cached_time < self.ttl:
                     return result
                 del self._cache[cache_key]
-        
+
         # Check with base provider
         result = await self.base_provider.check(subject, resource, action, user_object)
-        
+
         # Cache result
         async with self._cache_lock:
             self._cache[cache_key] = (result, current_time)
-        
+
         return result
 ```
 
@@ -900,13 +900,13 @@ logger = logging.getLogger(__name__)
 
 async def check(self, subject: str, resource: str, action: str, user_object=None) -> bool:
     result = await self._check_permission(subject, resource, action)
-    
+
     # Log decision
     logger.info(
         f"Authorization check: subject={subject}, resource={resource}, "
         f"action={action}, allowed={result}"
     )
-    
+
     return result
 ```
 
@@ -945,7 +945,7 @@ class AuthorizationProvider(Protocol):
 ```python
 class CasbinAdapter:
     def __init__(self, enforcer: 'casbin.AsyncEnforcer')
-    
+
     async def check(...) -> bool
     async def add_policy(*params) -> bool
     async def add_role_for_user(*params) -> bool
@@ -961,7 +961,7 @@ class CasbinAdapter:
 ```python
 class OsoAdapter:
     def __init__(self, oso_client: Any)
-    
+
     async def check(...) -> bool
     async def add_policy(*params) -> bool
     async def add_role_for_user(*params) -> bool
@@ -993,4 +993,3 @@ See the `examples/` directory for complete working examples:
 - `examples/chit_chat/` - Chat application with Casbin authorization
 - `examples/oso_hello_world/` - OSO-based authorization example
 - `examples/interactive_rag/` - RAG application with authorization
-

@@ -23,4 +23,3 @@ volumes:
     driver: local
   mongodb_test_config:
     driver: local
-

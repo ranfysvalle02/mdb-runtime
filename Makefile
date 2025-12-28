@@ -180,4 +180,3 @@ publish: build-check
 	fi
 	@$(PYTHON) -m twine upload dist/* --username __token__ --password $$PYPI_API_TOKEN
 	@echo "✅ Published to PyPI! Install with: pip install mdb-engine"
-

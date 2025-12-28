@@ -649,4 +649,3 @@ for collection_name, index_definitions in collections_with_indexes.items():
 - **`database/`** - AsyncAtlasIndexManager for Atlas indexes
 - **`core/`** - Manifest system and MongoDBEngine
 - **`observability/`** - Logging for index operations
-

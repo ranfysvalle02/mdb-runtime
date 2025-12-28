@@ -199,12 +199,12 @@
             from { opacity: 0; transform: translateX(-10px); }
             to { opacity: 1; transform: translateX(0); }
         }
-        
-        .terminal-line.success { 
+
+        .terminal-line.success {
             color: var(--accent-green);
             text-shadow: 0 0 10px var(--accent-green);
         }
-        .terminal-line.info { 
+        .terminal-line.info {
             color: var(--accent-blue);
             text-shadow: 0 0 8px var(--accent-blue);
         }
@@ -221,7 +221,7 @@
             text-shadow: 0 0 8px var(--accent-purple);
             font-weight: 700;
         }
-        
+
         /* Progress Bar */
         .vector-progress {
             height: 8px;
@@ -232,7 +232,7 @@
             position: relative;
             box-shadow: inset 0 2px 4px rgba(0,0,0,0.5);
         }
-        
+
         .vector-progress-bar {
             height: 100%;
             background: linear-gradient(90deg, var(--accent-red), var(--accent-yellow), var(--accent-blue), var(--accent-green));
@@ -291,13 +291,13 @@
             width: 300px;
             height: 300px;
         }
-        
+
         .btn-primary-custom {
             background: linear-gradient(135deg, var(--accent-green), #00cc7d);
             color: #000;
             box-shadow: 0 4px 15px rgba(0, 255, 157, 0.4);
         }
-        
+
         .btn-primary-custom:hover:not(:disabled) {
             background: linear-gradient(135deg, #00cc7d, var(--accent-green));
             box-shadow: 0 6px 25px rgba(0, 255, 157, 0.6);
@@ -307,7 +307,7 @@
         .btn-primary-custom:active:not(:disabled) {
             transform: translateY(0) scale(0.98);
         }
-        
+
         .btn-primary-custom:disabled {
             background: #333;
             color: #666;
@@ -321,7 +321,7 @@
             border: 2px solid var(--accent-red);
             box-shadow: 0 4px 15px rgba(255, 77, 77, 0.2);
         }
-        
+
         .btn-danger-custom:hover:not(:disabled) {
             background: var(--accent-red);
             color: #fff;
@@ -351,7 +351,7 @@
             0%, 100% { transform: scale(1); }
             50% { transform: scale(1.1); }
         }
-        
+
         .stat-label {
             font-size: 0.8rem;
             color: var(--text-secondary);
@@ -372,8 +372,8 @@
             font-family: var(--font-futuristic);
             transition: all 0.3s;
         }
-        
-        .status-badge.running { 
+
+        .status-badge.running {
             background: linear-gradient(135deg, rgba(0, 255, 157, 0.2), rgba(0, 204, 255, 0.2));
             color: var(--accent-green);
             border: 2px solid var(--accent-green);
@@ -391,12 +391,12 @@
             to { box-shadow: 0 0 30px rgba(0, 255, 157, 0.8), 0 0 40px rgba(0, 255, 157, 0.4); }
         }
 
-        .status-badge.stopped { 
+        .status-badge.stopped {
             background: rgba(255, 255, 255, 0.05);
             color: #999;
             border: 2px solid #666;
         }
-        .status-badge.match { 
+        .status-badge.match {
             background: linear-gradient(135deg, rgba(0, 204, 255, 0.3), rgba(183, 148, 246, 0.3));
             color: var(--accent-blue);
             border: 2px solid var(--accent-blue);
@@ -422,20 +422,20 @@
             pointer-events: none;
             box-shadow: 0 0 20px var(--accent-green);
         }
-        
+
         @keyframes scan {
             0% { top: 0%; opacity: 0; }
             10% { opacity: 0.6; }
             90% { opacity: 0.6; }
             100% { top: 100%; opacity: 0; }
         }
-        
+
         .blur-text {
             filter: blur(8px);
             transition: filter 1.5s cubic-bezier(0.4, 0, 0.2, 1);
             opacity: 0.5;
         }
-        
+
         .unblur {
             filter: blur(0);
             opacity: 1;
@@ -618,9 +618,9 @@
                     <span class="text-accent">VECTOR</span> INVERSION ATTACK
                 </h1>
                 <p class="lead text-secondary mb-3">
-                    🎯 <strong class="text-white">Mission:</strong> We've intercepted an encrypted thought vector. 
-                    Our AI agent will use <span class="text-accent">iterative optimization</span> to reverse-engineer 
-                    the original text by measuring vector distances. This demonstrates the 
+                    🎯 <strong class="text-white">Mission:</strong> We've intercepted an encrypted thought vector.
+                    Our AI agent will use <span class="text-accent">iterative optimization</span> to reverse-engineer
+                    the original text by measuring vector distances. This demonstrates the
                     <span class="text-danger-custom">security vulnerability</span> of embedding-based systems.
                 </p>
                 <div class="d-flex gap-2 flex-wrap">
@@ -649,14 +649,14 @@
                         <h3 class="panel-title">🎯 TARGET VECTOR LOCK</h3>
                         <span class="font-mono text-accent" style="font-size: 0.7rem;">ID: TGT-8842-X</span>
                     </div>
-                    
+
                     <!-- Target Input (editable before attack) -->
                     <div id="targetInputSection" class="mb-3">
                         <label class="stat-label mb-2">🎯 Target Phrase (Edit before starting)</label>
-                        <input 
-                            type="text" 
-                            id="targetInput" 
-                            class="form-control font-mono" 
+                        <input
+                            type="text"
+                            id="targetInput"
+                            class="form-control font-mono"
                             style="background: rgba(0,0,0,0.3); border: 1px solid var(--border-color); color: var(--text-primary); padding: 0.75rem; border-radius: 4px; font-size: 0.9rem;"
                             value="Be mindful of your thoughts"
                             placeholder="Enter target phrase to hack..."
@@ -665,7 +665,7 @@
                             💡 Tip: Longer phrases are harder to crack. The AI will try to guess this phrase.
                         </small>
                     </div>
-                    
+
                     <!-- Show target during attack (hidden initially) -->
                     <div id="targetDisplaySection" class="mb-3" style="display: none;">
                         <div class="stat-label mb-2">🎯 Target Phrase (Hidden from AI)</div>
@@ -676,7 +676,7 @@
                             🔒 This is what the AI is trying to crack (you can see it, but the AI can't)
                         </small>
                     </div>
-                    
+
                     <!-- Comparison Display: Shows Original vs Recovered after match -->
                     <div class="mb-4 py-4">
                         <!-- After Compromise: Show side-by-side comparison -->
@@ -698,23 +698,23 @@
                             </div>
                             <div class="mt-3 text-center">
                                 <div class="text-secondary font-mono" style="font-size: 0.85rem;">
-                                    ⚡ Vector Error: <span id="comparisonError" class="text-danger-custom">-</span> | 
+                                    ⚡ Vector Error: <span id="comparisonError" class="text-danger-custom">-</span> |
                                     🎯 Proximity: <span id="comparisonProximity" class="text-accent">-</span>
                                 </div>
                             </div>
                         </div>
                     </div>
                 </div>
-                
+
                 <!-- Explanation Panel -->
                 <div class="panel" style="border-left: 4px solid var(--accent-blue);">
                     <div class="panel-header">
                         <h3 class="panel-title text-blue-custom">🔬 VULNERABILITY ANALYSIS</h3>
                     </div>
                     <p class="small text-secondary mb-0">
-                        Vector databases store <strong class="text-white">semantic meanings</strong>, not just keywords. 
-                        If an attacker can measure the "distance" between their query and private data 
-                        (via side-channels or error messages), they can use an LLM to 
+                        Vector databases store <strong class="text-white">semantic meanings</strong>, not just keywords.
+                        If an attacker can measure the "distance" between their query and private data
+                        (via side-channels or error messages), they can use an LLM to
                         <span class="text-accent">"hill-climb"</span> towards private data without ever seeing it directly.
                     </p>
                 </div>
@@ -741,7 +741,7 @@
     <div id="explanationModal" class="explanation-modal">
         <div class="explanation-content">
             <h2>🎯 TARGET COMPROMISED!</h2>
-            
+
             <!-- Comparison Section -->
             <div style="background: rgba(0, 255, 0, 0.1); border: 1px solid var(--accent-green); border-radius: 8px; padding: 1.5rem; margin: 1.5rem 0;">
                 <div style="margin-bottom: 1rem;">
@@ -767,17 +767,17 @@
                     </div>
                 </div>
             </div>
-            
+
             <p>
                 <strong>What just happened?</strong>
             </p>
             <p id="matchStory" style="color: var(--text-secondary); line-height: 1.8;">
-                The AI agent successfully reverse-engineered the hidden text by generating iterative guesses, 
+                The AI agent successfully reverse-engineered the hidden text by generating iterative guesses,
                 embedding each one, and measuring vector distance to converge on the target without ever seeing it directly.
             </p>
             <p>
-                <strong>Security Implication:</strong> This demonstrates that if an attacker can measure 
-                vector distances (via side-channels, error messages, or API responses), they can potentially 
+                <strong>Security Implication:</strong> This demonstrates that if an attacker can measure
+                vector distances (via side-channels, error messages, or API responses), they can potentially
                 extract private data from embedding-based systems.
             </p>
             <div class="d-flex gap-2 mt-3">
@@ -808,7 +808,7 @@
         // Get base path from current URL
         const currentPath = window.location.pathname;
         const basePath = currentPath.replace(/\/$/, '');
-        
+
         // DOM elements
         const statusBadge = document.getElementById('connectionStatus');
         const startBtn = document.getElementById('startBtn');
@@ -824,7 +824,7 @@
         const targetInputSection = document.getElementById('targetInputSection');
         const targetDisplaySection = document.getElementById('targetDisplaySection');
         const targetDisplay = document.getElementById('targetDisplay');
-        
+
         let pollInterval = null;
         let consecutiveErrors = 0;
         let lastErrorTime = 0;
@@ -836,7 +836,7 @@
         let lastBestText = '';
         let celebrationShown = false;
         let matchFoundData = null;
-        
+
         // Animation loop for smooth counter
         const animateStats = () => {
             if (currentCountDisplay < targetCount) {
@@ -870,25 +870,25 @@
                 }, i * 20);
             }
         }
-        
+
         // Reset UI to initial state - allows user to start fresh attack with new text
         const resetUI = () => {
             // Stop any ongoing polling
             stopPolling();
-            
+
             // Reset error tracking
             consecutiveErrors = 0;
             lastErrorTime = 0;
             statusBadge.textContent = '⚡ SYSTEM IDLE';
             statusBadge.className = 'status-badge stopped';
-            
+
             // Hide comparison display (only shows after match found)
             document.getElementById('comparisonModeDisplay').style.display = 'none';
-            
+
             targetCount = 0;
             currentCountDisplay = 0;
             guessCountEl.textContent = '0';
-            
+
             modelUsedEl.textContent = '-';
             costValEl.textContent = '$0.00';
             startBtn.disabled = false;
@@ -907,7 +907,7 @@
             targetDisplaySection.style.display = 'none'; // Hide target display
             targetInput.focus(); // Focus on input for easy typing
         };
-        
+
         // Helper: Add line to terminal with type
         const logToTerminal = (msg, type = 'text-secondary', icon = '') => {
             const line = document.createElement('div');
@@ -941,7 +941,7 @@
                 const response = await fetch(`${basePath}/api/status`);
                 if (!response.ok) throw new Error('API Error');
                 const data = await response.json();
-                
+
                 // Reset error counter on successful poll
                 if (consecutiveErrors > 0) {
                     consecutiveErrors = 0;
@@ -959,28 +959,28 @@
                         }
                     }
                 }
-                
+
                 // Check for match found first - PAUSE AND EXPLAIN
                 if (data.MATCH_FOUND && !celebrationShown) {
                     celebrationShown = true;
                     matchFoundData = data;
                     // Pause removed - attack continues
-                    
+
                     // Stop the attack and polling
                     if (isRunning) {
                         isRunning = false;
                         stopPolling(); // Stop polling
-                        
+
                         const targetPhrase = data.TARGET || 'Unknown';
                         const recoveredPhrase = data.CURRENT_BEST_TEXT || 'Unknown';
                         const error = data.CURRENT_BEST_ERROR || 0;
                         const guesses = data.GUESSES_MADE || 0;
                         const cost = data.TOTAL_COST || 0;
                         const isExactMatch = targetPhrase.toLowerCase().trim() === recoveredPhrase.toLowerCase().trim();
-                        
+
                         // Calculate similarity for story
                         const similarity = isExactMatch ? 100 : Math.max(0, Math.round((1 - (error / 2.0)) * 100));
-                        
+
                         logToTerminal('🎉 *** MATCH FOUND *** Decryption successful!', 'success fw-bold', '🎉');
                         logToTerminal(`✅ Target: "${targetPhrase}"`, 'info', '🎯');
                         logToTerminal(`✅ Recovered: "${recoveredPhrase}"`, 'success', '✅');
@@ -992,24 +992,24 @@
                         }
                         // Match found - attack will auto-stop
                         // Confetti will be shown when user clicks "UNDERSTOOD"
-                        
+
                         // Show comparison mode display
                         document.getElementById('comparisonModeDisplay').style.display = 'block';
-                        
+
                         // Update comparison display
                         document.getElementById('comparisonOriginal').textContent = `"${targetPhrase}"`;
                         document.getElementById('comparisonRecovered').textContent = `"${recoveredPhrase}"`;
                         document.getElementById('comparisonError').textContent = error.toFixed(4);
                         const proximity = calculateProximity(error);
                         document.getElementById('comparisonProximity').textContent = proximity.toFixed(2) + '%';
-                        
+
                         // Update modal with comparison and story
                         document.getElementById('originalTarget').textContent = `"${targetPhrase}"`;
                         document.getElementById('recoveredTarget').textContent = `"${recoveredPhrase}"`;
                         document.getElementById('matchError').textContent = error.toFixed(4);
                         document.getElementById('matchGuesses').textContent = guesses.toLocaleString();
                         document.getElementById('matchCost').textContent = `$${cost.toFixed(4)}`;
-                        
+
                         // Create compelling story
                         let story = '';
                         if (isExactMatch) {
@@ -1023,11 +1023,11 @@
                             story += `The attack successfully converged within the error threshold, showing the vulnerability of embedding-based systems.`;
                         }
                         document.getElementById('matchStory').innerHTML = story;
-                        
+
                         // Show explanation modal
                         explanationModal.classList.add('show');
                     }
-                    
+
                     statusBadge.textContent = '🎯 TARGET COMPROMISED';
                     statusBadge.className = 'status-badge match';
                     startBtn.disabled = false;
@@ -1041,14 +1041,14 @@
                     statusBadge.className = 'status-badge running';
                     startBtn.disabled = true;
                     stopBtn.disabled = false;
-                    
+
                     // Show target display, hide input
                     if (data.TARGET) {
                         targetDisplay.textContent = `"${data.TARGET}"`;
                         targetInputSection.style.display = 'none';
                         targetDisplaySection.style.display = 'block';
                     }
-                    
+
                     logToTerminal('🚀 Attack sequence initiated!', 'info', '🚀');
                     logToTerminal('🤖 Deploying AI agents...', 'info', '🤖');
                     logToTerminal(`🎯 Target locked: "${data.TARGET || 'Unknown'}"`, 'info', '🎯');
@@ -1068,7 +1068,7 @@
                     targetInputSection.style.display = 'block'; // Show input again
                     targetDisplaySection.style.display = 'none'; // Hide target display
                 }
-                
+
                 // Pause functionality removed - attack runs continuously until match found
 
                 // Always update cost and guesses (not conditional on best text)
@@ -1092,8 +1092,8 @@
                 // Log new optimizations to terminal (all info is in logs now)
                 if (data.CURRENT_BEST_TEXT && data.CURRENT_BEST_TEXT !== "Be" && data.CURRENT_BEST_TEXT !== lastBestText) {
                     lastBestText = data.CURRENT_BEST_TEXT;
-                    
-                    if (data.CURRENT_BEST_ERROR !== null && data.CURRENT_BEST_ERROR !== undefined && 
+
+                    if (data.CURRENT_BEST_ERROR !== null && data.CURRENT_BEST_ERROR !== undefined &&
                         data.CURRENT_BEST_ERROR !== Infinity && !isNaN(data.CURRENT_BEST_ERROR)) {
                         logToTerminal(`✨ New optimization: "${data.CURRENT_BEST_TEXT}" (Error: ${data.CURRENT_BEST_ERROR.toFixed(4)})`, 'success', '✨');
                     } else {
@@ -1103,22 +1103,22 @@
 
                 // Cost and guesses are now updated earlier in the function (above)
                 // This duplicate code is removed to avoid conflicts
-                
+
                 if (data.LAST_ERROR) {
                     logToTerminal(`❌ System Error: ${data.LAST_ERROR}`, 'error', '❌');
                 }
-                
+
                 if (data.MODEL_USED) {
                     modelUsedEl.textContent = data.MODEL_USED;
                 }
-                
+
                 // Status updates automatically while running
 
             } catch (e) {
                 console.error('Poll error', e);
                 consecutiveErrors++;
                 const now = Date.now();
-                
+
                 // Only show error if we're actively running and haven't shown error recently
                 if (isRunning && (now - lastErrorTime > 5000)) {
                     // Only show error after 3 consecutive failures to avoid false positives
@@ -1132,7 +1132,7 @@
                 // Continue polling - don't stop on transient errors
             }
         };
-        
+
         // Poll for status updates while running (but no automatic messages)
         const startPolling = () => {
             if (pollInterval) return;
@@ -1150,35 +1150,35 @@
         const checkStatus = async () => {
             await updateStatus();
         };
-        
+
         // Button Handlers
         startBtn.addEventListener('click', async () => {
             // Check if this is a restart (button says "RESTART ATTACK")
             const isRestart = startBtn.textContent.includes('RESTART');
-            
+
             if (isRestart) {
                 // Restart: just reload the page for a fresh start
                 window.location.reload();
                 return;
             }
-            
+
             // Normal start attack flow
             const targetPhrase = targetInput.value.trim();
-            
+
             if (!targetPhrase) {
                 logToTerminal('❌ Please enter a target phrase first!', 'error', '❌');
                 targetInput.focus();
                 return;
             }
-            
+
             logToTerminal(`🎯 Target phrase set: "${targetPhrase}"`, 'info', '🎯');
             logToTerminal('🔐 Initializing attack vector...', 'info', '🔐');
             logToTerminal('🔑 Authenticating with AI services...', 'info', '🔑');
             startBtn.disabled = true;
             targetInput.disabled = true; // Disable editing once attack starts
-            
+
             try {
-                const res = await fetch(`${basePath}/start`, { 
+                const res = await fetch(`${basePath}/start`, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
@@ -1204,11 +1204,11 @@
         });
 
         // STEP button removed - updates happen automatically while running
-        
+
         stopBtn.addEventListener('click', async () => {
             logToTerminal('⛔ Sending abort signal...', 'warning', '⛔');
             stopBtn.disabled = true;
-            
+
             try {
                 await fetch(`${basePath}/stop`, { method: 'POST' });
                 await checkStatus();
@@ -1224,29 +1224,29 @@
             if (matchFoundData) {
                 logToTerminal(`📊 Final stats: ${matchFoundData.GUESSES_MADE} guesses, $${matchFoundData.TOTAL_COST.toFixed(4)} cost`, 'info', '📊');
             }
-            
+
             // Celebrate with confetti when user acknowledges the victory!
             createConfetti();
-            
+
             // Reset UI completely so user can enter new text and start fresh attack
             resetUI();
-            
+
             // Clear terminal and show ready message
             terminal.innerHTML = '<div class="terminal-line text-secondary"><span class="font-mono">[SYS]</span> System ready. Enter a new target phrase to begin.</div>';
             logToTerminal('🔄 Ready for new attack. Enter target phrase above.', 'info', '🔄');
         });
-        
+
         // Reset state on page load
         const resetOnLoad = async () => {
             resetUI();
             terminal.innerHTML = '<div class="terminal-line text-secondary"><span class="font-mono">[SYS]</span> System ready. Waiting for initialization...</div>';
-            
+
             try {
                 await fetch(`${basePath}/stop`, { method: 'POST' });
             } catch (e) {
                 // Ignore errors
             }
-            
+
             setTimeout(async () => {
                 await checkStatus(); // Check initial status once
                 setTimeout(() => logToTerminal('🔌 Connected to vector_hacking_demo node.', 'info', '🔌'), 500);
@@ -1255,7 +1255,7 @@
                 setTimeout(() => logToTerminal('⚡ System ready. Press INITIATE ATTACK to begin.', 'success', '⚡'), 2000);
             }, 100);
         };
-        
+
         resetOnLoad();
     </script>
 </body>

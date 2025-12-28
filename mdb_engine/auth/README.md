@@ -229,10 +229,10 @@ async def create_document(
         "create",
         authz_provider=authz
     )
-    
+
     if not has_permission:
         raise HTTPException(status_code=403, detail="Permission denied")
-    
+
     return await create_document_in_db(document)
 ```
 
@@ -453,21 +453,21 @@ from fastapi.responses import Response
 async def login(response: Response, credentials: dict):
     # Authenticate user
     user = await authenticate_user(credentials)
-    
+
     # Generate tokens
     access_token, refresh_token = generate_token_pair(
         user_id=user["_id"],
         user_email=user["email"],
         secret_key=SECRET_KEY
     )
-    
+
     # Set secure cookies
     set_auth_cookies(
         response=response,
         access_token=access_token,
         refresh_token=refresh_token
     )
-    
+
     return {"status": "logged_in"}
 
 @app.post("/logout")
@@ -629,4 +629,3 @@ await setup_auth_from_manifest(engine, manifest)
 - **`core/`** - MongoDBEngine integration
 - **`database/`** - Database access for user storage
 - **`observability/`** - Logging and metrics for auth events
-

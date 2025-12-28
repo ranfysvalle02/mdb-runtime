@@ -5,7 +5,8 @@ Dynamic Schema Generator for Parallax Lenses
 Generates Pydantic models on-the-fly from database-stored schema definitions.
 """
 import logging
-from typing import Dict, Any, List, Type, Optional
+from typing import Any, Dict, List, Optional, Type
+
 from pydantic import BaseModel, Field, create_model
 from pydantic.fields import FieldInfo
 
@@ -25,13 +26,10 @@ TYPE_MAPPING = {
 }
 
 
-def create_dynamic_model(
-    model_name: str,
-    fields: List[Dict[str, Any]]
-) -> Type[BaseModel]:
+def create_dynamic_model(model_name: str, fields: List[Dict[str, Any]]) -> Type[BaseModel]:
     """
     Dynamically create a Pydantic model from field definitions.
-    
+
     Args:
         model_name: Name of the model class (e.g., "MarketingView")
         fields: List of field definitions, each with:
@@ -41,28 +39,29 @@ def create_dynamic_model(
             - default: Any (optional default value)
             - constraints: Dict (optional constraints like ge, le, min_length, max_length)
             - literal_values: List[str] (for Literal types)
-    
+
     Returns:
         A Pydantic BaseModel class
     """
     model_fields: Dict[str, Any] = {}
-    
+
     for field_def in fields:
         field_name = field_def.get("name")
         if not field_name:
             logger.warning(f"Skipping field without name: {field_def}")
             continue
-        
+
         field_type_str = field_def.get("type", "str")
         description = field_def.get("description", "")
         default_value = field_def.get("default", ...)  # Use ... for required fields
         constraints = field_def.get("constraints", {})
         literal_values = field_def.get("literal_values", [])
-        
+
         # Determine Python type
         if literal_values:
             # Create Literal type
             from typing import Literal
+
             python_type = Literal[tuple(literal_values)]
         elif field_type_str.startswith("List["):
             # Handle List types
@@ -75,17 +74,17 @@ def create_dynamic_model(
                 python_type = List[str]  # Default to List[str]
         else:
             python_type = TYPE_MAPPING.get(field_type_str, str)
-        
+
         # Build Field with constraints
         field_kwargs = {"description": description}
         field_kwargs.update(constraints)
-        
+
         # Set default if provided
         if default_value is not ...:
             field_kwargs["default"] = default_value
-        
+
         model_fields[field_name] = (python_type, Field(**field_kwargs))
-    
+
     # Type 4: Let errors bubble up (already raises, just need to catch specific exceptions for logging)
     # Create the model dynamically
     try:
@@ -134,37 +133,37 @@ def get_default_lens_configs() -> Dict[str, Dict[str, Any]]:
                     "type": "int",
                     "description": "Relevance score for partnership opportunities (1-100)",
                     "default": None,
-                    "constraints": {"ge": 1, "le": 100}
+                    "constraints": {"ge": 1, "le": 100},
                 },
                 {
                     "name": "partnership_opportunity",
                     "type": "str",
                     "description": "Type of partnership opportunity identified (e.g., 'Integration', 'Collaboration', 'Co-marketing', 'Technology partnership', 'None')",
-                    "default": None
+                    "default": None,
                 },
                 {
                     "name": "keywords_used",
                     "type": "List[str]",
                     "description": "List of watchlist keywords that are actually used in the code/implementation",
-                    "default": None
+                    "default": None,
                 },
                 {
                     "name": "keywords_usage_details",
                     "type": "str",
                     "description": "How the watchlist keywords are used in the implementation (1-2 sentences)",
-                    "default": None
+                    "default": None,
                 },
                 {
                     "name": "why_it_matters",
                     "type": "str",
                     "description": "Why this repository matters for partnership opportunities (1 sentence)",
-                    "default": None
+                    "default": None,
                 },
                 {
                     "name": "key_insight",
                     "type": "str",
                     "description": "Most important takeaway about partnership potential (1 sentence)",
-                    "default": None
+                    "default": None,
                 },
                 {
                     "name": "urgency",
@@ -172,9 +171,9 @@ def get_default_lens_configs() -> Dict[str, Dict[str, Any]]:
                     "description": "Urgency level for partnership engagement",
                     "default": None,
                     "literal_values": ["Low", "Medium", "High"],
-                    "display_type": "badge"
-                }
-            ]
+                    "display_type": "badge",
+                },
+            ],
         },
         "Technical": {
             "lens_name": "Technical",
@@ -195,13 +194,13 @@ def get_default_lens_configs() -> Dict[str, Dict[str, Any]]:
                     "name": "architecture",
                     "type": "str",
                     "description": "Code architecture and design patterns observed (1 sentence)",
-                    "default": None
+                    "default": None,
                 },
                 {
                     "name": "tech_stack",
                     "type": "str",
                     "description": "Technology stack and key dependencies (1 sentence)",
-                    "default": None
+                    "default": None,
                 },
                 {
                     "name": "complexity",
@@ -209,7 +208,7 @@ def get_default_lens_configs() -> Dict[str, Dict[str, Any]]:
                     "description": "Code implementation complexity",
                     "default": None,
                     "literal_values": ["Low", "Medium", "High"],
-                    "display_type": "badge"
+                    "display_type": "badge",
                 },
                 {
                     "name": "readiness",
@@ -217,15 +216,14 @@ def get_default_lens_configs() -> Dict[str, Dict[str, Any]]:
                     "description": "Production readiness based on code quality",
                     "default": None,
                     "literal_values": ["Experimental", "Beta", "Production"],
-                    "display_type": "badge"
+                    "display_type": "badge",
                 },
                 {
                     "name": "code_patterns",
                     "type": "str",
                     "description": "Key code patterns and implementation approaches (1 sentence)",
-                    "default": None
-                }
-            ]
-        }
+                    "default": None,
+                },
+            ],
+        },
     }
-

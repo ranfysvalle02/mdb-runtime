@@ -23,4 +23,3 @@ assignees: ''
 
 ## Implementation Notes
 <!-- Any technical considerations or notes for implementation -->
-

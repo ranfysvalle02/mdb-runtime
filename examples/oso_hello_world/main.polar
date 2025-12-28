@@ -10,10 +10,10 @@ resource Document {
     # Link permissions to roles
     # Viewers get "read" permission
     "read" if "viewer";
-    
+
     # Editors get "write" permission
     "write" if "editor";
-    
+
     # Editors inherit viewer permissions (optional but common)
     "viewer" if "editor";
 }
@@ -25,4 +25,3 @@ allow(actor, action, resource) if
 # Note: has_role facts are inserted from the application code via OSO Cloud API
 # The resource block will automatically look for has_role(actor, role_name, resource) facts
 # No need to declare has_role here - OSO Cloud makes inserted facts available automatically
-

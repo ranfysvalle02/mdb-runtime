@@ -459,7 +459,7 @@ async def health_check():
     checker = HealthChecker()
     checker.register_check(lambda: check_mongodb_health(engine.mongo_client))
     checker.register_check(lambda: check_engine_health(engine))
-    
+
     results = await checker.check_all()
     return results
 ```
@@ -477,7 +477,7 @@ async def correlation_middleware(request: Request, call_next):
     # Set correlation ID from header or generate new one
     correlation_id = request.headers.get("X-Correlation-ID")
     set_correlation_id(correlation_id)
-    
+
     response = await call_next(request)
     response.headers["X-Correlation-ID"] = get_correlation_id()
     return response
@@ -513,4 +513,3 @@ async def get_metrics():
 - **`core/`** - MongoDBEngine integration
 - **`database/`** - Database operation metrics
 - **`auth/`** - Authentication event logging
-

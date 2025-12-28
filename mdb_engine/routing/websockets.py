@@ -72,9 +72,7 @@ class WebSocketConnectionManager:
             app_slug: App slug for scoping connections (ensures isolation)
         """
         self.app_slug = app_slug
-        self.active_connections: List[WebSocketConnection] = (
-            []
-        )  # List of connection metadata
+        self.active_connections: List[WebSocketConnection] = []  # List of connection metadata
         self._lock = asyncio.Lock()
         logger.debug(f"Initialized WebSocket manager for app: {app_slug}")
 
@@ -97,10 +95,7 @@ class WebSocketConnectionManager:
         """
         # Note: websocket should already be accepted by the endpoint handler
         # This is just for tracking - don't accept again
-        if (
-            hasattr(websocket, "client_state")
-            and websocket.client_state.name != "CONNECTED"
-        ):
+        if hasattr(websocket, "client_state") and websocket.client_state.name != "CONNECTED":
             await websocket.accept()
         connection = WebSocketConnection(
             websocket=websocket,
@@ -130,9 +125,7 @@ class WebSocketConnectionManager:
         async def _disconnect():
             async with self._lock:
                 self.active_connections = [
-                    conn
-                    for conn in self.active_connections
-                    if conn.websocket is not websocket
+                    conn for conn in self.active_connections if conn.websocket is not websocket
                 ]
             logger.info(
                 f"WebSocket disconnected for app '{self.app_slug}'. "
@@ -141,9 +134,7 @@ class WebSocketConnectionManager:
 
         asyncio.create_task(_disconnect())
 
-    async def broadcast(
-        self, message: Dict[str, Any], filter_by_user: Optional[str] = None
-    ) -> int:
+    async def broadcast(self, message: Dict[str, Any], filter_by_user: Optional[str] = None) -> int:
         """
         Broadcast a message to all connected clients for this app.
 
@@ -234,7 +225,7 @@ class WebSocketConnectionManager:
             }
             message_json = json.dumps(message_with_context)
             await websocket.send_text(message_json)
-        except (WebSocketDisconnect, RuntimeError, ConnectionError, OSError) as e:
+        except (WebSocketDisconnect, RuntimeError, OSError) as e:
             # WebSocket closed/disconnected errors are expected
             error_msg = str(e).lower()
             if "close" not in error_msg and "disconnect" not in error_msg:
@@ -276,9 +267,7 @@ _manager_lock = asyncio.Lock()
 
 # Global registry of message handlers per app (for listening to client messages)
 # Note: Registration happens synchronously during app startup, so no lock needed
-_message_handlers: Dict[
-    str, Dict[str, Callable[[Any, Dict[str, Any]], Awaitable[None]]]
-] = {}
+_message_handlers: Dict[str, Dict[str, Callable[[Any, Dict[str, Any]], Awaitable[None]]]] = {}
 
 
 async def get_websocket_manager(app_slug: str) -> WebSocketConnectionManager:
@@ -367,22 +356,16 @@ async def authenticate_websocket(
             else:
                 logger.info(f"WebSocket query_params is empty for app '{app_slug}'")
         else:
-            logger.warning(
-                f"WebSocket has no query_params attribute for app '{app_slug}'"
-            )
+            logger.warning(f"WebSocket has no query_params attribute for app '{app_slug}'")
 
         # If no token in query, try to get from cookies (if available)
         # Check both ws_token (non-httponly, for JS access) and token (httponly)
         if not token:
             if hasattr(websocket, "cookies"):
-                cookie_token = websocket.cookies.get(
-                    "ws_token"
-                ) or websocket.cookies.get("token")
+                cookie_token = websocket.cookies.get("ws_token") or websocket.cookies.get("token")
                 if cookie_token:
                     token = cookie_token
-                    logger.debug(
-                        f"WebSocket token found in cookies for app '{app_slug}'"
-                    )
+                    logger.debug(f"WebSocket token found in cookies for app '{app_slug}'")
             else:
                 logger.debug(f"WebSocket has no cookies attribute for app '{app_slug}'")
 
@@ -412,22 +395,16 @@ async def authenticate_websocket(
             user_id = payload.get("sub") or payload.get("user_id")
             user_email = payload.get("email")
 
-            logger.info(
-                f"WebSocket authenticated successfully for app '{app_slug}': {user_email}"
-            )
+            logger.info(f"WebSocket authenticated successfully for app '{app_slug}': {user_email}")
             return user_id, user_email
         except Exception as decode_error:
-            logger.error(
-                f"JWT decode error for app '{app_slug}': {decode_error}", exc_info=True
-            )
+            logger.error(f"JWT decode error for app '{app_slug}': {decode_error}", exc_info=True)
             raise
 
     except WebSocketDisconnect:
         raise
     except (ValueError, TypeError, AttributeError, KeyError, RuntimeError) as e:
-        logger.error(
-            f"WebSocket authentication failed for app '{app_slug}': {e}", exc_info=True
-        )
+        logger.error(f"WebSocket authentication failed for app '{app_slug}': {e}", exc_info=True)
         if require_auth:
             # Don't close before accepting - return error info instead
             return None, None  # Signal auth failure
@@ -469,9 +446,7 @@ def register_message_handler(
     if app_slug not in _message_handlers:
         _message_handlers[app_slug] = {}
     _message_handlers[app_slug][endpoint_name] = handler
-    logger.info(
-        f"Registered message handler for app '{app_slug}', endpoint '{endpoint_name}'"
-    )
+    logger.info(f"Registered message handler for app '{app_slug}', endpoint '{endpoint_name}'")
 
 
 def get_message_handler(
@@ -511,9 +486,7 @@ async def _authenticate_websocket_connection(
 ) -> tuple:
     """Authenticate WebSocket connection and return (user_id, user_email)."""
     try:
-        user_id, user_email = await authenticate_websocket(
-            websocket, app_slug, require_auth
-        )
+        user_id, user_email = await authenticate_websocket(websocket, app_slug, require_auth)
 
         if require_auth and not user_id:
             logger.warning(
@@ -522,9 +495,7 @@ async def _authenticate_websocket_connection(
             try:
                 await websocket.close(code=1008, reason="Authentication required")
             except (WebSocketDisconnect, RuntimeError, OSError) as e:
-                logger.debug(
-                    f"WebSocket already closed during auth failure cleanup: {e}"
-                )
+                logger.debug(f"WebSocket already closed during auth failure cleanup: {e}")
             raise WebSocketDisconnect(code=1008)
 
         return user_id, user_email
@@ -547,10 +518,8 @@ async def _authenticate_websocket_connection(
             exc_info=True,
         )
         try:
-            await websocket.close(
-                code=1011, reason="Internal server error during authentication"
-            )
-        except (WebSocketDisconnect, RuntimeError, ConnectionError, OSError) as e:
+            await websocket.close(code=1011, reason="Internal server error during authentication")
+        except (WebSocketDisconnect, RuntimeError, OSError) as e:
             logger.debug(f"WebSocket already closed during auth error cleanup: {e}")
         raise WebSocketDisconnect(code=1011)
 
@@ -656,9 +625,7 @@ def create_websocket_endpoint(
             file=sys.stderr,
             flush=True,
         )
-        print(
-            f"🔌 [WEBSOCKET HANDLER CALLED] App: '{app_slug}', Path: {path}", flush=True
-        )
+        print(f"🔌 [WEBSOCKET HANDLER CALLED] App: '{app_slug}', Path: {path}", flush=True)
         logger.info(f"🔌 [WEBSOCKET HANDLER CALLED] App: '{app_slug}', Path: {path}")
         connection = None
         try:
@@ -693,9 +660,7 @@ def create_websocket_endpoint(
             )
 
             # Connect with metadata (websocket already accepted)
-            connection = await manager.connect(
-                websocket, user_id=user_id, user_email=user_email
-            )
+            connection = await manager.connect(websocket, user_id=user_id, user_email=user_email)
 
             # Send initial connection confirmation
             await manager.send_to_connection(
@@ -765,9 +730,7 @@ def create_websocket_endpoint(
             TypeError,
             AttributeError,
         ) as e:
-            logger.error(
-                f"WebSocket connection error for app '{app_slug}': {e}", exc_info=True
-            )
+            logger.error(f"WebSocket connection error for app '{app_slug}': {e}", exc_info=True)
         finally:
             if connection:
                 manager.disconnect(websocket)
