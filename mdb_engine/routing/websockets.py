@@ -191,7 +191,7 @@ class WebSocketConnectionManager:
             try:
                 await connection.websocket.send_text(message_json)
                 sent_count += 1
-            except (WebSocketDisconnect, RuntimeError, ConnectionError, OSError) as e:
+            except (WebSocketDisconnect, RuntimeError, OSError) as e:
                 # WebSocket closed/disconnected errors are expected
                 error_msg = str(e).lower()
                 if "close" not in error_msg and "disconnect" not in error_msg:
@@ -521,7 +521,7 @@ async def _authenticate_websocket_connection(
             )
             try:
                 await websocket.close(code=1008, reason="Authentication required")
-            except (WebSocketDisconnect, RuntimeError, ConnectionError, OSError) as e:
+            except (WebSocketDisconnect, RuntimeError, OSError) as e:
                 logger.debug(
                     f"WebSocket already closed during auth failure cleanup: {e}"
                 )
@@ -736,7 +736,6 @@ def create_websocket_endpoint(
                         )
                     except (
                         WebSocketDisconnect,
-                        ConnectionError,
                         RuntimeError,
                         OSError,
                     ):
@@ -746,7 +745,6 @@ def create_websocket_endpoint(
                 except (
                     WebSocketDisconnect,
                     RuntimeError,
-                    ConnectionError,
                     OSError,
                 ) as e:
                     error_msg = str(e).lower()
@@ -762,7 +760,6 @@ def create_websocket_endpoint(
         except (
             WebSocketDisconnect,
             RuntimeError,
-            ConnectionError,
             OSError,
             ValueError,
             TypeError,

@@ -6,8 +6,9 @@ operations, and health.
 """
 
 import logging
+import threading
 import time
-from collections import defaultdict
+from collections import OrderedDict
 from dataclasses import dataclass
 from datetime import datetime
 from typing import Any, Callable, Dict, Optional
@@ -78,12 +79,17 @@ class MetricsCollector:
     - Performance metrics (latency, throughput)
     """
 
-    def __init__(self):
-        """Initialize the metrics collector."""
-        self._metrics: Dict[str, OperationMetrics] = defaultdict(
-            lambda: OperationMetrics(operation_name="")
-        )
-        self._lock = None  # Will be set to asyncio.Lock if needed
+    def __init__(self, max_metrics: int = 10000):
+        """
+        Initialize the metrics collector.
+
+        Args:
+            max_metrics: Maximum number of metrics to store before evicting oldest (LRU).
+                        Defaults to 10000.
+        """
+        self._metrics: OrderedDict[str, OperationMetrics] = OrderedDict()
+        self._lock = threading.Lock()
+        self._max_metrics = max_metrics
 
     def record_operation(
         self, operation_name: str, duration_ms: float, success: bool = True, **tags: Any
@@ -103,10 +109,21 @@ class MetricsCollector:
             tag_str = "_".join(f"{k}={v}" for k, v in sorted(tags.items()))
             key = f"{operation_name}[{tag_str}]"
 
-        if key not in self._metrics:
-            self._metrics[key] = OperationMetrics(operation_name=operation_name)
+        with self._lock:
+            # Check if this is a new metric
+            is_new = key not in self._metrics
 
-        self._metrics[key].record(duration_ms, success)
+            # Evict oldest if at capacity and adding new metric
+            if is_new and len(self._metrics) >= self._max_metrics:
+                self._metrics.popitem(last=False)  # Remove oldest (LRU)
+
+            if is_new:
+                self._metrics[key] = OperationMetrics(operation_name=operation_name)
+            else:
+                # Move to end (most recently used)
+                self._metrics.move_to_end(key)
+
+            self._metrics[key].record(duration_ms, success)
 
     def get_metrics(self, operation_name: Optional[str] = None) -> Dict[str, Any]:
         """
@@ -118,19 +135,29 @@ class MetricsCollector:
         Returns:
             Dictionary of metrics
         """
-        if operation_name:
-            metrics = {
-                k: v.to_dict()
-                for k, v in self._metrics.items()
-                if k.startswith(operation_name)
-            }
-        else:
-            metrics = {k: v.to_dict() for k, v in self._metrics.items()}
+        with self._lock:
+            if operation_name:
+                metrics = {
+                    k: v.to_dict()
+                    for k, v in self._metrics.items()
+                    if k.startswith(operation_name)
+                }
+                # Move accessed metrics to end (LRU)
+                for key in list(self._metrics.keys()):
+                    if key.startswith(operation_name):
+                        self._metrics.move_to_end(key)
+            else:
+                metrics = {k: v.to_dict() for k, v in self._metrics.items()}
+                # Move all accessed metrics to end (LRU)
+                for key in list(self._metrics.keys()):
+                    self._metrics.move_to_end(key)
+
+            total_operations = len(self._metrics)
 
         return {
             "timestamp": datetime.now().isoformat(),
             "metrics": metrics,
-            "total_operations": len(self._metrics),
+            "total_operations": total_operations,
         }
 
     def get_summary(self) -> Dict[str, Any]:
@@ -140,48 +167,58 @@ class MetricsCollector:
         Returns:
             Summary dictionary with aggregated statistics
         """
-        if not self._metrics:
-            return {
-                "timestamp": datetime.now().isoformat(),
-                "total_operations": 0,
-                "summary": {},
-            }
+        with self._lock:
+            if not self._metrics:
+                return {
+                    "timestamp": datetime.now().isoformat(),
+                    "total_operations": 0,
+                    "summary": {},
+                }
 
-        # Aggregate by base operation name (without tags)
-        aggregated: Dict[str, OperationMetrics] = {}
+            # Aggregate by base operation name (without tags)
+            aggregated: Dict[str, OperationMetrics] = {}
 
-        for key, metric in self._metrics.items():
-            base_name = metric.operation_name
-            if base_name not in aggregated:
-                aggregated[base_name] = OperationMetrics(operation_name=base_name)
+            for key, metric in self._metrics.items():
+                base_name = metric.operation_name
+                if base_name not in aggregated:
+                    aggregated[base_name] = OperationMetrics(operation_name=base_name)
 
-            agg = aggregated[base_name]
-            agg.count += metric.count
-            agg.total_duration_ms += metric.total_duration_ms
-            agg.min_duration_ms = min(agg.min_duration_ms, metric.min_duration_ms)
-            agg.max_duration_ms = max(agg.max_duration_ms, metric.max_duration_ms)
-            agg.error_count += metric.error_count
-            if metric.last_execution and (
-                not agg.last_execution or metric.last_execution > agg.last_execution
-            ):
-                agg.last_execution = metric.last_execution
+                agg = aggregated[base_name]
+                agg.count += metric.count
+                agg.total_duration_ms += metric.total_duration_ms
+                agg.min_duration_ms = min(agg.min_duration_ms, metric.min_duration_ms)
+                agg.max_duration_ms = max(agg.max_duration_ms, metric.max_duration_ms)
+                agg.error_count += metric.error_count
+                if metric.last_execution and (
+                    not agg.last_execution or metric.last_execution > agg.last_execution
+                ):
+                    agg.last_execution = metric.last_execution
+
+            # Move all accessed metrics to end (LRU)
+            for key in list(self._metrics.keys()):
+                self._metrics.move_to_end(key)
+
+            total_operations = len(self._metrics)
+            summary = {name: m.to_dict() for name, m in aggregated.items()}
 
         return {
             "timestamp": datetime.now().isoformat(),
-            "total_operations": len(self._metrics),
-            "summary": {name: m.to_dict() for name, m in aggregated.items()},
+            "total_operations": total_operations,
+            "summary": summary,
         }
 
     def reset(self) -> None:
         """Reset all metrics."""
-        self._metrics.clear()
+        with self._lock:
+            self._metrics.clear()
 
     def get_operation_count(self, operation_name: str) -> int:
         """Get the count of executions for an operation."""
-        total = 0
-        for metric in self._metrics.values():
-            if metric.operation_name == operation_name:
-                total += metric.count
+        with self._lock:
+            total = 0
+            for metric in self._metrics.values():
+                if metric.operation_name == operation_name:
+                    total += metric.count
         return total
 
 

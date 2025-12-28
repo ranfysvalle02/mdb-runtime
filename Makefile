@@ -9,7 +9,7 @@ UNIT_TEST_DIR := tests/unit
 INTEGRATION_TEST_DIR := tests/integration
 COV_ARGS := --cov=mdb_engine/core --cov=mdb_engine/database --cov-fail-under=$(COV_FAIL_UNDER)
 
-.PHONY: help install install-dev test test-unit test-integration test-coverage test-coverage-html lint lint-check format clean clean-pyc clean-cache check _check-tools _lint-flake8 _lint-isort _lint-exceptions
+.PHONY: help install install-dev test test-unit test-integration test-coverage test-coverage-html lint lint-check format clean clean-pyc clean-cache check _check-tools _lint-flake8 _lint-isort _lint-exceptions build build-check publish-test publish
 
 # Default target
 help:
@@ -29,6 +29,10 @@ help:
 	@echo "  make clean            - Remove build artifacts and caches"
 	@echo "  make clean-pyc        - Remove Python cache files"
 	@echo "  make clean-cache      - Remove pytest cache"
+	@echo "  make build            - Build distribution packages (wheel + sdist)"
+	@echo "  make build-check      - Check built packages"
+	@echo "  make publish-test     - Publish to TestPyPI (requires PYPI_API_TOKEN)"
+	@echo "  make publish          - Publish to PyPI (requires PYPI_API_TOKEN)"
 	@echo ""
 
 # Installation
@@ -141,4 +145,39 @@ clean-cache:
 check: lint test-unit
 	@echo ""
 	@echo "✅ Quality check complete: linting and unit tests passed!"
+
+# Build and publish
+build:
+	@echo "Building distribution packages..."
+	@$(PYTHON) -m pip install --upgrade build twine
+	@$(PYTHON) -m build
+	@echo "✅ Build complete! Packages are in dist/"
+
+build-check: build
+	@echo "Checking built packages..."
+	@$(PYTHON) -m pip install --upgrade twine
+	@$(PYTHON) -m twine check dist/*
+	@echo "✅ Package check complete!"
+
+publish-test: build-check
+	@echo "Publishing to TestPyPI..."
+	@if [ -z "$$PYPI_API_TOKEN" ]; then \
+		echo "❌ Error: PYPI_API_TOKEN environment variable not set"; \
+		echo "   Get your token from: https://test.pypi.org/manage/account/token/"; \
+		echo "   Then run: export PYPI_API_TOKEN=your_token_here"; \
+		exit 1; \
+	fi
+	@$(PYTHON) -m twine upload --repository testpypi dist/* --username __token__ --password $$PYPI_API_TOKEN
+	@echo "✅ Published to TestPyPI! Test install with: pip install -i https://test.pypi.org/simple/ mdb-engine"
+
+publish: build-check
+	@echo "Publishing to PyPI..."
+	@if [ -z "$$PYPI_API_TOKEN" ]; then \
+		echo "❌ Error: PYPI_API_TOKEN environment variable not set"; \
+		echo "   Get your token from: https://pypi.org/manage/account/token/"; \
+		echo "   Then run: export PYPI_API_TOKEN=your_token_here"; \
+		exit 1; \
+	fi
+	@$(PYTHON) -m twine upload dist/* --username __token__ --password $$PYPI_API_TOKEN
+	@echo "✅ Published to PyPI! Install with: pip install mdb-engine"
 

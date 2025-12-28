@@ -104,15 +104,6 @@ class AuthPolicyDict(TypedDict, total=False):
     owner_can_access: bool
 
 
-class OAuthProviderDict(TypedDict, total=False):
-    """OAuth provider configuration."""
-
-    name: Literal["google", "github", "microsoft", "custom"]
-    client_id: str
-    client_secret: str
-    redirect_uri: str
-
-
 class DemoUserDict(TypedDict, total=False):
     """Demo user configuration."""
 
@@ -128,13 +119,12 @@ class UsersConfigDict(TypedDict, total=False):
     """User management configuration."""
 
     enabled: bool
-    strategy: Literal["app_users", "anonymous_session", "oauth", "hybrid"]
+    strategy: Literal["app_users", "anonymous_session"]
     collection_name: str
     session_cookie_name: str
     session_ttl_seconds: int
     allow_registration: bool
     link_platform_users: bool
-    oauth_providers: List[OAuthProviderDict]
     anonymous_user_prefix: str
     user_id_field: str
     demo_users: List[DemoUserDict]

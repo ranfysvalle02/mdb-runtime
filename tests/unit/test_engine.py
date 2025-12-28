@@ -10,10 +10,10 @@ Tests the core orchestration engine functionality including:
 
 from unittest.mock import AsyncMock, MagicMock, patch
 
-import pytest
-
 from mdb_engine.core.engine import MongoDBEngine
 from mdb_engine.exceptions import InitializationError
+
+import pytest
 
 
 class TestMongoDBEngineInitialization:
@@ -870,7 +870,8 @@ class TestMongoDBEngineHealthMetrics:
     @pytest.mark.asyncio
     async def test_get_health_status_import_error_handled(self, mongodb_engine):
         """Test get_health_status handles ImportError when registering pool check."""
-        from mdb_engine.observability.health import HealthCheckResult, HealthStatus
+        from mdb_engine.observability.health import (HealthCheckResult,
+                                                     HealthStatus)
 
         mock_health_result = HealthCheckResult(
             name="test",
@@ -917,7 +918,8 @@ class TestMongoDBEngineHealthMetrics:
     @pytest.mark.asyncio
     async def test_get_health_status_pool_check_import_error(self, mongodb_engine):
         """Test get_health_status handles ImportError when pool check import fails."""
-        from mdb_engine.observability.health import HealthCheckResult, HealthStatus
+        from mdb_engine.observability.health import (HealthCheckResult,
+                                                     HealthStatus)
 
         mock_health_result = HealthCheckResult(
             name="test",

@@ -138,7 +138,6 @@ Both are in `auth.policy` and control access, but they work together:
 **You can use both:**
 - Platform auth for cross-app access
 - `auth.users` for app-specific features and data
-- Use the `hybrid` strategy in `auth.users.strategy` to combine both
 
 ### How does `link_users_roles` work?
 
@@ -188,16 +187,6 @@ The `strategy` field in `auth.users` determines how user authentication works:
   - No registration required
   - Users get anonymous IDs (e.g., "guest_abc123")
   - Useful for temporary access without accounts
-
-- **`oauth`**: OAuth integration
-  - Users authenticate via OAuth providers (Google, GitHub, etc.)
-  - No password management needed
-  - User data comes from OAuth provider
-
-- **`hybrid`**: Combine platform auth with app-specific identities
-  - Platform users can have app-specific profiles
-  - Links platform authentication with app-level user data
-  - Best of both worlds
 
 ## Migration Questions
 

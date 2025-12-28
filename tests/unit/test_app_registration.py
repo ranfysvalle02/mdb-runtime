@@ -6,10 +6,10 @@ Tests app registration, validation, callbacks, and reload functionality.
 
 from unittest.mock import AsyncMock, MagicMock, patch
 
-import pytest
-
 from mdb_engine.core.app_registration import AppRegistrationManager
 from mdb_engine.core.manifest import ManifestParser, ManifestValidator
+
+import pytest
 
 
 @pytest.fixture
@@ -272,6 +272,190 @@ class TestAppRegistrationEdgeCases:
             # Should still register app
             assert result is True
             assert sample_manifest["slug"] in app_registration_manager._apps
+
+    @pytest.mark.asyncio
+    async def test_register_app_callbacks_run_in_parallel(
+        self, app_registration_manager, sample_manifest, mock_mongo_database
+    ):
+        """Test that callbacks run in parallel, not sequentially."""
+        import asyncio
+        import time
+
+        # Mock successful validation
+        with patch.object(
+            app_registration_manager.manifest_validator,
+            "validate",
+            return_value=(True, None, None),
+        ):
+            # Mock database operations
+            mock_collection = MagicMock()
+            mock_collection.replace_one = AsyncMock(
+                return_value=MagicMock(modified_count=1, upserted_id="test_id")
+            )
+            mock_mongo_database.__getitem__ = lambda name: mock_collection
+            app_registration_manager.mongo_db = mock_mongo_database
+            app_registration_manager._mongo_db = mock_mongo_database
+            mock_mongo_database.apps_config = mock_collection
+
+            # Track callback execution times
+            callback_times = {}
+
+            async def slow_callback(name: str, delay: float):
+                """Callback that takes time to execute."""
+                start = time.time()
+                await asyncio.sleep(delay)
+                callback_times[name] = time.time() - start
+
+            # Create callbacks with delays - these need to be actual async functions
+            async def create_indexes_callback(slug, manifest):
+                await slow_callback("indexes", 0.1)
+
+            async def seed_data_callback(slug, data):
+                await slow_callback("seed", 0.1)
+
+            async def initialize_memory_callback(slug, config):
+                await slow_callback("memory", 0.1)
+
+            manifest_with_callbacks = {
+                **sample_manifest,
+                "managed_indexes": {
+                    "collection": [
+                        {"name": "idx", "type": "regular", "keys": [("field", 1)]}
+                    ]
+                },
+                "initial_data": {"collection": [{"field": "value"}]},
+                "memory_config": {"enabled": True},
+            }
+
+            start_time = time.time()
+            result = await app_registration_manager.register_app(
+                manifest_with_callbacks,
+                create_indexes_callback=create_indexes_callback,
+                seed_data_callback=seed_data_callback,
+                initialize_memory_callback=initialize_memory_callback,
+            )
+            total_time = time.time() - start_time
+
+            assert result is True
+
+            # If callbacks ran sequentially, total time would be ~0.3s (3 * 0.1s)
+            # If they ran in parallel, total time should be ~0.1s (max of delays)
+            # Allow some margin for overhead
+            assert total_time < 0.25, (
+                f"Callbacks took {total_time}s - likely running sequentially. "
+                f"Expected <0.25s for parallel execution."
+            )
+
+            # Verify all callbacks were called
+            assert len(callback_times) == 3
+            assert "indexes" in callback_times
+            assert "seed" in callback_times
+            assert "memory" in callback_times
+
+    @pytest.mark.asyncio
+    async def test_register_app_one_failing_callback_doesnt_block_others(
+        self, app_registration_manager, sample_manifest, mock_mongo_database
+    ):
+        """Test that one failing callback doesn't prevent others from running."""
+        # Mock successful validation
+        with patch.object(
+            app_registration_manager.manifest_validator,
+            "validate",
+            return_value=(True, None, None),
+        ):
+            # Mock database operations
+            mock_collection = MagicMock()
+            mock_collection.replace_one = AsyncMock(
+                return_value=MagicMock(modified_count=1, upserted_id="test_id")
+            )
+            mock_mongo_database.__getitem__ = lambda name: mock_collection
+            app_registration_manager.mongo_db = mock_mongo_database
+            app_registration_manager._mongo_db = mock_mongo_database
+            mock_mongo_database.apps_config = mock_collection
+
+            # Track which callbacks executed
+            executed_callbacks = []
+
+            async def failing_callback(slug, manifest):
+                """Callback that fails."""
+                executed_callbacks.append("failing")
+                raise Exception("Callback failed")
+
+            async def success_callback(slug, data):
+                """Callback that succeeds."""
+                executed_callbacks.append("success")
+
+            manifest_with_callbacks = {
+                **sample_manifest,
+                "managed_indexes": {
+                    "collection": [
+                        {"name": "idx", "type": "regular", "keys": [("field", 1)]}
+                    ]
+                },
+                "initial_data": {"collection": [{"field": "value"}]},
+            }
+
+            result = await app_registration_manager.register_app(
+                manifest_with_callbacks,
+                create_indexes_callback=failing_callback,
+                seed_data_callback=success_callback,
+            )
+
+            # Should still register app
+            assert result is True
+
+            # Both callbacks should have executed (even though one failed)
+            assert "failing" in executed_callbacks
+            assert "success" in executed_callbacks
+            assert len(executed_callbacks) == 2
+
+    @pytest.mark.asyncio
+    async def test_register_app_callback_exceptions_logged_not_raised(
+        self, app_registration_manager, sample_manifest, mock_mongo_database
+    ):
+        """Test that callback exceptions are logged but don't fail registration."""
+        # Mock successful validation
+        with patch.object(
+            app_registration_manager.manifest_validator,
+            "validate",
+            return_value=(True, None, None),
+        ):
+            # Mock database operations
+            mock_collection = MagicMock()
+            mock_collection.replace_one = AsyncMock(
+                return_value=MagicMock(modified_count=1, upserted_id="test_id")
+            )
+            mock_mongo_database.__getitem__ = lambda name: mock_collection
+            app_registration_manager.mongo_db = mock_mongo_database
+            app_registration_manager._mongo_db = mock_mongo_database
+            mock_mongo_database.apps_config = mock_collection
+
+            # Create failing callback
+            failing_callback = AsyncMock(side_effect=ValueError("Test error"))
+
+            manifest_with_callbacks = {
+                **sample_manifest,
+                "managed_indexes": {
+                    "collection": [
+                        {"name": "idx", "type": "regular", "keys": [("field", 1)]}
+                    ]
+                },
+            }
+
+            # Should not raise exception
+            with patch("mdb_engine.core.app_registration.logger") as mock_logger:
+                result = await app_registration_manager.register_app(
+                    manifest_with_callbacks,
+                    create_indexes_callback=failing_callback,
+                )
+
+                # Should still register app
+                assert result is True
+
+                # Should log warning about callback failure
+                mock_logger.warning.assert_called()
+                warning_call = mock_logger.warning.call_args[0][0]
+                assert "Callback" in warning_call and "failed" in warning_call
 
     @pytest.mark.asyncio
     async def test_reload_apps_empty(

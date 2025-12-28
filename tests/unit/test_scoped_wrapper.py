@@ -6,11 +6,12 @@ Tests data scoping, query filtering, and isolation logic.
 
 from unittest.mock import AsyncMock, MagicMock, patch
 
-import pytest
 from motor.motor_asyncio import AsyncIOMotorCollection
 
 from mdb_engine.database.scoped_wrapper import (ScopedCollectionWrapper,
                                                 ScopedMongoWrapper)
+
+import pytest
 
 
 @pytest.mark.unit
@@ -1336,6 +1337,152 @@ class TestAutoIndexManager:
             ]
         )
         assert result == "auto_name_asc_age_desc"
+
+    @pytest.mark.asyncio
+    async def test_ensure_index_for_query_task_deduplication(
+        self, mock_mongo_collection
+    ):
+        """Test that concurrent ensure_index_for_query calls don't create duplicate tasks."""
+        import asyncio
+
+        from mdb_engine.database.scoped_wrapper import AutoIndexManager
+
+        # Create a mock index manager
+        mock_index_manager = MagicMock()
+        mock_index_manager.list_indexes = AsyncMock(return_value=[])
+        mock_index_manager.create_index = AsyncMock()
+
+        auto_manager = AutoIndexManager(mock_mongo_collection, mock_index_manager)
+
+        # Set query count above threshold to trigger index creation
+        index_name = "auto_name_asc"
+        auto_manager._query_counts[index_name] = 10  # Above default threshold
+
+        # Call ensure_index_for_query concurrently multiple times
+        async def call_ensure_index():
+            await auto_manager.ensure_index_for_query({"name": "test"})
+
+        # Create multiple concurrent calls
+        tasks = [asyncio.create_task(call_ensure_index()) for _ in range(5)]
+
+        # Wait for all to complete
+        await asyncio.gather(*tasks)
+
+        # Verify only one task was created (check pending_tasks)
+        # After all tasks complete, pending_tasks should be empty
+        assert len(auto_manager._pending_tasks) == 0
+
+        # Verify create_index was called only once (not 5 times)
+        assert mock_index_manager.create_index.call_count == 1
+
+    @pytest.mark.asyncio
+    async def test_ensure_index_for_query_task_cleanup(self, mock_mongo_collection):
+        """Test that tasks are cleaned up from pending_tasks when complete."""
+        import asyncio
+
+        from mdb_engine.database.scoped_wrapper import AutoIndexManager
+
+        # Create a mock index manager
+        mock_index_manager = MagicMock()
+        mock_index_manager.list_indexes = AsyncMock(return_value=[])
+        mock_index_manager.create_index = AsyncMock(return_value="auto_name_asc")
+
+        auto_manager = AutoIndexManager(mock_mongo_collection, mock_index_manager)
+
+        # Set query count above threshold
+        index_name = "auto_name_asc"
+        auto_manager._query_counts[index_name] = 10
+
+        # Call ensure_index_for_query
+        await auto_manager.ensure_index_for_query({"name": "test"})
+
+        # Wait a bit for task to complete
+        await asyncio.sleep(0.1)
+
+        # Verify task was cleaned up
+        assert index_name not in auto_manager._pending_tasks
+        assert len(auto_manager._pending_tasks) == 0
+
+    @pytest.mark.asyncio
+    async def test_ensure_index_for_query_pending_task_blocks_duplicate(
+        self, mock_mongo_collection
+    ):
+        """Test that pending task blocks duplicate index creation."""
+        import asyncio
+
+        from mdb_engine.database.scoped_wrapper import AutoIndexManager
+
+        # Create a mock index manager
+        mock_index_manager = MagicMock()
+        mock_index_manager.list_indexes = AsyncMock(return_value=[])
+
+        # Mock create_index with a delay to simulate slow operation
+        async def slow_create_index(*args, **kwargs):
+            await asyncio.sleep(0.1)
+            return "auto_name_asc"
+
+        mock_index_manager.create_index = AsyncMock(side_effect=slow_create_index)
+
+        auto_manager = AutoIndexManager(mock_mongo_collection, mock_index_manager)
+
+        # Set query count above threshold
+        index_name = "auto_name_asc"
+        auto_manager._query_counts[index_name] = 10
+
+        # Start first call (will create task)
+        task1 = asyncio.create_task(
+            auto_manager.ensure_index_for_query({"name": "test"})
+        )
+
+        # Wait a tiny bit to ensure task is created
+        await asyncio.sleep(0.01)
+
+        # Verify task is in pending_tasks
+        assert index_name in auto_manager._pending_tasks
+
+        # Start second call immediately (should see pending task and return early)
+        await auto_manager.ensure_index_for_query({"name": "test"})
+
+        # Wait for first task to complete
+        await task1
+
+        # Verify create_index was called only once (second call was blocked)
+        assert mock_index_manager.create_index.call_count == 1
+
+    @pytest.mark.asyncio
+    async def test_ensure_index_for_query_completed_task_allows_new_creation(
+        self, mock_mongo_collection
+    ):
+        """Test that completed tasks don't block new index creation."""
+        import asyncio
+
+        from mdb_engine.database.scoped_wrapper import AutoIndexManager
+
+        # Create a mock index manager
+        mock_index_manager = MagicMock()
+        mock_index_manager.list_indexes = AsyncMock(return_value=[])
+        mock_index_manager.create_index = AsyncMock(return_value="auto_name_asc")
+
+        auto_manager = AutoIndexManager(mock_mongo_collection, mock_index_manager)
+
+        # Set query count above threshold
+        index_name = "auto_name_asc"
+        auto_manager._query_counts[index_name] = 10
+
+        # First call - creates index
+        await auto_manager.ensure_index_for_query({"name": "test"})
+
+        # Wait for task to complete and cleanup
+        await asyncio.sleep(0.1)
+
+        # Mark index as failed in cache (simulating need to retry)
+        auto_manager._creation_cache[index_name] = False
+
+        # Second call with same query - should create new task since previous completed
+        await auto_manager.ensure_index_for_query({"name": "test"})
+
+        # Verify create_index was called twice (first attempt and retry)
+        assert mock_index_manager.create_index.call_count == 2
 
 
 class TestAsyncAtlasIndexManagerCreateIndex:

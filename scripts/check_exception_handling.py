@@ -337,8 +337,8 @@ def check_file(filepath: Path) -> List[Tuple[int, str]]:
         return checker.errors
     except SyntaxError as e:
         return [(e.lineno or 1, f"Syntax error: {e.msg}")]
-    except Exception as e:
-        # Top-level exception handler for the checker itself (Type 4 - let it bubble)
+    except (SyntaxError, ValueError, AttributeError, TypeError) as e:
+        # Top-level exception handler for the checker itself - catch specific exceptions
         return [(1, f"Error checking file: {e}")]
 
 

@@ -356,9 +356,7 @@ async def protected_route(
 
 - **Platform authentication** (JWT-based, shared across apps)
 - **Sub-authentication** (app-specific user accounts with auto-role assignment)
-- **OAuth integration** (Google, GitHub, Microsoft, custom)
 - **Anonymous sessions** (for public apps)
-- **Hybrid auth** (combine platform + app-specific identities)
 
 ### Extensibility: Custom Authorization Providers
 
@@ -860,7 +858,7 @@ Check out the examples in the repository:
 Or start building your own app:
 
 ```bash
-git clone https://github.com/your-org/mdb-engine
+git clone https://github.com/ranfysvalle02/mdb-engine
 cd mdb-engine/examples/chit_chat
 docker-compose up
 ```

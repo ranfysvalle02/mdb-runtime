@@ -67,7 +67,7 @@ class _SecretKey:
         return _get_secret_key()
 
     def __repr__(self) -> str:
-        return f"<SECRET_KEY (validated on access)>"
+        return "<SECRET_KEY (validated on access)>"
 
     def __eq__(self, other: Any) -> bool:
         return str(self) == str(other) if other else False

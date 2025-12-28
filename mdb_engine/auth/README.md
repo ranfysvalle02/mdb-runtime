@@ -1,15 +1,24 @@
 # Authentication & Authorization Module
 
-Comprehensive authentication and authorization system for MDB_ENGINE applications with JWT tokens, pluggable authorization providers, session management, and FastAPI integration.
+MongoDB-backed authentication and authorization conveniences for MDB_ENGINE applications. The engine provides building blocks (JWT tokens, pluggable authorization providers, session management) without imposing specific authentication flows. Apps implement their own authentication (including OAuth) while leveraging the engine's MongoDB-backed conveniences.
+
+## Philosophy
+
+The engine provides **MongoDB-backed conveniences** without imposing solutions:
+
+- **Building blocks, not complete solutions**: The engine provides JWT token management, authorization providers (Casbin/OSO), and session management - but apps implement their own authentication flows
+- **MongoDB-first**: All auth data (policies, sessions, tokens) is stored in MongoDB, leveraging the engine's scoping and isolation features
+- **Pluggable authorization**: Choose Casbin (MongoDB-backed RBAC) or OSO (Cloud or library) - both auto-configured from manifest
+- **App-level flexibility**: Apps can implement OAuth, custom auth flows, or use the provided app-level user management utilities
 
 ## Features
 
 - **JWT Token Management**: Access and refresh token pairs with automatic lifecycle management
-- **Pluggable Authorization**: Support for Casbin and OSO authorization providers
+- **Pluggable Authorization**: Support for Casbin (MongoDB-backed) and OSO (Cloud or library) authorization providers
 - **FastAPI Integration**: Ready-to-use dependencies for authentication and authorization
 - **Session Management**: Multi-device session tracking with activity monitoring
 - **Token Blacklisting**: Secure token revocation and expiration handling
-- **Sub-Authentication**: App-level user management with anonymous and demo user support
+- **App-Level User Management**: Utilities for app-specific user accounts and anonymous sessions
 - **Security Middleware**: Built-in security headers and CSRF protection
 - **Cookie Management**: Secure cookie handling for web applications
 
@@ -73,6 +82,8 @@ Configure authentication and authorization in your `manifest.json`. The system a
 - **App-level user management**: App-level users automatically get Casbin roles assigned
 - **Zero boilerplate**: Just configure in manifest, everything works automatically
 
+**OSO Support**: The engine also supports OSO Cloud and OSO library. Configure `provider: "oso"` in your manifest with OSO Cloud credentials, and the engine will auto-create an OSO adapter just like Casbin.
+
 ## Usage
 
 ### 1. Unified Auth Setup (Recommended)
@@ -88,9 +99,9 @@ app = FastAPI()
 @app.on_event("startup")
 async def startup():
     # This automatically:
-    # - Creates Casbin provider with MongoDB adapter
+    # - Creates authorization provider (Casbin or OSO) with MongoDB adapter
     # - Sets up token management
-    # - Links app-level users to Casbin roles
+    # - Links app-level users to authorization roles
     # - Configures security middleware
     await setup_auth_from_manifest(app, engine, "my_app")
 ```
@@ -106,7 +117,7 @@ async def protected_route(
     user: dict = Depends(get_current_user),
     authz: AuthorizationProvider = Depends(get_authz_provider)
 ):
-    # Check permission using auto-created Casbin provider
+    # Check permission using auto-created authorization provider (Casbin or OSO)
     has_access = await authz.check(
         subject=user.get("email", "anonymous"),
         resource="my_app",
@@ -227,17 +238,21 @@ async def create_document(
 
 ### 4. Authorization Providers
 
+The engine supports two authorization providers, both auto-configured from manifest:
+
 #### Casbin Adapter (Auto-Created from Manifest)
 
 **Recommended**: Configure in manifest and let the system auto-create:
 
 ```json
 {
-  "auth_policy": {
-    "provider": "casbin",
-    "authorization": {
-      "model": "rbac",
-      "policies_collection": "casbin_policies"
+  "auth": {
+    "policy": {
+      "provider": "casbin",
+      "authorization": {
+        "model": "rbac",
+        "policies_collection": "casbin_policies"
+      }
     }
   }
 }
@@ -264,7 +279,30 @@ authz_provider = CasbinAdapter(enforcer)
 app.state.authz_provider = authz_provider
 ```
 
-#### OSO Adapter
+#### OSO Adapter (Auto-Created from Manifest)
+
+**OSO Cloud** (Recommended): Configure in manifest with OSO Cloud credentials:
+
+```json
+{
+  "auth": {
+    "policy": {
+      "provider": "oso",
+      "authorization": {
+        "api_key": "${OSO_AUTH}",
+        "url": "${OSO_URL}",
+        "initial_roles": [
+          {"user": "admin@example.com", "role": "admin", "resource": "documents"}
+        ]
+      }
+    }
+  }
+}
+```
+
+The OSO Cloud provider is automatically created from manifest, just like Casbin.
+
+**OSO Library** (Manual Setup):
 
 ```python
 from mdb_engine.auth import OsoAdapter
@@ -276,6 +314,9 @@ oso.load_file("policy.polar")
 
 # Create adapter
 authz_provider = OsoAdapter(oso)
+
+# Set on app state
+app.state.authz_provider = authz_provider
 
 # Check permission
 allowed = await authz_provider.check(

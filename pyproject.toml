@@ -8,7 +8,7 @@ version = "0.1.6"
 description = "MongoDB Engine"
 readme = "mdb_engine/README.md"
 requires-python = ">=3.8"
-license = {text = "MIT"}
+license = {text = "AGPL-3.0"}
 authors = [
     {name = "Your Name", email = "your.email@example.com"}
 ]
@@ -16,7 +16,7 @@ keywords = ["mongodb", "runtime", "engine", "database", "scoping"]
 classifiers = [
     "Development Status :: 4 - Beta",
     "Intended Audience :: Developers",
-    "License :: OSI Approved :: MIT License",
+    "License :: OSI Approved :: GNU Affero General Public License v3 or later (AGPLv3+)",
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.8",
     "Programming Language :: Python :: 3.9",
@@ -76,10 +76,10 @@ all = [
 mdb = "mdb_engine.cli.main:cli"
 
 [project.urls]
-Homepage = "https://github.com/yourusername/mdb-engine"
-Documentation = "https://github.com/yourusername/mdb-engine#readme"
-Repository = "https://github.com/yourusername/mdb-engine"
-Issues = "https://github.com/yourusername/mdb-engine/issues"
+Homepage = "https://github.com/ranfysvalle02/mdb-engine"
+Documentation = "https://github.com/ranfysvalle02/mdb-engine#readme"
+Repository = "https://github.com/ranfysvalle02/mdb-engine"
+Issues = "https://github.com/ranfysvalle02/mdb-engine/issues"
 
 [tool.coverage.run]
 source = ["mdb_engine"]

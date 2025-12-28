@@ -11,10 +11,10 @@ Tests service initialization functionality including:
 
 from unittest.mock import AsyncMock, MagicMock, patch
 
-import pytest
-
 from mdb_engine.core.service_initialization import ServiceInitializer
 from mdb_engine.database.scoped_wrapper import ScopedMongoWrapper
+
+import pytest
 
 
 @pytest.fixture
@@ -408,8 +408,8 @@ class TestDataSeeding:
         mock_metadata_collection.find_one = AsyncMock(
             return_value={"seeded_collections": []}
         )
-        # Use setattr to set the attribute dynamically (getattr is used in seeding.py line 45)
-        setattr(mock_db, "app_seeding_metadata", mock_metadata_collection)
+        # Set the attribute directly (getattr is used in seeding.py line 45)
+        mock_db.app_seeding_metadata = mock_metadata_collection
 
         def get_scoped_db(slug):
             return mock_db
@@ -480,7 +480,7 @@ class TestDataSeeding:
         mock_metadata_collection.find_one = AsyncMock(
             return_value={"seeded_collections": []}
         )
-        setattr(mock_db, "app_seeding_metadata", mock_metadata_collection)
+        mock_db.app_seeding_metadata = mock_metadata_collection
 
         mock_collection = MagicMock()
         mock_collection.count_documents = AsyncMock(return_value=0)

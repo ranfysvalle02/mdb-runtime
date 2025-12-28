@@ -385,17 +385,13 @@ MANIFEST_SCHEMA_V2 = {
                             "enum": [
                                 "app_users",
                                 "anonymous_session",
-                                "oauth",
-                                "hybrid",
                             ],
                             "default": "app_users",
                             "description": (
                                 "User management strategy. 'app_users' = "
                                 "app-specific user accounts, "
                                 "'anonymous_session' = session-based anonymous "
-                                "users, 'oauth' = OAuth integration, "
-                                "'hybrid' = combine platform auth with "
-                                "app-specific identities"
+                                "users."
                             ),
                         },
                         "collection_name": {
@@ -439,53 +435,8 @@ MANIFEST_SCHEMA_V2 = {
                             "type": "boolean",
                             "default": True,
                             "description": (
-                                "Link app users to platform users (when "
-                                "strategy is 'hybrid'). Allows platform users "
+                                "Link app users to platform users. Allows platform users "
                                 "to have app-specific profiles."
-                            ),
-                        },
-                        "oauth_providers": {
-                            "type": "array",
-                            "items": {
-                                "type": "object",
-                                "properties": {
-                                    "name": {
-                                        "type": "string",
-                                        "enum": [
-                                            "google",
-                                            "github",
-                                            "microsoft",
-                                            "custom",
-                                        ],
-                                    },
-                                    "client_id": {
-                                        "type": "string",
-                                        "description": (
-                                            "OAuth client ID (environment "
-                                            "variable name or direct value)"
-                                        ),
-                                    },
-                                    "client_secret": {
-                                        "type": "string",
-                                        "description": (
-                                            "OAuth client secret (environment "
-                                            "variable name or direct value)"
-                                        ),
-                                    },
-                                    "redirect_uri": {
-                                        "type": "string",
-                                        "format": "uri",
-                                        "description": (
-                                            "OAuth redirect URI (defaults to "
-                                            "app OAuth callback)"
-                                        ),
-                                    },
-                                },
-                                "required": ["name"],
-                            },
-                            "description": (
-                                "OAuth providers for app-level user management "
-                                "(when strategy is 'oauth' or 'hybrid')."
                             ),
                         },
                         "anonymous_user_prefix": {

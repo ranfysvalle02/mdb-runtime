@@ -8,13 +8,13 @@ try:
             for line in f
             if any(line.startswith(p) for p in ["mdb_engine", "tests", "scripts"])
         )
-except Exception:
+except (IOError, OSError, FileNotFoundError):
     flake8_count = 0
 
 try:
     with open("/tmp/isort_output.txt", "r") as f:
         isort_count = sum(1 for line in f if "ERROR:" in line)
-except Exception:
+except (IOError, OSError, FileNotFoundError):
     isort_count = 0
 
 total = flake8_count + isort_count

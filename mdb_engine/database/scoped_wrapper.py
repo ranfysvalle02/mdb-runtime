@@ -771,6 +771,7 @@ class AutoIndexManager:
         "_creation_cache",
         "_lock",
         "_query_counts",
+        "_pending_tasks",
     )
 
     def __init__(
@@ -784,6 +785,8 @@ class AutoIndexManager:
         self._lock = asyncio.Lock()
         # Track query patterns to determine which indexes to create
         self._query_counts: Dict[str, int] = {}
+        # Track in-flight index creation tasks to prevent duplicates
+        self._pending_tasks: Dict[str, asyncio.Task] = {}
 
     def _extract_index_fields_from_filter(
         self, filter: Optional[Mapping[str, Any]]
@@ -864,6 +867,53 @@ class AutoIndexManager:
 
         return f"auto_{'_'.join(parts)}"
 
+    async def _create_index_safely(
+        self, index_name: str, all_fields: List[Tuple[str, int]]
+    ) -> None:
+        """
+        Safely create an index, handling errors gracefully.
+
+        Args:
+            index_name: Name of the index to create
+            all_fields: List of (field, direction) tuples for the index
+        """
+        try:
+            # Check if index already exists
+            existing_indexes = await self._index_manager.list_indexes()
+            for idx in existing_indexes:
+                if idx.get("name") == index_name:
+                    async with self._lock:
+                        self._creation_cache[index_name] = True
+                    return  # Index already exists
+
+            # Create the index
+            keys = all_fields
+            await self._index_manager.create_index(
+                keys, name=index_name, background=True
+            )
+            async with self._lock:
+                self._creation_cache[index_name] = True
+            logger.info(
+                f"✨ Auto-created index '{index_name}' on "
+                f"{self._collection.name} for fields: "
+                f"{[f[0] for f in all_fields]}"
+            )
+
+        except (
+            OperationFailure,
+            ConnectionFailure,
+            ServerSelectionTimeoutError,
+            InvalidOperation,
+        ) as e:
+            # Don't fail the query if index creation fails
+            logger.warning(f"Failed to auto-create index '{index_name}': {e}")
+            async with self._lock:
+                self._creation_cache[index_name] = False
+        finally:
+            # Clean up pending task
+            async with self._lock:
+                self._pending_tasks.pop(index_name, None)
+
     async def ensure_index_for_query(
         self,
         filter: Optional[Mapping[str, Any]] = None,
@@ -883,6 +933,7 @@ class AutoIndexManager:
         2. Combines them into a composite index if needed
         3. Creates the index if it doesn't exist and usage threshold is met
         4. Uses async lock to prevent race conditions
+        5. Tracks pending tasks to prevent duplicate index creation
         """
         # Extract fields from filter and sort
         filter_fields = self._extract_index_fields_from_filter(filter)
@@ -918,40 +969,25 @@ class AutoIndexManager:
         if self._query_counts[pattern_key] < hint_threshold:
             return
 
-        # Check cache to avoid redundant creation attempts
+        # Check cache and pending tasks to avoid redundant creation attempts
         async with self._lock:
-            if index_name in self._creation_cache:
-                return  # Already attempted or created
+            # Only skip if index was successfully created (cache value is True)
+            # If cache value is False (failed attempt), allow retry
+            if self._creation_cache.get(index_name) is True:
+                return  # Already created successfully
 
-            try:
-                # Check if index already exists
-                existing_indexes = await self._index_manager.list_indexes()
-                for idx in existing_indexes:
-                    if idx.get("name") == index_name:
-                        self._creation_cache[index_name] = True
-                        return  # Index already exists
+            # Check if task is already in progress
+            if index_name in self._pending_tasks:
+                task = self._pending_tasks[index_name]
+                if not task.done():
+                    return  # Index creation already in progress
 
-                # Create the index
-                keys = all_fields
-                await self._index_manager.create_index(
-                    keys, name=index_name, background=True
-                )
-                self._creation_cache[index_name] = True
-                logger.info(
-                    f"✨ Auto-created index '{index_name}' on "
-                    f"{self._collection.name} for fields: "
-                    f"{[f[0] for f in all_fields]}"
-                )
-
-            except (
-                OperationFailure,
-                ConnectionFailure,
-                ServerSelectionTimeoutError,
-                InvalidOperation,
-            ) as e:
-                # Don't fail the query if index creation fails
-                logger.warning(f"Failed to auto-create index '{index_name}': {e}")
-                self._creation_cache[index_name] = False
+            # Create task and track it
+            # Cleanup happens in _create_index_safely's finally block
+            task = asyncio.create_task(
+                self._create_index_safely(index_name, all_fields)
+            )
+            self._pending_tasks[index_name] = task
 
 
 # ##########################################################################

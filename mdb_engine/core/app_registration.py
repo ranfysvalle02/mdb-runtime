@@ -7,6 +7,7 @@ and app state management.
 This module is part of MDB_ENGINE - MongoDB Engine.
 """
 
+import asyncio
 import logging
 import time
 from pathlib import Path
@@ -222,16 +223,21 @@ class AppRegistrationManager:
             except (AttributeError, ImportError, RuntimeError) as e:
                 logger.debug(f"Could not invalidate auth config cache for {slug}: {e}")
 
+            # Build list of callbacks to run in parallel
+            callback_tasks = []
+
             # Create indexes if requested
             if create_indexes_callback and "managed_indexes" in manifest:
                 logger.info(
                     f"[{slug}] Creating managed indexes " f"(has_managed_indexes=True)"
                 )
-                await create_indexes_callback(slug, manifest)
+                callback_tasks.append(create_indexes_callback(slug, manifest))
 
             # Seed initial data if configured
             if seed_data_callback and "initial_data" in manifest:
-                await seed_data_callback(slug, manifest["initial_data"])
+                callback_tasks.append(
+                    seed_data_callback(slug, manifest["initial_data"])
+                )
 
             # Initialize Memory service if configured
             memory_config = manifest.get("memory_config")
@@ -240,17 +246,43 @@ class AppRegistrationManager:
                 and memory_config
                 and memory_config.get("enabled", False)
             ):
-                await initialize_memory_callback(slug, memory_config)
+                callback_tasks.append(initialize_memory_callback(slug, memory_config))
 
             # Register WebSocket endpoints if configured
             websockets_config = manifest.get("websockets")
             if register_websockets_callback and websockets_config:
-                await register_websockets_callback(slug, websockets_config)
+                callback_tasks.append(
+                    register_websockets_callback(slug, websockets_config)
+                )
 
             # Set up observability (health checks, metrics, logging)
             observability_config = manifest.get("observability", {})
             if setup_observability_callback and observability_config:
-                await setup_observability_callback(slug, manifest, observability_config)
+                callback_tasks.append(
+                    setup_observability_callback(slug, manifest, observability_config)
+                )
+
+            # Run all callbacks in parallel
+            if callback_tasks:
+                results = await asyncio.gather(*callback_tasks, return_exceptions=True)
+                # Log any exceptions but don't fail registration
+                for i, result in enumerate(results):
+                    if isinstance(result, Exception):
+                        callback_names = [
+                            "create_indexes",
+                            "seed_data",
+                            "initialize_memory",
+                            "register_websockets",
+                            "setup_observability",
+                        ]
+                        callback_name = (
+                            callback_names[i] if i < len(callback_names) else "unknown"
+                        )
+                        logger.warning(
+                            f"[{slug}] Callback '{callback_name}' failed during "
+                            f"app registration: {result}",
+                            exc_info=result,
+                        )
 
             duration_ms = (time.time() - start_time) * 1000
             record_operation(
