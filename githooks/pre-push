@@ -1,0 +1,39 @@
+#!/bin/sh
+
+# Pre-push hook to ensure code is formatted and linted before pushing
+# This hook runs `make format` and `make lint` before allowing a push
+
+echo "🔍 Running pre-push checks..."
+
+# Get the directory where the hook is located (project root)
+PROJECT_ROOT="$(git rev-parse --show-toplevel)"
+cd "$PROJECT_ROOT" || exit 1
+
+# Run make format first
+echo "📝 Formatting code with 'make format'..."
+if ! make format; then
+    echo "❌ Error: 'make format' failed. Please fix formatting issues and try again."
+    exit 1
+fi
+
+# Check if formatting changed any files
+if [ -n "$(git diff --name-only)" ]; then
+    echo "⚠️  Warning: 'make format' modified some files. Please review and commit the changes before pushing."
+    echo "Modified files:"
+    git diff --name-only
+    echo ""
+    echo "You can review changes with: git diff"
+    echo "To commit the formatting changes: git add . && git commit -m 'Format code'"
+    exit 1
+fi
+
+# Run make lint
+echo "🔍 Running linter with 'make lint'..."
+if ! make lint; then
+    echo "❌ Error: 'make lint' failed. Please fix linting issues and try again."
+    exit 1
+fi
+
+echo "✅ All pre-push checks passed!"
+exit 0
+

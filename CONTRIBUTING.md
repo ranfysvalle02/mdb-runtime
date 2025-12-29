@@ -251,6 +251,80 @@ make check
 git commit --no-verify -m "Emergency fix (bypassing hooks)"
 ```
 
+## Pre-push Hooks
+
+We use Git pre-push hooks to automatically run code quality checks before pushing to GitHub. This ensures that all code is properly formatted and linted before it reaches the remote repository.
+
+### Setup
+
+**First-time setup** (or after cloning the repository):
+
+```bash
+# Install the hooks
+./scripts/install-hooks.sh
+```
+
+This will copy hooks from the `githooks/` directory to `.git/hooks/`, making them active.
+
+### What the Pre-push Hook Does
+
+The pre-push hook automatically:
+
+1. **Runs `make format`** - Formats your code with Black and isort
+2. **Checks for formatting changes** - If formatting modified files, it blocks the push and asks you to commit the changes
+3. **Runs `make lint`** - Checks for linting errors (flake8, isort, exception handling)
+4. **Blocks the push** - If any check fails, the push is prevented
+
+### Example Output
+
+When you run `git push`, you'll see:
+
+```bash
+🔍 Running pre-push checks...
+📝 Formatting code with 'make format'...
+Formatting code...
+✅ All linting checks passed!
+🔍 Running linter with 'make lint'...
+Checking flake8...
+Checking import sorting (isort)...
+Checking exception handling (Grinberg framework)...
+✅ All linting checks passed!
+✅ All pre-push checks passed!
+```
+
+If formatting changes files:
+
+```bash
+⚠️  Warning: 'make format' modified some files. Please review and commit the changes before pushing.
+Modified files:
+mdb_engine/core/example.py
+
+You can review changes with: git diff
+To commit the formatting changes: git add . && git commit -m 'Format code'
+```
+
+### Bypassing Hooks (Not Recommended)
+
+If you need to bypass the hook in an emergency:
+
+```bash
+git push --no-verify
+```
+
+**Note**: Only use this for true emergencies. The hooks help maintain code quality.
+
+### Sharing Hooks with Your Team
+
+The hooks are stored in the `githooks/` directory, which is tracked in Git. When team members clone the repository, they should run:
+
+```bash
+./scripts/install-hooks.sh
+```
+
+This ensures everyone has the same hooks installed locally.
+
+**Important**: Git hooks are **local-only** - they run on your machine, not on GitHub. However, by storing them in `githooks/` and providing the install script, we ensure all team members can easily set them up.
+
 ## Testing
 
 ### Running Tests
