@@ -613,14 +613,20 @@ index_definitions = [
     }
 ]
 
-# Get scoped database for the app
+# Get scoped database and collection
 db = engine.get_scoped_db("my_app")
-await run_index_creation_for_collection(
-    db=db.database,  # Access underlying database for index creation
-    slug="my_app",
-    collection_name="users",
-    index_definitions=index_definitions
-)
+collection = db.users
+
+# Use collection.index_manager for index operations
+index_manager = collection.index_manager
+for index_def in index_definitions:
+    if index_def["type"] == "regular":
+        await index_manager.create_index(
+            keys=list(index_def["keys"].items()),
+            name=index_def.get("name"),
+            **index_def.get("options", {})
+        )
+    # Handle other index types similarly...
 ```
 
 ### Multiple Collections
@@ -637,15 +643,22 @@ collections_with_indexes = {
     ]
 }
 
-# Get scoped database for the app
+# Get scoped database
 db = engine.get_scoped_db("my_app")
+
+# Use collection.index_manager for each collection
 for collection_name, index_definitions in collections_with_indexes.items():
-    await run_index_creation_for_collection(
-        db=db.database,  # Access underlying database for index creation
-        slug="my_app",
-        collection_name=collection_name,
-        index_definitions=index_definitions
-    )
+    collection = getattr(db, collection_name)
+    index_manager = collection.index_manager
+    
+    for index_def in index_definitions:
+        if index_def["type"] == "regular":
+            await index_manager.create_index(
+                keys=list(index_def["keys"].items()),
+                name=index_def.get("name"),
+                **index_def.get("options", {})
+            )
+        # Handle other index types similarly...
 ```
 
 ## Related Modules

@@ -148,6 +148,70 @@ class TestMongoDBEngineScopedDatabase:
         assert scoped_db._write_scope == "app1"
 
     @pytest.mark.asyncio
+    async def test_get_scoped_db_has_validators_and_limiters(self, mongodb_engine):
+        """Test that scoped database has query validators and resource limiters."""
+        scoped_db = mongodb_engine.get_scoped_db("test_app")
+
+        # Verify validators and limiters are present
+        assert hasattr(scoped_db, "_query_validator")
+        assert hasattr(scoped_db, "_resource_limiter")
+        assert scoped_db._query_validator is not None
+        assert scoped_db._resource_limiter is not None
+
+    @pytest.mark.asyncio
+    async def test_get_scoped_db_collections_have_validators(
+        self, mongodb_engine, mock_mongo_database
+    ):
+        """Test that collections created from scoped db have validators."""
+        # Mock the database
+        with patch.object(
+            mongodb_engine._connection_manager, "mongo_db", mock_mongo_database
+        ):
+            scoped_db = mongodb_engine.get_scoped_db("test_app")
+
+            # Mock collection
+            from motor.motor_asyncio import AsyncIOMotorCollection
+
+            mock_collection = MagicMock(spec=AsyncIOMotorCollection)
+            mock_collection.name = "test_app_users"
+            mock_mongo_database.test_app_users = mock_collection
+
+            # Get collection
+            collection = scoped_db.users
+
+            # Verify collection has validators
+            assert hasattr(collection, "_query_validator")
+            assert hasattr(collection, "_resource_limiter")
+            assert collection._query_validator is scoped_db._query_validator
+            assert collection._resource_limiter is scoped_db._resource_limiter
+
+    @pytest.mark.asyncio
+    async def test_get_scoped_db_security_features_work(
+        self, mongodb_engine, mock_mongo_database
+    ):
+        """Test that security features work end-to-end through engine."""
+        from motor.motor_asyncio import AsyncIOMotorCollection
+
+        from mdb_engine.exceptions import QueryValidationError
+
+        # Mock the database
+        with patch.object(
+            mongodb_engine._connection_manager, "mongo_db", mock_mongo_database
+        ):
+            scoped_db = mongodb_engine.get_scoped_db("test_app")
+
+            # Mock collection
+            mock_collection = MagicMock(spec=AsyncIOMotorCollection)
+            mock_collection.name = "test_app_users"
+            mock_mongo_database.test_app_users = mock_collection
+
+            collection = scoped_db.users
+
+            # Test that dangerous operator is blocked
+            with pytest.raises(QueryValidationError, match="Dangerous operator"):
+                collection.find({"$where": "true"})
+
+    @pytest.mark.asyncio
     async def test_get_scoped_db_uninitialized(self, uninitialized_mongodb_engine):
         """Test getting scoped db before initialization raises error."""
         with pytest.raises(RuntimeError, match="not initialized"):
@@ -221,6 +285,58 @@ class TestMongoDBEngineManifestValidation:
         engine = MongoDBEngine(mongo_uri="mongodb://localhost:27017", db_name="test_db")
         with pytest.raises(RuntimeError, match="not initialized"):
             await engine.load_manifest("nonexistent.json")
+
+
+class TestMongoDBEngineGetScopedDbSecurity:
+    """Test security validation in get_scoped_db."""
+
+    @pytest.mark.asyncio
+    async def test_get_scoped_db_validates_read_scopes(self, mongodb_engine):
+        """Test that get_scoped_db validates read_scopes."""
+        await mongodb_engine.initialize()
+
+        # Empty read_scopes
+        with pytest.raises(ValueError, match="cannot be empty"):
+            mongodb_engine.get_scoped_db("test_app", read_scopes=[])
+
+        # Invalid type
+        with pytest.raises(ValueError, match="must be a list"):
+            mongodb_engine.get_scoped_db("test_app", read_scopes="not_a_list")
+
+        # Invalid app slug in read_scopes
+        with pytest.raises(ValueError, match="Invalid app slug"):
+            mongodb_engine.get_scoped_db("test_app", read_scopes=[""])
+
+        with pytest.raises(ValueError, match="Invalid app slug"):
+            mongodb_engine.get_scoped_db("test_app", read_scopes=[None])
+
+    @pytest.mark.asyncio
+    async def test_get_scoped_db_validates_write_scope(self, mongodb_engine):
+        """Test that get_scoped_db validates write_scope."""
+        await mongodb_engine.initialize()
+
+        # Empty write_scope
+        with pytest.raises(ValueError, match="non-empty string"):
+            mongodb_engine.get_scoped_db("test_app", write_scope="")
+
+        # None write_scope (will default to app_slug, which is valid)
+        db = mongodb_engine.get_scoped_db("test_app", write_scope=None)
+        assert db is not None
+
+    @pytest.mark.asyncio
+    async def test_get_scoped_db_valid_scopes(self, mongodb_engine):
+        """Test that get_scoped_db works with valid scopes."""
+        await mongodb_engine.initialize()
+
+        # Valid single scope
+        db = mongodb_engine.get_scoped_db("test_app")
+        assert db is not None
+
+        # Valid multiple scopes
+        db = mongodb_engine.get_scoped_db(
+            "test_app", read_scopes=["test_app", "other_app"]
+        )
+        assert db is not None
 
 
 class TestMongoDBEngineTenantRegistration:

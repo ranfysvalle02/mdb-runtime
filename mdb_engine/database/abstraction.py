@@ -554,6 +554,14 @@ class AppDB:
         Example:
             db.users.get("user_123")  # Instead of db.collection("users").get("user_123")
         """
+        # Explicitly block access to 'database' property (removed for security)
+        if name == "database":
+            raise AttributeError(
+                "'database' property has been removed for security. "
+                "Use collection.index_manager for index operations. "
+                "All data access must go through scoped collections."
+            )
+
         # Only proxy collection names, not internal attributes
         if name.startswith("_"):
             raise AttributeError(
@@ -575,26 +583,6 @@ class AppDB:
             results = await db.raw.my_collection.aggregate(pipeline).to_list(None)
         """
         return self._wrapper
-
-    @property
-    def database(self):
-        """
-        Access the underlying AsyncIOMotorDatabase (unscoped).
-
-        This is useful for advanced operations that need direct access to the
-        real database without scoping, such as index management or administrative
-        operations.
-
-        Returns:
-            The underlying AsyncIOMotorDatabase instance
-
-        Example:
-            # Access underlying database for index management
-            real_db = db.database
-            collection = real_db["my_collection"]
-            index_manager = AsyncAtlasIndexManager(collection)
-        """
-        return self._wrapper.database
 
 
 # FastAPI dependency helper

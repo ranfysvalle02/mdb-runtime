@@ -129,13 +129,28 @@ class MongoDBEngine:
     @property
     def mongo_client(self) -> AsyncIOMotorClient:
         """
-        Get the MongoDB client.
+        Get the MongoDB client for observability and health checks.
+
+        **SECURITY WARNING:** This property exposes the raw MongoDB client.
+        It should ONLY be used for:
+        - Health checks and observability (`check_mongodb_health`, `get_pool_metrics`)
+        - Administrative operations that don't involve data access
+
+        **DO NOT use this for data access.** Always use `get_scoped_db()` for
+        all data operations to ensure proper app scoping and security.
 
         Returns:
             AsyncIOMotorClient instance
 
         Raises:
             RuntimeError: If engine is not initialized
+
+        Example:
+            # ✅ CORRECT: Use for health checks
+            health = await check_mongodb_health(engine.mongo_client)
+
+            # ❌ WRONG: Don't use for data access
+            db = engine.mongo_client["my_database"]  # Bypasses scoping!
         """
         return self._connection_manager.mongo_client
 
@@ -189,6 +204,25 @@ class MongoDBEngine:
             read_scopes = [app_slug]
         if write_scope is None:
             write_scope = app_slug
+
+        # Validate read_scopes for security
+        # Ensure all read_scopes are valid (non-empty strings)
+        if not isinstance(read_scopes, list):
+            raise ValueError(f"read_scopes must be a list, got {type(read_scopes)}")
+        if not read_scopes:
+            raise ValueError("read_scopes cannot be empty")
+        for scope in read_scopes:
+            if not isinstance(scope, str) or not scope:
+                raise ValueError(
+                    f"Invalid app slug in read_scopes: {scope}. "
+                    "All app slugs must be non-empty strings."
+                )
+
+        # Validate write_scope
+        if not isinstance(write_scope, str) or not write_scope:
+            raise ValueError(
+                f"write_scope must be a non-empty string, got {write_scope}"
+            )
 
         return ScopedMongoWrapper(
             real_db=self._connection_manager.mongo_db,

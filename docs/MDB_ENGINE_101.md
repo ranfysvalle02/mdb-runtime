@@ -1275,10 +1275,131 @@ async def delete_todo(todo_id: str, user: dict = Depends(get_current_user), db =
 **For LLMs generating code:**
 
 - Always use `engine.get_scoped_db()` - raw database access has been removed for security
+- Use `collection.index_manager` for index operations - never access `.database` property
+- `engine.mongo_client` is for observability/health checks only - NOT for data access
 - Configure everything in `manifest.json` - don't create indexes manually
 - Use `setup_auth_from_manifest()` for authentication setup
 - Leverage built-in services (embeddings, memory) when needed
 - Follow the patterns above for common use cases
+
+## Security Best Practices
+
+### Query Security
+
+The engine automatically validates all queries for security:
+
+**Dangerous Operators Blocked:**
+- `$where` - JavaScript execution (security risk)
+- `$eval` - JavaScript evaluation (deprecated, security risk)
+- `$function` - JavaScript functions (security risk)
+- `$accumulator` - Can be abused for code execution
+
+```python
+# ❌ These will raise QueryValidationError:
+db.collection.find({"$where": "this.status === 'active'"})
+db.collection.aggregate([{"$match": {"$eval": "code"}}])
+
+# ✅ Use safe alternatives:
+db.collection.find({"status": "active"})
+db.collection.find({"age": {"$gt": 18}})
+```
+
+**Query Limits:**
+- Maximum query depth: 10 levels (prevents deeply nested queries)
+- Maximum pipeline stages: 50 (prevents complex aggregation pipelines)
+- Maximum regex length: 1000 characters (prevents ReDoS attacks)
+- Maximum regex complexity: 50 (prevents ReDoS attacks)
+
+### Resource Limits
+
+All operations have automatic resource limits:
+
+**Query Timeouts:**
+- Default timeout: 30 seconds
+- Maximum timeout: 5 minutes
+- Automatically enforced on all queries
+
+```python
+# Timeout is automatically added:
+db.collection.find({"status": "active"})  # Has maxTimeMS=30000
+
+# You can set custom timeout (capped to 5 minutes):
+db.collection.find({"status": "active"}, maxTimeMS=60000)  # 60 seconds
+```
+
+**Result Size Limits:**
+- Maximum result size: 10,000 documents
+- Maximum batch size: 1,000 documents
+- Automatically enforced
+
+```python
+# Limits are automatically enforced:
+db.collection.find({}, limit=20000)  # Capped to 10,000
+```
+
+**Document Size Limits:**
+- Maximum document size: 16MB (MongoDB limit)
+- Validated before insert
+
+```python
+# Document size is validated:
+large_doc = {"data": "x" * (20 * 1024 * 1024)}  # 20MB
+await db.collection.insert_one(large_doc)  # ❌ Raises ResourceLimitExceeded
+```
+
+### Collection Naming
+
+- Use valid MongoDB collection names: alphanumeric, underscore, dot, hyphen
+- Start with a letter or underscore (not a number)
+- Avoid reserved names: `apps_config`, `system.*`, `admin.*`, `config.*`, `local.*`
+- Use descriptive names: `user_profiles`, `order_items`, `product_catalog`
+
+```python
+# ✅ Good collection names
+db.user_profiles
+db.order_items
+db.product_catalog_v2
+
+# ❌ Bad collection names
+db.system_users      # Reserved prefix
+db.apps_config       # Reserved name
+db["../other"]       # Path traversal attempt
+db["123users"]       # Starts with number
+```
+
+### Cross-App Access
+
+- Only grant `read_scopes` to apps that need cross-app data
+- Validate that cross-app access is necessary before granting
+- Monitor audit logs for unauthorized access attempts
+
+```python
+# ✅ Explicit cross-app access
+db = engine.get_scoped_db(
+    "my_app",
+    read_scopes=["my_app", "shared_data_app"]  # Explicitly authorized
+)
+
+# ❌ Overly permissive access
+db = engine.get_scoped_db(
+    "my_app",
+    read_scopes=["*"]  # Don't do this - be explicit
+)
+```
+
+### Scope Validation
+
+- Always validate `read_scopes` and `write_scope` when creating scoped databases
+- Use non-empty, valid app slugs
+- The engine validates scopes automatically - invalid scopes raise `ValueError`
+
+### Security Monitoring
+
+- Review security logs regularly for:
+  - Invalid collection name attempts
+  - Unauthorized cross-app access attempts
+  - Reserved name/prefix access attempts
+- Set up alerts for repeated security violations
 
 ---
 

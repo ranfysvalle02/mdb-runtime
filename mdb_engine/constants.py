@@ -57,6 +57,24 @@ DEFAULT_MAX_IDLE_TIME_MS: Final[int] = 45000
 MAX_COLLECTION_NAME_LENGTH: Final[int] = 255
 """Maximum length for MongoDB collection names."""
 
+MIN_COLLECTION_NAME_LENGTH: Final[int] = 1
+"""Minimum length for MongoDB collection names."""
+
+# Reserved collection name prefixes (MongoDB system collections)
+RESERVED_COLLECTION_PREFIXES: Final[tuple[str, ...]] = (
+    "system",
+    "admin",
+    "config",
+    "local",
+)
+"""Reserved MongoDB collection name prefixes that cannot be used."""
+
+# Reserved collection names (engine-internal)
+RESERVED_COLLECTION_NAMES: Final[tuple[str, ...]] = (
+    "apps_config",  # Engine internal - app registration
+)
+"""Reserved collection names that cannot be accessed through scoped wrappers."""
+
 # App slug constraints
 MAX_APP_SLUG_LENGTH: Final[int] = 100
 """Maximum length for app slugs."""
@@ -158,3 +176,49 @@ SUPPORTED_APP_STATUSES: Final[tuple[str, ...]] = (
     APP_STATUS_ARCHIVED,
     APP_STATUS_INACTIVE,
 )
+
+# ============================================================================
+# QUERY SECURITY & RESOURCE LIMITS
+# ============================================================================
+
+# Query execution limits
+DEFAULT_MAX_TIME_MS: Final[int] = 30000
+"""Default query timeout in milliseconds (30 seconds)."""
+
+MAX_QUERY_TIME_MS: Final[int] = 300000
+"""Maximum allowed query timeout in milliseconds (5 minutes)."""
+
+MAX_QUERY_RESULT_SIZE: Final[int] = 10000
+"""Maximum number of documents that can be returned in a single query."""
+
+MAX_CURSOR_BATCH_SIZE: Final[int] = 1000
+"""Maximum batch size for cursor operations."""
+
+MAX_DOCUMENT_SIZE: Final[int] = 16 * 1024 * 1024
+"""Maximum document size in bytes (16MB MongoDB limit)."""
+
+# Pipeline limits
+MAX_PIPELINE_STAGES: Final[int] = 50
+"""Maximum number of stages allowed in an aggregation pipeline."""
+
+MAX_SORT_FIELDS: Final[int] = 10
+"""Maximum number of fields that can be sorted in a single query."""
+
+MAX_QUERY_DEPTH: Final[int] = 10
+"""Maximum nesting depth for query filters (prevents deeply nested queries)."""
+
+# Regex limits (prevent ReDoS attacks)
+MAX_REGEX_LENGTH: Final[int] = 1000
+"""Maximum length of regex patterns to prevent ReDoS attacks."""
+
+MAX_REGEX_COMPLEXITY: Final[int] = 50
+"""Maximum complexity score for regex patterns (prevents ReDoS)."""
+
+# Dangerous MongoDB operators that should be blocked
+DANGEROUS_OPERATORS: Final[tuple[str, ...]] = (
+    "$where",  # JavaScript execution (security risk)
+    "$eval",  # JavaScript evaluation (deprecated, security risk)
+    "$function",  # JavaScript functions (security risk)
+    "$accumulator",  # Can be abused for code execution
+)
+"""MongoDB operators that are blocked for security reasons."""

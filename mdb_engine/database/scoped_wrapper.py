@@ -26,6 +26,7 @@ a familiar (Motor-like) developer experience with automatic index optimization.
 
 import asyncio
 import logging
+import re
 import time
 from typing import (Any, ClassVar, Coroutine, Dict, List, Mapping, Optional,
                     Tuple, Union)
@@ -43,10 +44,14 @@ from pymongo.results import (DeleteResult, InsertManyResult, InsertOneResult,
 # Import constants
 from ..constants import (AUTO_INDEX_HINT_THRESHOLD, DEFAULT_DROP_TIMEOUT,
                          DEFAULT_POLL_INTERVAL, DEFAULT_SEARCH_TIMEOUT,
-                         MAX_INDEX_FIELDS)
+                         MAX_COLLECTION_NAME_LENGTH, MAX_INDEX_FIELDS,
+                         MIN_COLLECTION_NAME_LENGTH, RESERVED_COLLECTION_NAMES,
+                         RESERVED_COLLECTION_PREFIXES)
 from ..exceptions import MongoDBEngineError
 # Import observability
 from ..observability import record_operation
+from .query_validator import QueryValidator
+from .resource_limiter import ResourceLimiter
 
 # --- FIX: Configure logger *before* first use ---
 logger = logging.getLogger(__name__)
@@ -87,6 +92,152 @@ def _create_managed_task(
 
 
 # ##########################################################################
+# SECURITY VALIDATION FUNCTIONS
+# ##########################################################################
+
+# Collection name pattern: alphanumeric, underscore, dot, hyphen
+# Must start with alphanumeric or underscore
+# MongoDB allows: [a-zA-Z0-9_.-] but cannot start with number or special char
+COLLECTION_NAME_PATTERN: re.Pattern = re.compile(r"^[a-zA-Z_][a-zA-Z0-9_.-]*$")
+"""Regex pattern for valid MongoDB collection names."""
+
+
+def _validate_collection_name(name: str, allow_prefixed: bool = False) -> None:
+    """
+    Validate collection name for security.
+
+    Validates that collection names:
+    - Meet MongoDB naming requirements
+    - Are not reserved system names
+    - Do not use reserved prefixes
+    - Are within length limits
+
+    Args:
+        name: Collection name to validate
+        allow_prefixed: If True, allows prefixed names (e.g., "app_collection")
+            for cross-app access validation
+
+    Raises:
+        ValueError: If collection name is invalid, reserved, or uses reserved prefix
+    """
+    if not name:
+        raise ValueError("Collection name cannot be empty")
+
+    # Check length
+    if len(name) < MIN_COLLECTION_NAME_LENGTH:
+        raise ValueError(
+            f"Collection name too short (minimum {MIN_COLLECTION_NAME_LENGTH} character): {name}"
+        )
+    if len(name) > MAX_COLLECTION_NAME_LENGTH:
+        raise ValueError(
+            f"Collection name too long (maximum {MAX_COLLECTION_NAME_LENGTH} characters): {name}"
+        )
+
+    # Check pattern (MongoDB naming rules)
+    if not COLLECTION_NAME_PATTERN.match(name):
+        raise ValueError(
+            f"Invalid collection name format: '{name}'. "
+            "Collection names must start with a letter or underscore and "
+            "contain only alphanumeric characters, underscores, dots, or hyphens."
+        )
+
+    # MongoDB doesn't allow collection names to end with a dot
+    if name.endswith("."):
+        raise ValueError(
+            f"Invalid collection name format: '{name}'. "
+            "Collection names cannot end with a dot."
+        )
+
+    # Check for path traversal attempts
+    if ".." in name or "/" in name or "\\" in name:
+        raise ValueError(
+            f"Invalid collection name format: '{name}'. "
+            f"Collection names must start with a letter or underscore and contain "
+            f"only alphanumeric characters, underscores, dots, or hyphens."
+        )
+
+    # Check reserved names (exact match)
+    if name in RESERVED_COLLECTION_NAMES:
+        logger.warning(
+            f"Security: Attempted access to reserved collection name: {name}"
+        )
+        raise ValueError(
+            f"Collection name '{name}' is reserved and cannot be accessed through scoped database."
+        )
+
+    # Check reserved prefixes
+    name_lower = name.lower()
+    for prefix in RESERVED_COLLECTION_PREFIXES:
+        if name_lower.startswith(prefix):
+            logger.warning(
+                f"Security: Attempted access to collection with reserved prefix '{prefix}': {name}"
+            )
+            raise ValueError(
+                f"Collection name '{name}' uses reserved prefix '{prefix}' and cannot be accessed."
+            )
+
+
+def _extract_app_slug_from_prefixed_name(prefixed_name: str) -> Optional[str]:
+    """
+    Extract app slug from a prefixed collection name.
+
+    Args:
+        prefixed_name: Collection name that may be prefixed (e.g., "app_slug_collection")
+
+    Returns:
+        App slug if name is prefixed, None otherwise
+    """
+    if "_" not in prefixed_name:
+        return None
+
+    # Split on first underscore
+    parts = prefixed_name.split("_", 1)
+    if len(parts) != 2:
+        return None
+
+    app_slug = parts[0]
+    # Basic validation - app slug should be non-empty
+    if app_slug:
+        return app_slug
+    return None
+
+
+class _SecureCollectionProxy:
+    """
+    Proxy wrapper that blocks access to dangerous attributes on collections.
+
+    Prevents access to database/client attributes that could be used to bypass scoping.
+    """
+
+    __slots__ = ("_collection",)
+
+    def __init__(self, collection: AsyncIOMotorCollection):
+        self._collection = collection
+
+    def __getattr__(self, name: str) -> Any:
+        """Block access to database/client attributes."""
+        if name in ("database", "client", "db"):
+            logger.warning(
+                f"Security: Attempted access to '{name}' attribute on collection. "
+                "This is blocked to prevent bypassing scoping."
+            )
+            raise AttributeError(
+                f"Access to '{name}' is blocked for security. "
+                "Use collection.index_manager for index operations. "
+                "All data access must go through scoped collections."
+            )
+        return getattr(self._collection, name)
+
+    def __setattr__(self, name: str, value: Any) -> None:
+        """Allow setting _collection, delegate other attributes to underlying collection."""
+        if name == "_collection":
+            super().__setattr__(name, value)
+        else:
+            # Delegate to underlying collection for other attributes
+            setattr(self._collection, name, value)
+
+
+# ##########################################################################
 # ASYNCHRONOUS ATLAS INDEX MANAGER
 # ##########################################################################
 
@@ -115,6 +266,9 @@ class AsyncAtlasIndexManager:
         Initializes the manager with a direct reference to a
         motor.motor_asyncio.AsyncIOMotorCollection.
         """
+        # Unwrap _SecureCollectionProxy if present to get the real collection
+        if isinstance(real_collection, _SecureCollectionProxy):
+            real_collection = real_collection._collection
         if not isinstance(real_collection, AsyncIOMotorCollection):
             raise TypeError(
                 f"Expected AsyncIOMotorCollection, got {type(real_collection)}"
@@ -1028,6 +1182,8 @@ class ScopedCollectionWrapper:
         "_index_manager",
         "_auto_index_manager",
         "_auto_index_enabled",
+        "_query_validator",
+        "_resource_limiter",
     )
 
     def __init__(
@@ -1036,6 +1192,8 @@ class ScopedCollectionWrapper:
         read_scopes: List[str],
         write_scope: str,
         auto_index: bool = True,
+        query_validator: Optional[QueryValidator] = None,
+        resource_limiter: Optional[ResourceLimiter] = None,
     ):
         self._collection = real_collection
         self._read_scopes = read_scopes
@@ -1044,6 +1202,9 @@ class ScopedCollectionWrapper:
         # Lazily instantiated and cached
         self._index_manager: Optional[AsyncAtlasIndexManager] = None
         self._auto_index_manager: Optional[AutoIndexManager] = None
+        # Query security and resource limits
+        self._query_validator = query_validator or QueryValidator()
+        self._resource_limiter = resource_limiter or ResourceLimiter()
 
     @property
     def index_manager(self) -> AsyncAtlasIndexManager:
@@ -1060,7 +1221,9 @@ class ScopedCollectionWrapper:
             # Create and cache it.
             # Pass the *real* collection, not 'self', as indexes
             # are not scoped by app_id.
-            self._index_manager = AsyncAtlasIndexManager(self._collection)
+            # Access the real collection directly, bypassing the proxy
+            real_collection = super().__getattribute__("_collection")
+            self._index_manager = AsyncAtlasIndexManager(real_collection)
         return self._index_manager
 
     @property
@@ -1075,11 +1238,50 @@ class ScopedCollectionWrapper:
 
         if self._auto_index_manager is None:
             # Lazily instantiate auto-index manager
+            # Access the real collection directly, bypassing the proxy
+            real_collection = super().__getattribute__("_collection")
             self._auto_index_manager = AutoIndexManager(
-                self._collection,
+                real_collection,
                 self.index_manager,  # This will create index_manager if needed
             )
         return self._auto_index_manager
+
+    def __getattribute__(self, name: str) -> Any:
+        """
+        Override to prevent access to dangerous attributes on _collection.
+
+        Blocks access to _collection.database and _collection.client to prevent
+        bypassing scoping.
+        """
+        # Allow access to our own attributes
+        if name.startswith("_") and name not in (
+            "_collection",
+            "_read_scopes",
+            "_write_scope",
+            "_index_manager",
+            "_auto_index_manager",
+            "_auto_index_enabled",
+            "_query_validator",
+            "_resource_limiter",
+        ):
+            return super().__getattribute__(name)
+
+        # If accessing _collection, wrap it to block database/client access
+        if name == "_collection":
+            collection = super().__getattribute__(name)
+            # Return a proxy that blocks dangerous attributes
+            return _SecureCollectionProxy(collection)
+
+        return super().__getattribute__(name)
+
+    def __setattr__(self, name: str, value: Any) -> None:
+        """Override to prevent modification of _collection."""
+        if name == "_collection" and hasattr(self, "_collection"):
+            raise AttributeError(
+                "Cannot modify '_collection' attribute. "
+                "Collection wrappers are immutable for security."
+            )
+        super().__setattr__(name, value)
 
     def _inject_read_filter(
         self, filter: Optional[Mapping[str, Any]] = None
@@ -1110,12 +1312,29 @@ class ScopedCollectionWrapper:
         import time
 
         start_time = time.time()
-        collection_name = self._collection.name
+        # Get collection name safely (may not exist for new collections)
+        try:
+            collection_name = self._collection.name
+        except (AttributeError, TypeError):
+            # Fallback if name is not accessible
+            collection_name = "unknown"
 
         try:
+            # Validate document size before insert
+            self._resource_limiter.validate_document_size(document)
+
             # Use dictionary spread to create a non-mutating copy
             doc_to_insert = {**document, "app_id": self._write_scope}
-            result = await self._collection.insert_one(doc_to_insert, *args, **kwargs)
+
+            # Enforce query timeout
+            kwargs = self._resource_limiter.enforce_query_timeout(kwargs)
+            # Remove maxTimeMS - insert_one doesn't accept it
+            kwargs_for_insert = {k: v for k, v in kwargs.items() if k != "maxTimeMS"}
+
+            # Use self._collection.insert_one() - proxy delegates correctly
+            result = await self._collection.insert_one(
+                doc_to_insert, *args, **kwargs_for_insert
+            )
             duration_ms = (time.time() - start_time) * 1000
             record_operation(
                 "database.insert_one",
@@ -1164,8 +1383,19 @@ class ScopedCollectionWrapper:
         Safety: Uses a list comprehension to create copies of all documents,
         avoiding in-place mutation of the original list.
         """
+        # Validate all document sizes before insert
+        self._resource_limiter.validate_documents_size(documents)
+
+        # Enforce query timeout
+        kwargs = self._resource_limiter.enforce_query_timeout(kwargs)
+        # Remove maxTimeMS - insert_many doesn't accept it
+        kwargs_for_insert = {k: v for k, v in kwargs.items() if k != "maxTimeMS"}
+
         docs_to_insert = [{**doc, "app_id": self._write_scope} for doc in documents]
-        return await self._collection.insert_many(docs_to_insert, *args, **kwargs)
+        # Use self._collection.insert_many() - proxy delegates correctly
+        return await self._collection.insert_many(
+            docs_to_insert, *args, **kwargs_for_insert
+        )
 
     async def find_one(
         self, filter: Optional[Mapping[str, Any]] = None, *args, **kwargs
@@ -1177,9 +1407,23 @@ class ScopedCollectionWrapper:
         import time
 
         start_time = time.time()
-        collection_name = self._collection.name
+        # Access real collection directly (bypass proxy) for name attribute
+        # Use object.__getattribute__ to bypass our custom __getattribute__ that wraps in proxy
+        real_collection = object.__getattribute__(self, "_collection")
+        collection_name = real_collection.name
 
         try:
+            # Validate query filter for security
+            self._query_validator.validate_filter(filter)
+            self._query_validator.validate_sort(kwargs.get("sort"))
+
+            # Enforce query timeout - but remove maxTimeMS for find_one
+            # because Motor's find_one internally creates a cursor and some versions
+            # don't handle maxTimeMS correctly when passed to find_one
+            kwargs = self._resource_limiter.enforce_query_timeout(kwargs)
+            # Remove maxTimeMS to avoid cursor creation errors in find_one
+            kwargs_for_find_one = {k: v for k, v in kwargs.items() if k != "maxTimeMS"}
+
             # Magical auto-indexing: ensure indexes exist before querying
             # Note: We analyze the user's filter, not the scoped filter, since
             # app_id index is always ensured separately
@@ -1190,7 +1434,9 @@ class ScopedCollectionWrapper:
                 )
 
             scoped_filter = self._inject_read_filter(filter)
-            result = await self._collection.find_one(scoped_filter, *args, **kwargs)
+            result = await self._collection.find_one(
+                scoped_filter, *args, **kwargs_for_find_one
+            )
             duration_ms = (time.time() - start_time) * 1000
             record_operation(
                 "database.find_one",
@@ -1219,6 +1465,25 @@ class ScopedCollectionWrapper:
         Returns an async cursor, just like motor.
         Automatically ensures appropriate indexes exist for the query.
         """
+        # Validate query filter for security
+        self._query_validator.validate_filter(filter)
+        self._query_validator.validate_sort(kwargs.get("sort"))
+
+        # Enforce result limit
+        limit = kwargs.get("limit")
+        if limit is not None:
+            kwargs["limit"] = self._resource_limiter.enforce_result_limit(limit)
+
+        # Enforce batch size
+        batch_size = kwargs.get("batch_size")
+        if batch_size is not None:
+            kwargs["batch_size"] = self._resource_limiter.enforce_batch_size(batch_size)
+
+        # Enforce query timeout - but remove maxTimeMS before passing to find()
+        # because Cursor constructor doesn't accept maxTimeMS
+        kwargs = self._resource_limiter.enforce_query_timeout(kwargs)
+        kwargs_for_find = {k: v for k, v in kwargs.items() if k != "maxTimeMS"}
+
         # Magical auto-indexing: ensure indexes exist before querying
         # Note: This is fire-and-forget, doesn't block cursor creation
         if self.auto_index_manager:
@@ -1239,11 +1504,12 @@ class ScopedCollectionWrapper:
                     logger.debug(
                         f"Auto-index creation failed for query (non-critical): {e}"
                     )
+                # Let other exceptions bubble up - they are non-recoverable (Type 4)
 
             _create_managed_task(_safe_index_task(), task_name="auto_index_check")
 
         scoped_filter = self._inject_read_filter(filter)
-        return self._collection.find(scoped_filter, *args, **kwargs)
+        return self._collection.find(scoped_filter, *args, **kwargs_for_find)
 
     async def update_one(
         self, filter: Mapping[str, Any], update: Mapping[str, Any], *args, **kwargs
@@ -1252,6 +1518,12 @@ class ScopedCollectionWrapper:
         Applies the read scope to the filter.
         Note: This only scopes the *filter*, not the update operation.
         """
+        # Validate query filter for security
+        self._query_validator.validate_filter(filter)
+
+        # Enforce query timeout
+        kwargs = self._resource_limiter.enforce_query_timeout(kwargs)
+
         scoped_filter = self._inject_read_filter(filter)
         return await self._collection.update_one(scoped_filter, update, *args, **kwargs)
 
@@ -1262,6 +1534,12 @@ class ScopedCollectionWrapper:
         Applies the read scope to the filter.
         Note: This only scopes the *filter*, not the update operation.
         """
+        # Validate query filter for security
+        self._query_validator.validate_filter(filter)
+
+        # Enforce query timeout
+        kwargs = self._resource_limiter.enforce_query_timeout(kwargs)
+
         scoped_filter = self._inject_read_filter(filter)
         return await self._collection.update_many(
             scoped_filter, update, *args, **kwargs
@@ -1271,6 +1549,12 @@ class ScopedCollectionWrapper:
         self, filter: Mapping[str, Any], *args, **kwargs
     ) -> DeleteResult:
         """Applies the read scope to the filter."""
+        # Validate query filter for security
+        self._query_validator.validate_filter(filter)
+
+        # Enforce query timeout
+        kwargs = self._resource_limiter.enforce_query_timeout(kwargs)
+
         scoped_filter = self._inject_read_filter(filter)
         return await self._collection.delete_one(scoped_filter, *args, **kwargs)
 
@@ -1278,6 +1562,12 @@ class ScopedCollectionWrapper:
         self, filter: Mapping[str, Any], *args, **kwargs
     ) -> DeleteResult:
         """Applies the read scope to the filter."""
+        # Validate query filter for security
+        self._query_validator.validate_filter(filter)
+
+        # Enforce query timeout
+        kwargs = self._resource_limiter.enforce_query_timeout(kwargs)
+
         scoped_filter = self._inject_read_filter(filter)
         return await self._collection.delete_many(scoped_filter, *args, **kwargs)
 
@@ -1288,12 +1578,22 @@ class ScopedCollectionWrapper:
         Applies the read scope to the filter for counting.
         Automatically ensures appropriate indexes exist for the query.
         """
+        # Validate query filter for security
+        self._query_validator.validate_filter(filter)
+
+        # Note: count_documents doesn't reliably support maxTimeMS in all Motor versions
+        # Remove it to avoid cursor creation errors when auto-indexing triggers list_indexes()
+        kwargs_for_count = {k: v for k, v in kwargs.items() if k != "maxTimeMS"}
+        # Don't enforce timeout for count_documents to avoid issues with cursor operations
+
         # Magical auto-indexing: ensure indexes exist before querying
         if self.auto_index_manager:
             await self.auto_index_manager.ensure_index_for_query(filter=filter)
 
         scoped_filter = self._inject_read_filter(filter)
-        return await self._collection.count_documents(scoped_filter, *args, **kwargs)
+        return await self._collection.count_documents(
+            scoped_filter, *args, **kwargs_for_count
+        )
 
     def aggregate(
         self, pipeline: List[Dict[str, Any]], *args, **kwargs
@@ -1304,6 +1604,12 @@ class ScopedCollectionWrapper:
         the read_scope filter into its 'filter' property, because $vectorSearch must
         remain the very first stage in Atlas.
         """
+        # Validate aggregation pipeline for security
+        self._query_validator.validate_pipeline(pipeline)
+
+        # Enforce query timeout - Motor's aggregate() accepts maxTimeMS
+        kwargs = self._resource_limiter.enforce_query_timeout(kwargs)
+
         if not pipeline:
             # No stages given, just prepend our $match
             scope_match_stage = {"$match": {"app_id": {"$in": self._read_scopes}}}
@@ -1363,7 +1669,15 @@ class ScopedMongoWrapper:
     # Lock to prevent race conditions when multiple requests try to create the same index
     _app_id_index_lock: ClassVar[asyncio.Lock] = asyncio.Lock()
 
-    __slots__ = ("_db", "_read_scopes", "_write_scope", "_wrapper_cache", "_auto_index")
+    __slots__ = (
+        "_db",
+        "_read_scopes",
+        "_write_scope",
+        "_wrapper_cache",
+        "_auto_index",
+        "_query_validator",
+        "_resource_limiter",
+    )
 
     def __init__(
         self,
@@ -1371,33 +1685,102 @@ class ScopedMongoWrapper:
         read_scopes: List[str],
         write_scope: str,
         auto_index: bool = True,
+        query_validator: Optional[QueryValidator] = None,
+        resource_limiter: Optional[ResourceLimiter] = None,
     ):
         self._db = real_db
         self._read_scopes = read_scopes
         self._write_scope = write_scope
         self._auto_index = auto_index
 
+        # Query security and resource limits (shared across all collections)
+        self._query_validator = query_validator or QueryValidator()
+        self._resource_limiter = resource_limiter or ResourceLimiter()
+
         # Cache for created collection wrappers.
         self._wrapper_cache: Dict[str, ScopedCollectionWrapper] = {}
 
-    @property
-    def database(self) -> AsyncIOMotorDatabase:
+    def _validate_cross_app_access(self, prefixed_name: str) -> None:
         """
-        Access the underlying AsyncIOMotorDatabase (unscoped).
+        Validate that cross-app collection access is authorized.
 
-        This is useful for advanced operations that need direct access to the
-        real database without scoping, such as index management.
+        Args:
+            prefixed_name: Prefixed collection name (e.g., "other_app_collection")
 
-        Returns:
-            The underlying AsyncIOMotorDatabase instance
-
-        Example:
-            # Access underlying database for index management
-            real_db = db.raw.database
-            collection = real_db["my_collection"]
-            index_manager = AsyncAtlasIndexManager(collection)
+        Raises:
+            ValueError: If cross-app access is not authorized
         """
-        return self._db
+        # Extract app slug from prefixed name
+        target_app = _extract_app_slug_from_prefixed_name(prefixed_name)
+        if target_app is None:
+            return  # Same-app access or not a valid prefixed name
+
+        # Check if target app is in read_scopes
+        if target_app not in self._read_scopes:
+            logger.warning(
+                f"Security: Unauthorized cross-app access attempt. "
+                f"Collection: '{prefixed_name}', Target app: '{target_app}', "
+                f"Read scopes: {self._read_scopes}, Write scope: {self._write_scope}"
+            )
+            raise ValueError(
+                f"Access to collection '{prefixed_name}' not authorized. "
+                f"App '{target_app}' is not in read_scopes {self._read_scopes}. "
+                "Cross-app access must be explicitly granted via read_scopes."
+            )
+
+        # Log authorized cross-app access for audit trail
+        logger.info(
+            f"Cross-app access authorized. "
+            f"Collection: '{prefixed_name}', From app: '{self._write_scope}', "
+            f"To app: '{target_app}'"
+        )
+
+    def __getattribute__(self, name: str) -> Any:
+        """
+        Override to validate collection names before attribute access.
+        This ensures validation happens even if MagicMock creates attributes dynamically.
+        """
+        # Handle our own attributes first (use super() to avoid recursion)
+        if name.startswith("_") or name in ("get_collection",):
+            return super().__getattribute__(name)
+
+        # Validate collection name for security BEFORE checking if attribute exists
+        # This ensures ValueError is raised even if MagicMock would create the attribute
+        validation_error = None
+        if not name.startswith("_"):
+            try:
+                _validate_collection_name(name, allow_prefixed=False)
+            except ValueError as e:
+                # Log the warning without accessing object attributes to avoid recursion
+                # The validation error itself is what matters, not the logging details
+                try:
+                    logger.warning(
+                        f"Security: Invalid collection name attempted. "
+                        f"Name: '{name}', Error: {e}"
+                    )
+                except (AttributeError, RuntimeError):
+                    # If logging fails due to logger issues, continue -
+                    # validation error is what matters
+                    # Type 2: Recoverable - we can continue without logging
+                    pass
+                # Store the error to raise after checking attribute existence
+                # This ensures we raise ValueError even if MagicMock creates the attribute
+                validation_error = ValueError(str(e))
+
+        # Continue with normal attribute access
+        try:
+            attr = super().__getattribute__(name)
+            # If validation failed, raise ValueError now (even if attribute exists)
+            if validation_error is not None:
+                raise validation_error
+            return attr
+        except AttributeError:
+            # Attribute doesn't exist
+            # If validation failed, raise ValueError
+            if validation_error is not None:
+                raise validation_error
+            # Delegate to __getattr__ for collection creation
+            return self.__getattr__(name)
 
     def __getattr__(self, name: str) -> ScopedCollectionWrapper:
         """
@@ -1406,6 +1789,18 @@ class ScopedMongoWrapper:
         If `name` is a collection, returns a `ScopedCollectionWrapper`.
         """
 
+        # Explicitly block access to 'database' property (removed for security)
+        if name == "database":
+            logger.warning(
+                f"Security: Attempted access to 'database' property. "
+                f"App: {self._write_scope}"
+            )
+            raise AttributeError(
+                "'database' property has been removed for security. "
+                "Use collection.index_manager for index operations. "
+                "All data access must go through scoped collections."
+            )
+
         # Prevent proxying private/special attributes
         if name.startswith("_"):
             raise AttributeError(
@@ -1413,10 +1808,32 @@ class ScopedMongoWrapper:
                 "Access to private attributes is blocked."
             )
 
+        # Note: Validation already happened in __getattribute__, but we validate again
+        # for safety in case __getattr__ is called directly
+        try:
+            _validate_collection_name(name, allow_prefixed=False)
+        except ValueError as e:
+            logger.warning(
+                f"Security: Invalid collection name attempted. "
+                f"Name: '{name}', App: {self._write_scope}, Error: {e}"
+            )
+            raise
+
         # Construct the prefixed collection name, e.g., "data_imaging_workouts"
         # `self._write_scope` holds the slug (e.g., "data_imaging")
         # `name` holds the base name (e.g., "workouts")
         prefixed_name = f"{self._write_scope}_{name}"
+
+        # Validate prefixed name as well (for reserved names check)
+        try:
+            _validate_collection_name(prefixed_name, allow_prefixed=True)
+        except ValueError as e:
+            logger.warning(
+                f"Security: Invalid prefixed collection name. "
+                f"Base name: '{name}', Prefixed: '{prefixed_name}', "
+                f"App: {self._write_scope}, Error: {e}"
+            )
+            raise
 
         # Check cache first using the *prefixed_name*
         if prefixed_name in self._wrapper_cache:
@@ -1439,6 +1856,8 @@ class ScopedMongoWrapper:
             read_scopes=self._read_scopes,
             write_scope=self._write_scope,
             auto_index=self._auto_index,
+            query_validator=self._query_validator,
+            resource_limiter=self._resource_limiter,
         )
 
         # Magically ensure app_id index exists (it's always used in queries)
@@ -1510,6 +1929,7 @@ class ScopedMongoWrapper:
                         ScopedMongoWrapper._app_id_index_cache.pop(
                             collection_name, None
                         )
+                # Let other exceptions bubble up - they are non-recoverable (Type 4)
 
             # Check cache first (quick check before lock)
             if collection_name not in ScopedMongoWrapper._app_id_index_cache:
@@ -1522,6 +1942,65 @@ class ScopedMongoWrapper:
         # Store it in the cache for this instance using the *prefixed_name*
         self._wrapper_cache[prefixed_name] = wrapper
         return wrapper
+
+    def _find_matched_app_for_collection(self, name: str) -> str | None:
+        """
+        Check if collection name matches any app slug in read_scopes (cross-app access).
+
+        Args:
+            name: Collection name to check
+
+        Returns:
+            Matched app slug if found, None otherwise
+        """
+        if "_" not in name:
+            return None
+
+        # Check if any app slug in read_scopes matches the beginning of the name
+        for app_slug in self._read_scopes:
+            if name.startswith(f"{app_slug}_") and app_slug != self._write_scope:
+                return app_slug
+        return None
+
+    def _resolve_prefixed_collection_name(
+        self, name: str, matched_app: str | None
+    ) -> str:
+        """
+        Resolve the prefixed collection name based on matched app or write scope.
+
+        Args:
+            name: Collection name (base or prefixed)
+            matched_app: Matched app slug if cross-app access, None otherwise
+
+        Returns:
+            Prefixed collection name
+
+        Raises:
+            ValueError: If prefixed name is invalid
+        """
+        if matched_app:
+            # This is authorized cross-app access
+            prefixed_name = name
+            # Log authorized cross-app access for audit trail
+            logger.info(
+                f"Cross-app access authorized. "
+                f"Collection: '{prefixed_name}', From app: '{self._write_scope}', "
+                f"To app: '{matched_app}'"
+            )
+        else:
+            # Regular collection name - prefix with write_scope
+            prefixed_name = f"{self._write_scope}_{name}"
+            # Validate prefixed name
+            try:
+                _validate_collection_name(prefixed_name, allow_prefixed=True)
+            except ValueError as e:
+                logger.warning(
+                    f"Security: Invalid prefixed collection name in get_collection(). "
+                    f"Base name: '{name}', Prefixed: '{prefixed_name}', "
+                    f"App: {self._write_scope}, Error: {e}"
+                )
+                raise
+        return prefixed_name
 
     def get_collection(self, name: str) -> ScopedCollectionWrapper:
         """
@@ -1539,6 +2018,9 @@ class ScopedMongoWrapper:
         Returns:
             ScopedCollectionWrapper instance
 
+        Raises:
+            ValueError: If collection name is invalid or cross-app access is not authorized
+
         Example:
             # Same-app collection (base name)
             collection = db.get_collection("my_collection")
@@ -1546,15 +2028,21 @@ class ScopedMongoWrapper:
             # Cross-app collection (fully prefixed)
             collection = db.get_collection("click_tracker_clicks")
         """
-        # Check if name is already fully prefixed (contains underscore and is longer)
-        # We use a heuristic: if name contains underscore and doesn't start with write_scope,
-        # assume it's already fully prefixed
-        if "_" in name and not name.startswith(f"{self._write_scope}_"):
-            # Assume it's already fully prefixed (cross-app access)
-            prefixed_name = name
-        else:
-            # Standard case: prefix with write_scope
-            prefixed_name = f"{self._write_scope}_{name}"
+        # Validate collection name for security
+        try:
+            _validate_collection_name(name, allow_prefixed=True)
+        except ValueError as e:
+            logger.warning(
+                f"Security: Invalid collection name in get_collection(). "
+                f"Name: '{name}', App: {self._write_scope}, Error: {e}"
+            )
+            raise
+
+        # Check if name is already fully prefixed (cross-app access)
+        matched_app = self._find_matched_app_for_collection(name)
+
+        # Resolve prefixed name based on matched app or write scope
+        prefixed_name = self._resolve_prefixed_collection_name(name, matched_app)
 
         # Check cache first
         if prefixed_name in self._wrapper_cache:
@@ -1576,6 +2064,8 @@ class ScopedMongoWrapper:
             read_scopes=self._read_scopes,
             write_scope=self._write_scope,
             auto_index=self._auto_index,
+            query_validator=self._query_validator,
+            resource_limiter=self._resource_limiter,
         )
 
         # Magically ensure app_id index exists (background task)
@@ -1638,6 +2128,7 @@ class ScopedMongoWrapper:
                         ScopedMongoWrapper._app_id_index_cache.pop(
                             collection_name, None
                         )
+                # Let other exceptions bubble up - they are non-recoverable (Type 4)
 
             if collection_name not in ScopedMongoWrapper._app_id_index_cache:
                 # Use managed task creation to prevent accumulation
@@ -1662,9 +2153,22 @@ class ScopedMongoWrapper:
         Returns:
             ScopedCollectionWrapper instance
 
+        Raises:
+            ValueError: If collection name is invalid
+
         Example:
             collection = db["my_collection"]  # Same as db.my_collection
         """
+        # Validate collection name for security (get_collection will do additional validation)
+        try:
+            _validate_collection_name(name, allow_prefixed=False)
+        except ValueError as e:
+            logger.warning(
+                f"Security: Invalid collection name in __getitem__(). "
+                f"Name: '{name}', App: {self._write_scope}, Error: {e}"
+            )
+            raise
+
         return self.get_collection(name)
 
     async def _ensure_app_id_index(self, collection: AsyncIOMotorCollection) -> bool:

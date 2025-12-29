@@ -589,16 +589,17 @@ class TestAppDB:
 
         assert app_db.raw is mock_db
 
-    def test_app_db_database_property(self, mock_scoped_collection):
-        """Test AppDB.database property (lines 579-597)."""
+    def test_app_db_database_property_removed(self, mock_scoped_collection):
+        """Test AppDB.database property has been removed for security."""
         from mdb_engine.database.abstraction import AppDB
         from mdb_engine.database.scoped_wrapper import ScopedMongoWrapper
 
         mock_db = MagicMock(spec=ScopedMongoWrapper)
-        mock_db.database = MagicMock()
         app_db = AppDB(mock_db)
 
-        assert app_db.database is mock_db.database
+        # database property should no longer exist
+        with pytest.raises(AttributeError, match="database"):
+            _ = app_db.database
 
     def test_app_db_init_runtime_error(self):
         """Test AppDB.__init__ raises RuntimeError when ScopedMongoWrapper is falsy (line 518)."""

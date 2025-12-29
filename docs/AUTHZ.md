@@ -743,8 +743,9 @@ engine = MongoDBEngine(mongo_uri="...", db_name="...")
 await engine.initialize()
 
 # Create custom provider (use scoped database for app-specific auth)
+# Note: DatabaseAuthProvider should accept ScopedMongoWrapper, not raw database
 db = engine.get_scoped_db("my_app")
-custom_provider = DatabaseAuthProvider(db.database)  # Access underlying database if needed
+custom_provider = DatabaseAuthProvider(db)  # Use scoped database directly
 
 # Set on engine (will be available to all apps)
 engine.authz_provider = custom_provider

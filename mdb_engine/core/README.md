@@ -98,9 +98,12 @@ Check engine and MongoDB health:
 ```python
 from mdb_engine.observability import check_engine_health, check_mongodb_health
 
-# Check MongoDB connection
+# Check MongoDB connection (mongo_client is for observability only, not data access)
 mongodb_status = await check_mongodb_health(engine.mongo_client)
 print(mongodb_status)
+
+# ⚠️ SECURITY: engine.mongo_client is for observability/admin operations only
+# Always use engine.get_scoped_db() for all data access operations
 
 # Check engine health
 engine_status = await check_engine_health(engine)

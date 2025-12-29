@@ -180,9 +180,9 @@ Async-native interface for managing Atlas Search and Vector indexes.
 ```python
 from mdb_engine.database import AsyncAtlasIndexManager
 
-# Get index manager from collection
+# Get index manager from collection (automatically uses unscoped collection)
 collection = db.my_collection
-index_manager = AsyncAtlasIndexManager(collection._collection)  # Use unscoped collection
+index_manager = collection.index_manager  # Secure way to access index manager
 
 # Create vector search index
 await index_manager.create_vector_search_index(
@@ -277,24 +277,120 @@ await index_manager.create_search_index(
 )
 ```
 
-## Connection Pooling
+## Security Features
 
-The database module provides shared MongoDB connection pooling for efficient resource usage.
+The database module includes comprehensive security controls to prevent unauthorized access, NoSQL injection, resource exhaustion, and ensure data isolation:
 
-### Get Shared Client
+### Query Security
+
+All queries are automatically validated for security:
+- **Dangerous operator blocking**: Blocks `$where`, `$eval`, `$function`, and `$accumulator` operators that allow JavaScript execution
+- **Query depth limits**: Prevents deeply nested queries that could cause performance issues
+- **Regex complexity limits**: Prevents ReDoS (Regular Expression Denial of Service) attacks
+- **Pipeline validation**: Validates aggregation pipelines for safety and complexity
 
 ```python
-from mdb_engine.database import get_shared_mongo_client
+# These queries will be blocked:
+db.collection.find({"$where": "this.status === 'active'"})  # ❌ Dangerous operator
+db.collection.aggregate([{"$match": {}}] * 100)  # ❌ Too many pipeline stages
 
-# Get or create shared MongoDB client
-client = get_shared_mongo_client(
-    mongo_uri="mongodb://localhost:27017",
-    max_pool_size=10,
-    min_pool_size=1
+# These queries are safe:
+db.collection.find({"status": "active"})  # ✅ Safe
+db.collection.find({"age": {"$gt": 18}})  # ✅ Safe
+```
+
+### Resource Limits
+
+All operations have automatic resource limits to prevent resource exhaustion:
+- **Query timeouts**: All queries automatically have `maxTimeMS` set (default: 30 seconds, max: 5 minutes)
+- **Result size limits**: Maximum 10,000 documents per query (configurable)
+- **Batch size limits**: Maximum 1,000 documents per cursor batch
+- **Document size validation**: Documents are validated before insert (16MB MongoDB limit)
+
+```python
+# Timeouts are automatically enforced:
+db.collection.find({"status": "active"})  # Automatically has maxTimeMS=30000
+
+# Result limits are enforced:
+db.collection.find({}, limit=20000)  # Automatically capped to 10,000
+
+# Document sizes are validated:
+large_doc = {"data": "x" * (20 * 1024 * 1024)}  # ❌ Exceeds 16MB limit
+await db.collection.insert_one(large_doc)  # Raises ResourceLimitExceeded
+```
+
+### Collection Name Validation
+
+All collection names are validated for security:
+
+### Collection Name Validation
+
+All collection names are validated for security:
+- **Format validation**: Must match MongoDB naming rules (alphanumeric, underscore, dot, hyphen)
+- **Length limits**: 1-255 characters
+- **Reserved names**: System collections (`apps_config`) are blocked
+- **Reserved prefixes**: Collections starting with `system`, `admin`, `config`, or `local` are blocked
+- **Path traversal protection**: Blocks attempts to use `..`, `/`, or `\` in collection names
+
+```python
+# These will raise ValueError:
+db.system_users  # Reserved prefix
+db.apps_config    # Reserved name
+db["../other"]    # Path traversal attempt
+db["123invalid"] # Invalid format (starts with number)
+```
+
+### Cross-App Access Control
+
+Cross-app collection access is strictly controlled:
+- Apps can only read from collections of apps listed in their `read_scopes`
+- Unauthorized cross-app access attempts are logged and blocked
+- All cross-app access is logged for audit purposes
+
+```python
+# App can only read from authorized apps
+db = engine.get_scoped_db(
+    "my_app",
+    read_scopes=["my_app", "shared_app"]  # Can read from these apps
 )
 
-db = client["my_database"]
+# This works (authorized):
+collection = db.get_collection("shared_app_data")
+
+# This fails (unauthorized):
+collection = db.get_collection("other_app_data")  # Raises ValueError
 ```
+
+### Scope Validation
+
+The `get_scoped_db()` method validates all scopes:
+- `read_scopes` must be a non-empty list of valid app slugs
+- `write_scope` must be a non-empty string
+- Invalid scopes raise `ValueError` with clear error messages
+
+### Audit Logging
+
+All security-relevant events are logged:
+- Invalid collection name attempts
+- Unauthorized cross-app access attempts
+- Reserved name/prefix access attempts
+- Collection name validation failures
+
+Logs include app context (app_slug, collection_name, action) for security monitoring.
+
+### Best Practices
+
+1. **Always use scoped databases**: Never access raw MongoDB clients or databases
+2. **Validate collection names**: Use descriptive, valid collection names
+3. **Limit cross-app access**: Only grant `read_scopes` to apps that need cross-app data
+4. **Monitor audit logs**: Review security logs regularly for suspicious patterns
+5. **Follow naming conventions**: Use lowercase, underscore-separated names (e.g., `user_profiles`)
+
+## Connection Pooling
+
+The database module provides shared MongoDB connection pooling for efficient resource usage. Connection pooling is handled automatically by the engine - users should always use `engine.get_scoped_db()` for database access.
+
+**Security Note:** Direct MongoDB client creation functions are internal and not part of the public API. Always use scoped databases to ensure proper app isolation.
 
 ### Pool Metrics
 

@@ -165,3 +165,95 @@ class ConfigurationError(MongoDBEngineError):
         super().__init__(message, context=context)
         self.config_key = config_key
         self.config_value = config_value
+
+
+class QueryValidationError(MongoDBEngineError):
+    """
+    Raised when a query fails validation checks.
+
+    This exception is raised when a query contains dangerous operators,
+    exceeds complexity limits, or violates security policies.
+
+    Attributes:
+        message: Error message
+        query_type: Type of query that failed (filter, pipeline, etc.)
+        operator: Dangerous operator that was found (if applicable)
+        path: JSON path where the issue was found (if applicable)
+        context: Additional context information
+    """
+
+    def __init__(
+        self,
+        message: str,
+        query_type: Optional[str] = None,
+        operator: Optional[str] = None,
+        path: Optional[str] = None,
+        context: Optional[Dict[str, Any]] = None,
+    ) -> None:
+        """
+        Initialize the query validation error.
+
+        Args:
+            message: Error message
+            query_type: Type of query that failed (filter, pipeline, etc.)
+            operator: Dangerous operator that was found (if applicable)
+            path: JSON path where the issue was found (if applicable)
+            context: Additional context information
+        """
+        context = context or {}
+        if query_type:
+            context["query_type"] = query_type
+        if operator:
+            context["operator"] = operator
+        if path:
+            context["path"] = path
+        super().__init__(message, context=context)
+        self.query_type = query_type
+        self.operator = operator
+        self.path = path
+
+
+class ResourceLimitExceeded(MongoDBEngineError):
+    """
+    Raised when a resource limit is exceeded.
+
+    This exception is raised when queries exceed timeouts, result sizes,
+    or other resource limits.
+
+    Attributes:
+        message: Error message
+        limit_type: Type of limit that was exceeded (timeout, size, etc.)
+        limit_value: The limit value that was exceeded
+        actual_value: The actual value that exceeded the limit
+        context: Additional context information
+    """
+
+    def __init__(
+        self,
+        message: str,
+        limit_type: Optional[str] = None,
+        limit_value: Optional[Any] = None,
+        actual_value: Optional[Any] = None,
+        context: Optional[Dict[str, Any]] = None,
+    ) -> None:
+        """
+        Initialize the resource limit exceeded error.
+
+        Args:
+            message: Error message
+            limit_type: Type of limit that was exceeded (timeout, size, etc.)
+            limit_value: The limit value that was exceeded
+            actual_value: The actual value that exceeded the limit
+            context: Additional context information
+        """
+        context = context or {}
+        if limit_type:
+            context["limit_type"] = limit_type
+        if limit_value is not None:
+            context["limit_value"] = limit_value
+        if actual_value is not None:
+            context["actual_value"] = actual_value
+        super().__init__(message, context=context)
+        self.limit_type = limit_type
+        self.limit_value = limit_value
+        self.actual_value = actual_value

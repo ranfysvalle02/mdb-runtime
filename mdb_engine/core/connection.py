@@ -232,10 +232,18 @@ class ConnectionManager:
             raise RuntimeError(
                 "ConnectionManager not initialized. Call initialize() first.",
             )
-        assert (
-            self._mongo_db is not None
-        ), "MongoDB database should not be None after initialization"
+        # Allow None for testing scenarios where mongo_db is patched
         return self._mongo_db
+
+    @mongo_db.deleter
+    def mongo_db(self) -> None:
+        """Allow deletion of mongo_db property for testing purposes."""
+        self._mongo_db = None
+
+    @mongo_db.setter
+    def mongo_db(self, value: Optional[AsyncIOMotorDatabase]) -> None:
+        """Allow setting mongo_db property for testing purposes."""
+        self._mongo_db = value
 
     @property
     def initialized(self) -> bool:

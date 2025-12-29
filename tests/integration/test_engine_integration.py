@@ -5,6 +5,8 @@ These tests require a running MongoDB instance (via Docker/testcontainers).
 
 import pytest
 
+from mdb_engine.exceptions import QueryValidationError, ResourceLimitExceeded
+
 
 @pytest.mark.integration
 @pytest.mark.asyncio
@@ -138,3 +140,22 @@ class TestMongoDBEngineIntegration:
         # Reinitialize
         await engine.initialize()
         assert engine._initialized is True
+
+    async def test_engine_security_features_integration(self, real_mongodb_engine):
+        """Test that security features work end-to-end through engine."""
+        engine = real_mongodb_engine
+
+        db = engine.get_scoped_db("test_app")
+
+        # Verify validators and limiters are present
+        assert hasattr(db, "_query_validator")
+        assert hasattr(db, "_resource_limiter")
+
+        # Test that dangerous operator is blocked
+        with pytest.raises(QueryValidationError, match="Dangerous operator"):
+            db.test_collection.find({"$where": "true"})
+
+        # Test that document size validation works
+        large_doc = {"data": "x" * (20 * 1024 * 1024)}  # 20MB
+        with pytest.raises(ResourceLimitExceeded, match="exceeds maximum"):
+            await db.test_collection.insert_one(large_doc)
