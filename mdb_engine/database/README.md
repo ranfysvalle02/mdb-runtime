@@ -508,8 +508,8 @@ db1 = engine.get_scoped_db("app1")
 db2 = engine.get_scoped_db("app2")
 
 # Cross-app read (read from app1, write to app2)
-shared_db = ScopedMongoWrapper(
-    real_db=engine.mongo_db,
+shared_db = engine.get_scoped_db(
+    app_slug="shared",
     read_scopes=["app1", "app2"],
     write_scope="shared"
 )

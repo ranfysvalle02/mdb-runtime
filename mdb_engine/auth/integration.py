@@ -324,7 +324,7 @@ async def _setup_token_management(
     """Initialize token management (blacklist and session manager)."""
     if token_management.get("auto_setup", True):
         try:
-            db = engine.get_database()
+            db = engine.get_scoped_db(slug_id)
             await initialize_token_management(app, db)
 
             # Configure session fingerprinting if session manager exists

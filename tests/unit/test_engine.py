@@ -33,8 +33,6 @@ class TestMongoDBEngineInitialization:
 
             assert engine._initialized is True
             assert engine.mongo_client is not None
-            assert engine.mongo_db is not None
-            assert engine.mongo_db.name == mongodb_engine_config["db_name"]
 
             await engine.shutdown()
 
@@ -115,23 +113,16 @@ class TestMongoDBEngineProperties:
             _ = uninitialized_mongodb_engine.mongo_client
 
     @pytest.mark.asyncio
-    async def test_mongo_db_property_uninitialized(self, uninitialized_mongodb_engine):
-        """Test accessing mongo_db before initialization raises error."""
-        with pytest.raises(RuntimeError, match="not initialized"):
-            _ = uninitialized_mongodb_engine.mongo_db
+    async def test_mongo_db_property_removed(self, mongodb_engine):
+        """Test that mongo_db property is no longer accessible."""
+        with pytest.raises(AttributeError, match="mongo_db"):
+            _ = mongodb_engine.mongo_db
 
     @pytest.mark.asyncio
     async def test_mongo_client_property_initialized(self, mongodb_engine):
         """Test accessing mongo_client after initialization."""
         client = mongodb_engine.mongo_client
         assert client is not None
-
-    @pytest.mark.asyncio
-    async def test_mongo_db_property_initialized(self, mongodb_engine):
-        """Test accessing mongo_db after initialization."""
-        db = mongodb_engine.mongo_db
-        assert db is not None
-        assert db.name == "test_db"
 
 
 class TestMongoDBEngineScopedDatabase:
@@ -538,11 +529,10 @@ class TestMongoDBEngineServiceAccessors:
     """Test service accessor methods."""
 
     @pytest.mark.asyncio
-    async def test_get_database(self, mongodb_engine):
-        """Test getting database instance."""
-        db = mongodb_engine.get_database()
-        assert db is not None
-        assert db == mongodb_engine.mongo_db
+    async def test_get_database_removed(self, mongodb_engine):
+        """Test that get_database method is no longer accessible."""
+        with pytest.raises(AttributeError, match="get_database"):
+            _ = mongodb_engine.get_database()
 
     @pytest.mark.asyncio
     async def test_get_memory_service_with_service(self, mongodb_engine):
@@ -699,10 +689,10 @@ class TestMongoDBEngineHealthMetrics:
 
     @pytest.mark.asyncio
     async def test_get_database_not_initialized(self):
-        """Test get_database raises RuntimeError when not initialized."""
+        """Test get_database is no longer accessible."""
         engine = MongoDBEngine(mongo_uri="mongodb://localhost:27017", db_name="test_db")
-        # get_database accesses mongo_db which raises RuntimeError if not initialized
-        with pytest.raises(RuntimeError, match="not initialized"):
+        # get_database method has been removed
+        with pytest.raises(AttributeError, match="get_database"):
             engine.get_database()
 
     @pytest.mark.asyncio

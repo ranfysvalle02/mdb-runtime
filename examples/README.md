@@ -10,7 +10,7 @@ A simple, beginner-friendly example that demonstrates:
 - Initializing the MongoDB Engine
 - Creating and registering an app manifest
 - Basic CRUD operations with automatic app scoping
-- Using `engine.mongo_db` for top-level database access
+- Using `engine.get_scoped_db()` for all database access (raw database access removed for security)
 - Using `engine.get_scoped_db()` for app-scoped operations
 - Authentication with JWT
 - WebSocket support with real-time updates
@@ -209,13 +209,10 @@ from mdb_engine import MongoDBEngine
 engine = MongoDBEngine(mongo_uri=mongo_uri, db_name=db_name)
 await engine.initialize()
 
-# For app-scoped data (recommended for most operations)
+# For app-scoped data (all operations should use scoped databases)
 db = engine.get_scoped_db("my_app")
 await db.my_collection.insert_one({"name": "Test"})
-
-# For top-level database access (e.g., shared collections like users)
-top_level_db = engine.mongo_db
-await top_level_db.users.find_one({"email": "user@example.com"})
+# All collections are automatically app-scoped for data isolation
 
 # For LLM operations (use OpenAI SDK directly)
 from openai import AzureOpenAI
@@ -233,10 +230,10 @@ db = client[db_name]
 await db.collection.find_one({})
 client.close()  # Manual cleanup needed
 
-# ✅ GOOD: Uses engine's managed connection
-db = engine.mongo_db
+# ✅ GOOD: Uses engine's scoped database
+db = engine.get_scoped_db("my_app")
 await db.collection.find_one({})
-# No cleanup needed - engine manages connections
+# No cleanup needed - engine manages connections and scoping
 ```
 
 ### Key Benefits of Using Abstractions
@@ -259,11 +256,16 @@ await db.products.insert_one({"name": "Widget"})
 products = await db.products.find({}).to_list(length=10)
 ```
 
-#### Pattern 2: Top-Level Collections (Shared Data)
+#### Pattern 2: Cross-App Data Access
 ```python
-# For collections shared across apps (e.g., users, sessions)
-top_db = engine.mongo_db
-user = await top_db.users.find_one({"email": "user@example.com"})
+# For accessing data from multiple apps, use read_scopes
+# This allows reading from multiple apps while writing to one
+db = engine.get_scoped_db(
+    app_slug="my_app",
+    read_scopes=["my_app", "shared_app"],  # Can read from multiple apps
+    write_scope="my_app"  # Writes go to this app
+)
+user = await db.users.find_one({"email": "user@example.com"})
 ```
 
 #### Pattern 3: LLM Operations
@@ -301,8 +303,7 @@ async def get_items(db = Depends(get_db)):
 If you've built something cool with MDB_ENGINE, consider contributing an example! Examples should:
 
 - **Use mdb-engine abstractions exclusively** - Never create direct MongoDB clients
-- Use `engine.mongo_db` for top-level database access (not `AsyncIOMotorClient`)
-- Use `engine.get_scoped_db()` for app-scoped operations
+- Always use `engine.get_scoped_db()` for all database operations (raw database access has been removed for security)
 - Use OpenAI SDK directly for LLM operations
 - Be self-contained and runnable
 - Include a README explaining what they demonstrate

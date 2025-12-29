@@ -19,7 +19,7 @@ async def initialize_token_management(app, db):
 
     Args:
         app: FastAPI application instance
-        db: MongoDB database instance (Motor AsyncIOMotorDatabase)
+        db: Scoped MongoDB database instance (ScopedMongoWrapper)
 
     Example:
         from mdb_engine.auth.helpers import initialize_token_management
@@ -27,8 +27,8 @@ async def initialize_token_management(app, db):
 
         @app.on_event("startup")
         async def startup():
-            # Get database from engine
-            db = engine.get_database()
+            # Get scoped database from engine
+            db = engine.get_scoped_db("my_app")
 
             # Initialize token management
             await initialize_token_management(app, db)

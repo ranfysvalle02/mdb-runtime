@@ -426,10 +426,11 @@ app.state.authz_provider = authz_provider
 # Override auto-creation by setting provider manually
 from mdb_engine.auth import CasbinAdapter, create_casbin_enforcer
 
+db = engine.get_scoped_db("my_app")
 enforcer = await create_casbin_enforcer(
-    db=engine.get_database(),
+    db=db,
     model="custom_rbac",
-    policies_collection="my_policies"
+    policies_collection="my_policies"  # Will be app-scoped
 )
 app.state.authz_provider = CasbinAdapter(enforcer)
 ```

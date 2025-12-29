@@ -146,11 +146,12 @@ class AuthorizationProvider(Protocol):
 ```python
 from mdb_engine.auth import CasbinAdapter, create_casbin_enforcer
 
-# Create Casbin enforcer with MongoDB adapter
+# Create Casbin enforcer with MongoDB adapter (uses scoped database)
+db = engine.get_scoped_db("my_app")
 enforcer = await create_casbin_enforcer(
-    db=engine.get_database(),
+    db=db,
     model="rbac",  # or "acl" or path to model file
-    policies_collection="casbin_policies"
+    policies_collection="casbin_policies"  # Will be app-scoped
 )
 
 # Create adapter
@@ -741,8 +742,9 @@ from mdb_engine import MongoDBEngine
 engine = MongoDBEngine(mongo_uri="...", db_name="...")
 await engine.initialize()
 
-# Create custom provider
-custom_provider = DatabaseAuthProvider(engine.get_database())
+# Create custom provider (use scoped database for app-specific auth)
+db = engine.get_scoped_db("my_app")
+custom_provider = DatabaseAuthProvider(db.database)  # Access underlying database if needed
 
 # Set on engine (will be available to all apps)
 engine.authz_provider = custom_provider

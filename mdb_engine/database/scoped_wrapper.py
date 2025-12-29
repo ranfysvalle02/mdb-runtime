@@ -1649,6 +1649,24 @@ class ScopedMongoWrapper:
         self._wrapper_cache[prefixed_name] = wrapper
         return wrapper
 
+    def __getitem__(self, name: str) -> ScopedCollectionWrapper:
+        """
+        Support bracket notation for collection access (e.g., db["collection_name"]).
+
+        This allows compatibility with code that uses bracket notation instead of
+        attribute access (e.g., TokenBlacklist, SessionManager).
+
+        Args:
+            name: Collection name (base name, will be prefixed with write_scope)
+
+        Returns:
+            ScopedCollectionWrapper instance
+
+        Example:
+            collection = db["my_collection"]  # Same as db.my_collection
+        """
+        return self.get_collection(name)
+
     async def _ensure_app_id_index(self, collection: AsyncIOMotorCollection) -> bool:
         """
         Ensures app_id index exists on collection.

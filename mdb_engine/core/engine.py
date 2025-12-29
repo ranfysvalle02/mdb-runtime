@@ -140,19 +140,6 @@ class MongoDBEngine:
         return self._connection_manager.mongo_client
 
     @property
-    def mongo_db(self) -> AsyncIOMotorDatabase:
-        """
-        Get the MongoDB database.
-
-        Returns:
-            AsyncIOMotorDatabase instance
-
-        Raises:
-            RuntimeError: If engine is not initialized
-        """
-        return self._connection_manager.mongo_db
-
-    @property
     def _initialized(self) -> bool:
         """Check if engine is initialized."""
         return self._connection_manager.initialized
@@ -522,15 +509,6 @@ class MongoDBEngine:
                 "MongoDBEngine not initialized. Call initialize() first."
             )
         return await self._app_registration_manager.get_manifest(slug)
-
-    def get_database(self) -> AsyncIOMotorDatabase:
-        """
-        Get the MongoDB database instance.
-
-        Returns:
-            AsyncIOMotorDatabase instance
-        """
-        return self.mongo_db
 
     def get_memory_service(self, slug: str) -> Optional[Any]:
         """

@@ -1066,8 +1066,8 @@ async with MongoDBEngine(mongo_uri, db_name) as engine:
 db = engine.get_scoped_db("my_app")
 await db.tasks.find({}).to_list(10)
 
-# ❌ BAD: Don't use raw mongo_db
-await engine.mongo_db.tasks.find({}).to_list(10)  # No scoping!
+# ❌ BAD: Raw database access is no longer available
+# engine.mongo_db has been removed for security - use scoped databases only
 ```
 
 ### 2. Initialize Engine Once
@@ -1274,7 +1274,7 @@ async def delete_todo(todo_id: str, user: dict = Depends(get_current_user), db =
 
 **For LLMs generating code:**
 
-- Always use `engine.get_scoped_db()` - never use raw `engine.mongo_db`
+- Always use `engine.get_scoped_db()` - raw database access has been removed for security
 - Configure everything in `manifest.json` - don't create indexes manually
 - Use `setup_auth_from_manifest()` for authentication setup
 - Leverage built-in services (embeddings, memory) when needed

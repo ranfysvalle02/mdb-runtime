@@ -17,8 +17,6 @@ class TestMongoDBEngineIntegration:
 
         assert engine._initialized is True
         assert engine.mongo_client is not None
-        assert engine.mongo_db is not None
-        assert engine.mongo_db.name is not None
 
     async def test_engine_shutdown(self, real_mongodb_engine):
         """Test engine shutdown with real MongoDB."""
@@ -39,8 +37,8 @@ class TestMongoDBEngineIntegration:
         assert result is True
         assert sample_manifest["slug"] in engine._apps
 
-        # Verify app was stored in MongoDB
-        apps_collection = engine.mongo_db["apps_config"]
+        # Verify app was stored in MongoDB (using internal access for system collection)
+        apps_collection = engine._connection_manager.mongo_db["apps_config"]
         stored_app = await apps_collection.find_one({"slug": sample_manifest["slug"]})
         assert stored_app is not None
         assert stored_app["slug"] == sample_manifest["slug"]

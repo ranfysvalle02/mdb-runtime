@@ -613,8 +613,10 @@ index_definitions = [
     }
 ]
 
+# Get scoped database for the app
+db = engine.get_scoped_db("my_app")
 await run_index_creation_for_collection(
-    db=engine.mongo_db,
+    db=db.database,  # Access underlying database for index creation
     slug="my_app",
     collection_name="users",
     index_definitions=index_definitions
@@ -635,9 +637,11 @@ collections_with_indexes = {
     ]
 }
 
+# Get scoped database for the app
+db = engine.get_scoped_db("my_app")
 for collection_name, index_definitions in collections_with_indexes.items():
     await run_index_creation_for_collection(
-        db=engine.mongo_db,
+        db=db.database,  # Access underlying database for index creation
         slug="my_app",
         collection_name=collection_name,
         index_definitions=index_definitions

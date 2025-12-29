@@ -59,9 +59,9 @@ async def create_casbin_enforcer(
     Create a Casbin AsyncEnforcer with MongoDB adapter.
 
     Args:
-        db: MongoDB database instance (Motor AsyncIOMotorDatabase)
+        db: Scoped MongoDB database instance (ScopedMongoWrapper)
         model: Casbin model type ("rbac", "acl") or path to model file
-        policies_collection: MongoDB collection name for policies
+        policies_collection: MongoDB collection name for policies (will be app-scoped)
         default_roles: List of default roles to create (optional)
 
     Returns:
@@ -160,8 +160,8 @@ async def initialize_casbin_from_manifest(
         )
         default_roles = authorization.get("default_roles", [])
 
-        # Get database from engine
-        db = engine.get_database()
+        # Get scoped database from engine
+        db = engine.get_scoped_db(app_slug)
 
         # Create enforcer
         enforcer = await create_casbin_enforcer(

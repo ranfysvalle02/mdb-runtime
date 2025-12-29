@@ -265,11 +265,12 @@ The provider is automatically created and available via `get_authz_provider` dep
 ```python
 from mdb_engine.auth import CasbinAdapter, create_casbin_enforcer
 
-# Create enforcer with MongoDB adapter
+# Create enforcer with MongoDB adapter (uses scoped database)
+db = engine.get_scoped_db("my_app")
 enforcer = await create_casbin_enforcer(
-    db=engine.get_database(),
+    db=db,
     model="rbac",
-    policies_collection="casbin_policies"
+    policies_collection="casbin_policies"  # Will be app-scoped
 )
 
 # Create adapter
