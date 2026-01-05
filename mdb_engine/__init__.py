@@ -21,6 +21,21 @@ Usage:
 # Authentication
 from .auth import AuthorizationProvider, get_current_user, require_admin
 
+# Optional Ray integration
+# Core MongoDB Engine
+from .core import (
+    RAY_AVAILABLE,
+    AppRayActor,
+    ManifestParser,
+    ManifestValidator,
+    MongoDBEngine,
+    get_ray_actor_handle,
+    ray_actor_decorator,
+)
+
+# Database layer
+from .database import AppDB, ScopedMongoWrapper
+
 # Request-scoped FastAPI dependencies
 from .dependencies import (
     AppContext,
@@ -36,21 +51,6 @@ from .dependencies import (
     get_scoped_db,
     get_user_roles,
 )
-
-# Optional Ray integration
-# Core MongoDB Engine
-from .core import (
-    RAY_AVAILABLE,
-    AppRayActor,
-    ManifestParser,
-    ManifestValidator,
-    MongoDBEngine,
-    get_ray_actor_handle,
-    ray_actor_decorator,
-)
-
-# Database layer
-from .database import AppDB, ScopedMongoWrapper
 
 # Index management
 from .indexes import (

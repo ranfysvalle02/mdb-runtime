@@ -46,7 +46,7 @@ import os
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any, Dict, Optional, Union
 
-from fastapi import Depends, HTTPException, Request
+from fastapi import HTTPException, Request
 
 if TYPE_CHECKING:
     from openai import AzureOpenAI, OpenAI
@@ -582,9 +582,7 @@ class AppContext:
                         get_embedding_service as create_embedding_service,
                     )
 
-                    self._embedding_service = create_embedding_service(
-                        config=embedding_config
-                    )
+                    self._embedding_service = create_embedding_service(config=embedding_config)
                 except Exception:
                     pass  # Return None if creation fails
         return self._embedding_service

@@ -547,9 +547,7 @@ class TestEmbeddingDependenciesUtility:
             }
         }
 
-        with patch(
-            "mdb_engine.embeddings.dependencies.get_embedding_service"
-        ) as mock_create:
+        with patch("mdb_engine.embeddings.dependencies.get_embedding_service") as mock_create:
             mock_service = MagicMock()
             mock_create.return_value = mock_service
 

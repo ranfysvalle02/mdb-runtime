@@ -19,7 +19,7 @@ Usage:
     service = get_embedding_service_for_app("my_app", engine)
 """
 
-from typing import TYPE_CHECKING, Any, Optional
+from typing import TYPE_CHECKING, Optional
 
 if TYPE_CHECKING:
     from ..core.engine import MongoDBEngine

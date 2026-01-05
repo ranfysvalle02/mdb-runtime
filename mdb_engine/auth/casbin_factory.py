@@ -176,7 +176,7 @@ async def initialize_casbin_from_manifest(
 
         # Create adapter
         adapter = CasbinAdapter(enforcer)
-        logger.info(f"✅ CasbinAdapter created successfully")
+        logger.info("✅ CasbinAdapter created successfully")
 
         # Set up initial policies if configured
         if initial_policies:

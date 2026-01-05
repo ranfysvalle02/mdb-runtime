@@ -1090,8 +1090,12 @@ class MongoDBEngine:
         slug: str,
         manifest: Path,
         title: Optional[str] = None,
-        on_startup: Optional[Callable[["FastAPI", "MongoDBEngine", Dict[str, Any]], Awaitable[None]]] = None,
-        on_shutdown: Optional[Callable[["FastAPI", "MongoDBEngine", Dict[str, Any]], Awaitable[None]]] = None,
+        on_startup: Optional[
+            Callable[["FastAPI", "MongoDBEngine", Dict[str, Any]], Awaitable[None]]
+        ] = None,
+        on_shutdown: Optional[
+            Callable[["FastAPI", "MongoDBEngine", Dict[str, Any]], Awaitable[None]]
+        ] = None,
         **fastapi_kwargs: Any,
     ) -> "FastAPI":
         """
@@ -1219,9 +1223,7 @@ class MongoDBEngine:
                 try:
                     from ..auth.oso_factory import initialize_oso_from_manifest
 
-                    authz_provider = await initialize_oso_from_manifest(
-                        engine, slug, app_manifest
-                    )
+                    authz_provider = await initialize_oso_from_manifest(engine, slug, app_manifest)
                     if authz_provider:
                         app.state.authz_provider = authz_provider
                         logger.info(f"✅ OSO Cloud provider auto-initialized for '{slug}'")
@@ -1250,9 +1252,7 @@ class MongoDBEngine:
                         app.state.authz_provider = authz_provider
                         logger.info(f"✅ Casbin provider auto-initialized for '{slug}'")
                     else:
-                        logger.warning(
-                            f"⚠️  Casbin provider not initialized for '{slug}'"
-                        )
+                        logger.warning(f"⚠️  Casbin provider not initialized for '{slug}'")
                 except ImportError as e:
                     logger.warning(
                         f"⚠️  Casbin not available for '{slug}': {e}. "
@@ -1274,9 +1274,7 @@ class MongoDBEngine:
                         config=app_manifest,
                     )
                     if demo_users:
-                        logger.info(
-                            f"✅ Seeded {len(demo_users)} demo user(s) for '{slug}'"
-                        )
+                        logger.info(f"✅ Seeded {len(demo_users)} demo user(s) for '{slug}'")
                 except Exception as e:
                     logger.warning(f"⚠️  Failed to seed demo users for '{slug}': {e}")
 
@@ -1442,7 +1440,9 @@ class MongoDBEngine:
                         else:
                             logger.debug(f"ℹ️  Shared demo user exists: {email}")
                     except Exception as e:
-                        logger.warning(f"⚠️  Failed to create shared demo user {demo.get('email')}: {e}")
+                        logger.warning(
+                            f"⚠️  Failed to create shared demo user {demo.get('email')}: {e}"
+                        )
 
         # Initialize audit logging if enabled
         auth_config = (manifest or {}).get("auth", {})
