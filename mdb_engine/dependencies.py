@@ -167,7 +167,8 @@ async def get_app_config(request: Request) -> Dict[str, Any]:
         logger.error("get_app_config: manifest not found on app.state or engine")
         raise HTTPException(
             status_code=503,
-            detail="App configuration not available. Ensure app was created with engine.create_app().",
+            detail="App configuration not available. "
+            "Ensure app was created with engine.create_app().",
         )
     return manifest
 
@@ -272,13 +273,13 @@ async def get_embedding_service(request: Request) -> "EmbeddingService":
 
     try:
         return create_embedding_service(config=embedding_config)
-    except Exception as e:
-        logger.error(f"get_embedding_service: Failed to create service: {e}")
+    except (ImportError, ValueError, TypeError, RuntimeError, AttributeError) as e:
+        logger.exception(f"get_embedding_service: Failed to create service: {e}")
         raise HTTPException(
             status_code=503,
             detail=f"Failed to initialize embedding service: {str(e)}. "
             "Check that AZURE_OPENAI_API_KEY/OPENAI_API_KEY environment variables are set.",
-        )
+        ) from e
 
 
 async def get_memory_service(request: Request) -> Optional["Mem0MemoryService"]:
@@ -583,7 +584,7 @@ class AppContext:
                     )
 
                     self._embedding_service = create_embedding_service(config=embedding_config)
-                except Exception:
+                except (ImportError, ValueError, TypeError, RuntimeError, AttributeError):
                     pass  # Return None if creation fails
         return self._embedding_service
 
@@ -679,9 +680,11 @@ class AppContext:
         user_roles = set(self.user_roles)
 
         if not any(role in user_roles for role in roles):
+            roles_str = " or ".join(roles)
+            user_roles_str = ", ".join(user_roles) or "none"
             raise HTTPException(
                 status_code=403,
-                detail=f"Required role: {' or '.join(roles)}. You have: {', '.join(user_roles) or 'none'}",
+                detail=f"Required role: {roles_str}. You have: {user_roles_str}",
             )
 
         return user

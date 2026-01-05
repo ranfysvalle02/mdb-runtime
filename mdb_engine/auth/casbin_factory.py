@@ -188,7 +188,7 @@ async def initialize_casbin_from_manifest(
                         added = await adapter.add_policy(role, resource, action)
                         if added:
                             logger.debug(f"  Added policy: {role} -> {resource}:{action}")
-                    except Exception as e:
+                    except (ValueError, TypeError, RuntimeError, AttributeError) as e:
                         logger.warning(f"  Failed to add policy {policy}: {e}")
 
         # Set up initial role assignments if configured
@@ -203,7 +203,7 @@ async def initialize_casbin_from_manifest(
                             added = await adapter.add_role_for_user(user, role)
                             if added:
                                 logger.debug(f"  Assigned role '{role}' to user '{user}'")
-                        except Exception as e:
+                        except (ValueError, TypeError, RuntimeError, AttributeError) as e:
                             logger.warning(f"  Failed to assign role {role_assignment}: {e}")
 
         # Save policies to persist them

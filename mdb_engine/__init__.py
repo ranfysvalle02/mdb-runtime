@@ -19,7 +19,8 @@ Usage:
 """
 
 # Authentication
-from .auth import AuthorizationProvider, get_current_user, require_admin
+from .auth import AuthorizationProvider, require_admin
+from .auth import get_current_user as auth_get_current_user  # noqa: F401
 
 # Optional Ray integration
 # Core MongoDB Engine

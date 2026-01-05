@@ -1237,8 +1237,8 @@ class MongoDBEngine:
                         f"⚠️  OSO Cloud SDK not available for '{slug}': {e}. "
                         "Install with: pip install oso-cloud"
                     )
-                except Exception as e:
-                    logger.error(f"❌ Failed to initialize OSO provider for '{slug}': {e}")
+                except (ValueError, TypeError, RuntimeError, AttributeError, KeyError) as e:
+                    logger.exception(f"❌ Failed to initialize OSO provider for '{slug}': {e}")
 
             elif authz_provider_type == "casbin":
                 # Initialize Casbin provider
@@ -1258,8 +1258,8 @@ class MongoDBEngine:
                         f"⚠️  Casbin not available for '{slug}': {e}. "
                         "Install with: pip install mdb-engine[casbin]"
                     )
-                except Exception as e:
-                    logger.error(f"❌ Failed to initialize Casbin provider for '{slug}': {e}")
+                except (ValueError, TypeError, RuntimeError, AttributeError, KeyError) as e:
+                    logger.exception(f"❌ Failed to initialize Casbin provider for '{slug}': {e}")
 
             # Auto-seed demo users if configured in manifest
             users_config = auth_config.get("users", {})
@@ -1275,7 +1275,14 @@ class MongoDBEngine:
                     )
                     if demo_users:
                         logger.info(f"✅ Seeded {len(demo_users)} demo user(s) for '{slug}'")
-                except Exception as e:
+                except (
+                    ImportError,
+                    ValueError,
+                    TypeError,
+                    RuntimeError,
+                    AttributeError,
+                    KeyError,
+                ) as e:
                     logger.warning(f"⚠️  Failed to seed demo users for '{slug}': {e}")
 
             # Expose engine state on app.state
@@ -1291,8 +1298,8 @@ class MongoDBEngine:
                 try:
                     await on_startup(app, engine, app_manifest)
                     logger.info(f"on_startup callback completed for '{slug}'")
-                except Exception as e:
-                    logger.error(f"on_startup callback failed for '{slug}': {e}")
+                except (ValueError, TypeError, RuntimeError, AttributeError, KeyError) as e:
+                    logger.exception(f"on_startup callback failed for '{slug}': {e}")
                     raise
 
             yield
@@ -1302,7 +1309,7 @@ class MongoDBEngine:
                 try:
                     await on_shutdown(app, engine, app_manifest)
                     logger.info(f"on_shutdown callback completed for '{slug}'")
-                except Exception as e:
+                except (ValueError, TypeError, RuntimeError, AttributeError, KeyError) as e:
                     logger.warning(f"on_shutdown callback failed for '{slug}': {e}")
 
             await engine.shutdown()
@@ -1439,7 +1446,7 @@ class MongoDBEngine:
                             logger.info(f"✅ Created shared demo user: {email}")
                         else:
                             logger.debug(f"ℹ️  Shared demo user exists: {email}")
-                    except Exception as e:
+                    except (ValueError, TypeError, RuntimeError, AttributeError, KeyError) as e:
                         logger.warning(
                             f"⚠️  Failed to create shared demo user {demo.get('email')}: {e}"
                         )
