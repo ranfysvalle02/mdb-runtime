@@ -111,7 +111,8 @@ async def get_embedding_service(request: Request) -> "EmbeddingService":
     if not embedding_config.get("enabled", True):
         raise HTTPException(503, "Embedding service is disabled")
 
-    from .embeddings.service import EmbeddingServiceError, get_embedding_service as create_service
+    from .embeddings.service import EmbeddingServiceError
+    from .embeddings.service import get_embedding_service as create_service
 
     try:
         return create_service(config=embedding_config)
