@@ -29,8 +29,8 @@ services:
       - AZURE_OPENAI_ENDPOINT=${AZURE_OPENAI_ENDPOINT:-}
       - AZURE_OPENAI_DEPLOYMENT_NAME=${AZURE_OPENAI_DEPLOYMENT_NAME:-gpt-4o}
       - AZURE_OPENAI_API_VERSION=${AZURE_OPENAI_API_VERSION:-2024-02-01}
-      # GitHub Configuration
-      - GITHUB_TOKEN=${GITHUB_TOKEN:-}
+      # OpenAI Configuration (for embeddings)
+      - OPENAI_API_KEY=${OPENAI_API_KEY:-}
     depends_on:
       mongodb:
         condition: service_healthy
@@ -126,6 +126,3 @@ volumes:
 networks:
   mdb_engine_network:
     driver: bridge
-    ipam:
-      config:
-        - subnet: 172.28.0.0/16

@@ -1293,6 +1293,12 @@ class MongoDBEngine:
             app.state.auth_mode = auth_mode
             app.state.ray_actor = engine.ray_actor
 
+            # Initialize DI container (if not already set)
+            from ..di import Container
+            if not hasattr(app.state, "container") or app.state.container is None:
+                app.state.container = Container()
+                logger.debug(f"DI Container initialized for '{slug}'")
+
             # Call on_startup callback if provided
             if on_startup:
                 try:
@@ -1316,6 +1322,24 @@ class MongoDBEngine:
 
         # Create FastAPI app
         app = FastAPI(title=app_title, lifespan=lifespan, **fastapi_kwargs)
+
+        # Add request scope middleware (innermost layer - runs first on request)
+        # This sets up the DI request scope for each request
+        from starlette.middleware.base import BaseHTTPMiddleware
+        from ..di import ScopeManager
+
+        class RequestScopeMiddleware(BaseHTTPMiddleware):
+            """Middleware that manages request-scoped DI instances."""
+            async def dispatch(self, request, call_next):
+                ScopeManager.begin_request()
+                try:
+                    response = await call_next(request)
+                    return response
+                finally:
+                    ScopeManager.end_request()
+
+        app.add_middleware(RequestScopeMiddleware)
+        logger.debug(f"RequestScopeMiddleware added for '{slug}'")
 
         # Add rate limiting middleware FIRST (outermost layer)
         # This ensures rate limiting happens before auth validation

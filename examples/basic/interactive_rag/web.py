@@ -1,13 +1,24 @@
 #!/usr/bin/env python3
 """
-FastAPI Web Application for Interactive RAG Example
+Interactive RAG Example
+========================
 
-This demonstrates MDB_ENGINE with:
-- EmbeddingService for semantic text splitting and embeddings
-- OpenAI SDK for chat completions
-- Vector search with MongoDB Atlas Vector Search
-- Knowledge base management with sessions
-- Platform-level LLM abstractions via MongoDBEngine
+A clean, minimal example demonstrating RAG (Retrieval Augmented Generation) with mdb-engine.
+
+This example shows:
+- How to use EmbeddingService for semantic chunking and embeddings
+- How to perform vector search with MongoDB Atlas Vector Search
+- How to use mdb-engine dependencies for LLM clients
+- How to build a complete RAG system with knowledge base management
+- How mdb-engine simplifies vector index management
+
+Key Concepts:
+- engine.create_app() - Creates FastAPI app with automatic lifecycle management
+- get_scoped_db() - Provides database access scoped to your app
+- get_embedding_service() - Provides EmbeddingService for chunking and embeddings
+- get_llm_client() - Provides OpenAI/AzureOpenAI client
+- Vector search - MongoDB Atlas Vector Search for semantic retrieval
+- Session management - Isolated knowledge bases per session
 """
 import asyncio
 import logging
@@ -21,7 +32,10 @@ from typing import Any, Dict, List, Optional
 
 from bson.objectid import ObjectId
 
-# Setup logger
+# ============================================================================
+# CONFIGURATION
+# ============================================================================
+
 logger = logging.getLogger(__name__)
 
 # Handle Transformers/HF_HOME warnings early
@@ -38,15 +52,20 @@ warnings.filterwarnings("ignore", message=".*TRANSFORMERS_CACHE.*", category=Use
 warnings.filterwarnings("ignore", message=".*Use `HF_HOME` instead.*", category=UserWarning)
 
 from dotenv import load_dotenv
-from fastapi import Depends, FastAPI, File, Form, HTTPException, Request, UploadFile, status
+from fastapi import Depends, File, Form, HTTPException, Request, UploadFile, status
 from fastapi.responses import HTMLResponse, JSONResponse
+from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from jinja2 import Template
-from openai import AzureOpenAI
 from pydantic import BaseModel
 
 from mdb_engine import MongoDBEngine
-from mdb_engine.dependencies import get_embedding_service, get_scoped_db
+from mdb_engine.dependencies import (
+    get_embedding_service,
+    get_llm_client,
+    get_llm_model_name,
+    get_scoped_db,
+)
 from mdb_engine.embeddings import EmbeddingService
 from mdb_engine.embeddings.dependencies import get_embedding_service_for_app
 
@@ -74,56 +93,59 @@ except ImportError as e:
 
 import requests
 
-# Static files directory - use explicit routes instead of mount for reliability
-from fastapi.responses import FileResponse
+# ============================================================================
+# PATHS & DIRECTORIES
+# ============================================================================
 
-# Get absolute path to static directory
-try:
-    _web_py_path = Path(__file__).resolve()
-except NameError:
-    # Fallback if __file__ is not available
-    _web_py_path = Path.cwd() / "web.py"
-
-static_dir = (_web_py_path.parent / "static").resolve()
+# Static files directory - resolved for both local dev and Docker
+static_dir = Path(__file__).parent / "static"
 if not static_dir.exists():
-    # Try Docker path
-    docker_static = Path("/app/static")
-    if docker_static.exists():
-        static_dir = docker_static.resolve()
-    else:
-        # Try current working directory
-        cwd_static = Path.cwd() / "static"
-        if cwd_static.exists():
-            static_dir = cwd_static.resolve()
+    static_dir = Path("/app/static") if Path("/app/static").exists() else Path.cwd() / "static"
 
-if static_dir.exists():
-    static_dir_str = str(static_dir.absolute())
-    logger.warning(f"✓ Static files directory configured: {static_dir_str}")
-    logger.warning(f"  - styles.css exists: {(static_dir / 'styles.css').exists()}")
-    logger.warning(f"  - script.js exists: {(static_dir / 'script.js').exists()}")
-else:
-    logger.error(
-        f"✗ Static directory not found. Tried: {_web_py_path.parent / 'static'}, /app/static, {Path.cwd() / 'static'}"
-    )
-    static_dir = None
-
-# Templates directory - use relative path for local dev, absolute for Docker
+# Templates directory
 template_dir = Path(__file__).parent / "templates"
 if not template_dir.exists():
     template_dir = Path("/app/templates")
+
 templates = Jinja2Templates(directory=str(template_dir))
-logger.info(f"Templates directory: {template_dir}")
 
-# App configuration
+# ============================================================================
+# APP CONFIGURATION
+# ============================================================================
+
 APP_SLUG = "interactive_rag"
+COLLECTION_NAME = "knowledge_base_sessions"
+SESSION_FIELD = "session_id"
 
-# Initialize the MongoDB Engine
+# ============================================================================
+# STEP 1: INITIALIZE MONGODB ENGINE
+# ============================================================================
+# The MongoDBEngine is the core of mdb-engine. It manages:
+# - Database connections
+# - App registration and configuration
+# - Embedding service initialization (from manifest.json)
+# - Vector index creation and management
+# - Lifecycle management
+
 engine = MongoDBEngine(
     mongo_uri=os.getenv("MONGO_URI", "mongodb://admin:password@mongodb:27017/?authSource=admin"),
     db_name=os.getenv("MONGO_DB_NAME", "interactive_rag_db"),
 )
 
-# Application status tracking (needed by on_startup callback)
+# ============================================================================
+# APPLICATION STATE
+# ============================================================================
+# In-memory state for chat history and background tasks
+# Note: In production, consider using Redis or MongoDB for persistence
+
+chat_history: Dict[str, List[Dict[str, str]]] = {}
+current_session: str = "default"
+last_retrieved_sources: List[str] = []
+last_retrieved_chunks: List[Dict[str, Any]] = []
+background_tasks: Dict[str, Dict[str, Any]] = {}
+index_creation_in_progress: set = set()
+
+# Application status tracking
 app_status: Dict[str, Any] = {
     "initialized": False,
     "status": "initializing",
@@ -140,7 +162,7 @@ app_status: Dict[str, Any] = {
 
 
 def add_status_log(message: str, level: str = "info", component: str = None):
-    """Add a log entry to the status system"""
+    """Add a log entry to the status system."""
     timestamp = datetime.now().isoformat()
     log_entry = {"timestamp": timestamp, "level": level, "message": message, "component": component}
     app_status["logs"].append(log_entry)
@@ -157,24 +179,33 @@ def add_status_log(message: str, level: str = "info", component: str = None):
         logger.info(message)
 
 
-# Global references (set during startup callback)
-_global_db = None
+# ============================================================================
+# STEP 2: CREATE FASTAPI APP WITH MDB-ENGINE
+# ============================================================================
+# engine.create_app() does the heavy lifting:
+# - Loads manifest.json configuration
+# - Sets up EmbeddingService from manifest
+# - Creates vector indexes (from managed_indexes in manifest)
+# - Configures CORS, middleware, etc.
+# - Returns a fully configured FastAPI app
 
 
 async def on_startup_callback(fastapi_app, eng, manifest):
-    """Additional startup tasks beyond what engine.create_app() handles.
-
-    This is passed to engine.create_app(on_startup=...) to run after
-    the engine is fully initialized.
     """
-    global _global_db
-
+    Additional startup tasks beyond what engine.create_app() handles.
+    
+    This callback runs after the engine is fully initialized.
+    We use it to:
+    - Initialize cache directories
+    - Check component availability (EmbeddingService, Docling, etc.)
+    - Update application status
+    """
     app_status["startup_time"] = datetime.now().isoformat()
     app_status["status"] = "initializing"
     add_status_log("🚀 Starting Interactive RAG Web Application...", "info", "startup")
 
     try:
-        # Ensure cache directories exist and are writable
+        # Ensure cache directories exist (for docling/transformers)
         cache_dirs = ["/app/.cache", "/app/.cache/huggingface", "/app/cache"]
         for cache_dir in cache_dirs:
             try:
@@ -184,7 +215,7 @@ async def on_startup_callback(fastapi_app, eng, manifest):
                 pass  # May fail in some environments, not critical
         add_status_log("✅ Cache directories initialized", "info", "startup")
 
-        # Update status - engine is already initialized by create_app()
+        # Engine is already initialized by create_app()
         db_name = os.getenv("MONGO_DB_NAME", "interactive_rag_db")
         app_status["components"]["mongodb"]["status"] = "connected"
         app_status["components"]["mongodb"]["message"] = f"Connected to {db_name}"
@@ -192,20 +223,20 @@ async def on_startup_callback(fastapi_app, eng, manifest):
         app_status["components"]["engine"]["message"] = "MongoDBEngine ready"
         add_status_log("✅ Engine initialized successfully", "info", "engine")
 
-        # Set global references for tools
-        _global_db = eng.get_scoped_db(APP_SLUG)
-
-        # Check Azure OpenAI configuration
+        # Check LLM configuration (Azure OpenAI or OpenAI)
         endpoint = os.getenv("AZURE_OPENAI_ENDPOINT")
         key = os.getenv("AZURE_OPENAI_API_KEY")
+        openai_key = os.getenv("OPENAI_API_KEY")
         deployment = os.getenv("AZURE_OPENAI_DEPLOYMENT_NAME", "gpt-4o")
 
         if endpoint and key:
             add_status_log(f"✅ Azure OpenAI configured: {deployment}", "info", "llm")
+        elif openai_key:
+            add_status_log("✅ OpenAI configured", "info", "llm")
         else:
-            add_status_log("⚠️  Azure OpenAI not configured", "warning", "llm")
+            add_status_log("⚠️  LLM not configured (set AZURE_OPENAI_* or OPENAI_API_KEY)", "warning", "llm")
 
-        # Update docling status
+        # Check optional dependencies
         if DOCLING_AVAILABLE:
             app_status["components"]["docling"]["status"] = "available"
             app_status["components"]["docling"]["message"] = "Document conversion enabled"
@@ -215,13 +246,11 @@ async def on_startup_callback(fastapi_app, eng, manifest):
             app_status["components"]["docling"]["message"] = "Docling not installed"
             add_status_log("⚠️  Docling not available", "warning", "docling")
 
-        # RapidOCR status will be updated when actually used
         app_status["components"]["rapidocr"]["status"] = "pending"
         app_status["components"]["rapidocr"]["message"] = "Will initialize on first use"
 
-        # Check if embedding service is available
+        # Check EmbeddingService (initialized from manifest.json)
         embedding_service = get_embedding_service_for_app(APP_SLUG, eng)
-
         if embedding_service:
             app_status["components"]["embedding_service"]["status"] = "available"
             app_status["components"]["embedding_service"]["message"] = "EmbeddingService initialized"
@@ -235,7 +264,7 @@ async def on_startup_callback(fastapi_app, eng, manifest):
         app_status["status"] = "ready"
         add_status_log("✅ Web application ready!", "info", "startup")
 
-    except (AttributeError, RuntimeError, ConnectionError, ValueError, TypeError, KeyError) as e:
+    except Exception as e:
         app_status["status"] = "error"
         app_status["initialized"] = False
         error_msg = f"Startup failed: {str(e)}"
@@ -258,6 +287,32 @@ app = engine.create_app(
     version="1.0.0",
     on_startup=on_startup_callback,
 )
+
+# Mount static files using FastAPI's StaticFiles (simpler and more secure)
+# Note: Mount must happen AFTER app creation but BEFORE route definitions
+# Try multiple possible paths for Docker compatibility
+possible_static_dirs = [
+    static_dir,
+    Path("/app/static"),
+    Path(__file__).parent / "static",
+    Path.cwd() / "static",
+]
+
+mounted = False
+for possible_dir in possible_static_dirs:
+    if possible_dir.exists() and possible_dir.is_dir():
+        try:
+            app.mount("/static", StaticFiles(directory=str(possible_dir)), name="static")
+            logger.info(f"✓ Static files mounted at /static from {possible_dir}")
+            mounted = True
+            break
+        except Exception as e:
+            logger.warning(f"Failed to mount static files from {possible_dir}: {e}")
+            continue
+
+if not mounted:
+    logger.error(f"⚠ Could not mount static files from any of: {possible_static_dirs}")
+
 COLLECTION_NAME = "knowledge_base_sessions"
 SESSION_FIELD = "session_id"
 
@@ -273,123 +328,18 @@ index_creation_in_progress: set = set()
 
 
 # ============================================================================
-# Dependency Injection
+# ROUTES
 # ============================================================================
 
 
-def get_azure_openai_client() -> AzureOpenAI:
-    """Get Azure OpenAI client configured from environment variables"""
-    api_version = os.getenv("AZURE_OPENAI_API_VERSION", "2024-02-01")
-    endpoint = os.getenv("AZURE_OPENAI_ENDPOINT")
-    key = os.getenv("AZURE_OPENAI_API_KEY")
-    deployment_name = os.getenv("AZURE_OPENAI_DEPLOYMENT_NAME", "gpt-4o")
-
-    if not endpoint or not key:
-        raise HTTPException(
-            status_code=503,
-            detail="Azure OpenAI not configured. Set AZURE_OPENAI_ENDPOINT and AZURE_OPENAI_API_KEY environment variables.",
-        )
-
-    return AzureOpenAI(api_version=api_version, azure_endpoint=endpoint, api_key=key)
-
-
-async def embed_text(text: str, model: str = "text-embedding-3-small") -> List[float]:
-    """Generate embedding for text using Azure OpenAI"""
-    client = get_azure_openai_client()
-    # Remove any model prefixes
-    clean_model = model.replace("azure/", "").replace("openai/", "")
-
-    # Type 4: Let embedding generation errors bubble up to framework handler
-    response = await asyncio.to_thread(client.embeddings.create, model=clean_model, input=text)
-    return response.data[0].embedding
-
-
-async def embed_chunks(
-    texts: List[str], model: str = "text-embedding-3-small"
-) -> List[List[float]]:
-    """Generate embeddings for multiple texts using Azure OpenAI"""
-    client = get_azure_openai_client()
-    # Remove any model prefixes
-    clean_model = model.replace("azure/", "").replace("openai/", "")
-
-    # Type 4: Let embedding generation errors bubble up to framework handler
-    response = await asyncio.to_thread(client.embeddings.create, model=clean_model, input=texts)
-    return [item.embedding for item in response.data]
-
-
-def chunk_text(
-    text: str, max_tokens: int = 1000, tokenizer_model: str = "gpt-3.5-turbo"
-) -> List[str]:
-    """Simple text chunking by tokens (approximate)"""
-    from semantic_text_splitter import TextSplitter
-
-    # Use semantic-text-splitter for better chunking
-    splitter = TextSplitter.from_tiktoken_model(tokenizer_model, max_tokens)
-    chunks = splitter.chunks(text)
-    return list(chunks)
-
-
-
-
-
-async def _get_vector_search_results_async(
-    query: str, session_id: str, embedding_model: str, num_sources: int = 3
-) -> List[Dict]:
-    """Async helper function for vector search (used by tools)"""
-
-    if not _global_db:
-        return []
-
-    # Get embedding service
-    embedding_service = get_embedding_service_for_app(APP_SLUG, engine)
-
-    if not embedding_service:
-        return []
-
-    try:
-        # Generate query embedding
-        query_vector = await embedding_service.embed_chunks([query], model=embedding_model)
-        if not query_vector:
-            return []
-
-        # Vector search pipeline
-        # Index name is prefixed with app slug by MongoDBEngine
-        vector_index_name = f"{APP_SLUG}_embedding_vector_index"
-        pipeline = [
-            {
-                "$vectorSearch": {
-                    "index": vector_index_name,
-                    "path": "embedding",
-                    "queryVector": query_vector[0],
-                    "numCandidates": num_sources * 10,
-                    "limit": num_sources,
-                    "filter": {f"metadata.{SESSION_FIELD}": {"$eq": session_id}},
-                }
-            },
-            {
-                "$project": {
-                    "_id": 0,
-                    "content": "$text",
-                    "source": "$metadata.source",
-                    "score": {"$meta": "vectorSearchScore"},
-                }
-            },
-        ]
-
-        results = await _global_db.knowledge_base_sessions.aggregate(pipeline).to_list(
-            length=num_sources
-        )
-        return results
-    except (AttributeError, RuntimeError, ConnectionError):
-        # Type 2: Recoverable - database/aggregation error, return empty list
-        logger.error("Error in vector search", exc_info=True)
-        return []
-
-
+@app.get("/", response_class=HTMLResponse)
+async def index(request: Request):
+    """Home page"""
+    return templates.TemplateResponse("index.html", {"request": request})
 
 
 # ============================================================================
-# Health Check Endpoint (for container healthchecks)
+# HEALTH CHECK ENDPOINT
 # ============================================================================
 
 
@@ -420,79 +370,7 @@ async def health_check():
 
 
 # ============================================================================
-# Routes
-# ============================================================================
-
-
-# Static file routes - must be BEFORE the root route
-@app.get("/static/{file_path:path}")
-async def serve_static_file(file_path: str):
-    """Serve static files explicitly"""
-    logger.info(f"[STATIC] Request for: {file_path}")
-
-    if not static_dir or not static_dir.exists():
-        logger.error(f"[STATIC] Static directory not found: {static_dir}")
-        raise HTTPException(status_code=404, detail="Static directory not found")
-
-    # Security: prevent directory traversal - normalize the path
-    # Remove any leading slashes and normalize
-    file_path = file_path.lstrip("/")
-    if ".." in file_path:
-        logger.warning(f"[STATIC] Invalid path (directory traversal attempt): {file_path}")
-        raise HTTPException(status_code=400, detail="Invalid file path")
-
-    file_path_obj = static_dir / file_path
-    # Ensure the resolved path is still within static_dir
-    try:
-        file_path_obj = file_path_obj.resolve()
-        static_dir_resolved = static_dir.resolve()
-        if not str(file_path_obj).startswith(str(static_dir_resolved)):
-            logger.warning(
-                f"[STATIC] Path traversal detected: {file_path_obj} not in {static_dir_resolved}"
-            )
-            raise HTTPException(status_code=403, detail="Access denied")
-    except HTTPException:
-        raise
-    except (OSError, ValueError, AttributeError):
-        # Type 2: Recoverable - path resolution failed, return error
-        logger.error("[STATIC] Error resolving file path", exc_info=True)
-        raise HTTPException(status_code=400, detail="Invalid file path")
-
-    if not file_path_obj.exists() or not file_path_obj.is_file():
-        logger.warning(
-            f"[STATIC] File not found: {file_path_obj} (requested: {file_path}, static_dir: {static_dir})"
-        )
-        raise HTTPException(status_code=404, detail=f"File not found: {file_path}")
-
-    # Determine content type
-    content_type = "application/octet-stream"
-    if file_path.endswith(".css"):
-        content_type = "text/css; charset=utf-8"
-    elif file_path.endswith(".js"):
-        content_type = "application/javascript; charset=utf-8"
-    elif file_path.endswith(".png"):
-        content_type = "image/png"
-    elif file_path.endswith(".jpg") or file_path.endswith(".jpeg"):
-        content_type = "image/jpeg"
-    elif file_path.endswith(".svg"):
-        content_type = "image/svg+xml"
-
-    logger.info(f"[STATIC] Serving: {file_path_obj} (type: {content_type})")
-    return FileResponse(
-        str(file_path_obj),
-        media_type=content_type,
-        headers={"Cache-Control": "public, max-age=3600"},
-    )
-
-
-@app.get("/", response_class=HTMLResponse)
-async def index(request: Request):
-    """Home page"""
-    return templates.TemplateResponse("index.html", {"request": request})
-
-
-# ============================================================================
-# Ingestion Endpoints
+# INGESTION ENDPOINTS
 # ============================================================================
 
 
@@ -511,7 +389,19 @@ async def start_ingestion_task(
     db=Depends(get_scoped_db),
     embedding_service: EmbeddingService = Depends(get_embedding_service),
 ):
-    """Start an ingestion task"""
+    """
+    Start an ingestion task.
+    
+    This endpoint demonstrates:
+    - Using EmbeddingService.process_and_store() for chunking + embedding
+    - Background task execution with progress tracking
+    - Database scoping via get_scoped_db() dependency
+    
+    The EmbeddingService handles:
+    - Semantic text chunking (respects max_tokens)
+    - Embedding generation (uses model from manifest.json)
+    - Storage in MongoDB with metadata
+    """
     # Check duplicates
     existing = await db.knowledge_base_sessions.count_documents(
         {"metadata.source": request.source, f"metadata.{SESSION_FIELD}": request.session_id},
@@ -567,7 +457,16 @@ async def run_ingestion_task(
     db,
     embedding_service: EmbeddingService,
 ):
-    """Handles chunking & embedding in a background task with detailed polling-based progress updates"""
+    """
+    Background task for document ingestion.
+    
+    This function demonstrates:
+    - Using EmbeddingService.process_and_store() for end-to-end processing
+    - Progress tracking for UI polling
+    - Error handling with status updates
+    
+    Note: process_and_store() handles both chunking and embedding in one call.
+    """
     import time
 
     start_time = time.time()
@@ -684,8 +583,27 @@ class ChatRequest(BaseModel):
 
 
 @app.post("/chat")
-async def chat(request: ChatRequest, db=Depends(get_scoped_db)):
-    """Chat endpoint with RAG using direct Azure OpenAI client"""
+async def chat(
+    request: ChatRequest,
+    db=Depends(get_scoped_db),
+    llm_client=Depends(get_llm_client),
+    llm_model=Depends(get_llm_model_name),
+    embedding_service: EmbeddingService = Depends(get_embedding_service),
+):
+    """
+    Chat endpoint with RAG (Retrieval Augmented Generation).
+    
+    This endpoint demonstrates:
+    1. Vector search: Query embeddings are generated and used to find relevant chunks
+    2. Context building: Retrieved chunks are formatted as context
+    3. LLM completion: Context + query are sent to LLM for generation
+    
+    Uses mdb-engine dependencies:
+    - get_scoped_db() - Database scoped to this app
+    - get_llm_client() - OpenAI/AzureOpenAI client (configured from manifest.json)
+    - get_llm_model_name() - Model name (from manifest.json)
+    - get_embedding_service() - EmbeddingService for query embeddings
+    """
     global current_session, chat_history, last_retrieved_sources, last_retrieved_chunks
 
     if not request.query or not request.session_id:
@@ -707,13 +625,9 @@ async def chat(request: ChatRequest, db=Depends(get_scoped_db)):
         if len(current_chat_history) > 10:
             current_chat_history = current_chat_history[-10:]
 
-        # Get Azure OpenAI client
-        client = get_azure_openai_client()
-        deployment_name = os.getenv("AZURE_OPENAI_DEPLOYMENT_NAME", "gpt-4o")
-
-        # Direct RAG chat
+        # Perform RAG chat
         response_text = await _direct_rag_chat(
-            request, db, client, deployment_name, current_chat_history
+            request, db, llm_client, llm_model, current_chat_history, embedding_service
         )
         sources_used = last_retrieved_sources
 
@@ -748,8 +662,8 @@ async def chat(request: ChatRequest, db=Depends(get_scoped_db)):
                     "type": "bot-message",
                     "content": response_text,
                     "sources": sources_used,
-                    "query": request.query,  # Include query for chunk inspection
-                    "chunks": last_retrieved_chunks,  # Include retrieved chunks for inspection
+                    "query": request.query,
+                    "chunks": last_retrieved_chunks,
                 }
             ],
             "session_update": {"all_sessions": all_sessions, "current_session": current_session},
@@ -763,28 +677,29 @@ async def chat(request: ChatRequest, db=Depends(get_scoped_db)):
 async def _direct_rag_chat(
     request: ChatRequest,
     db,
-    client: AzureOpenAI,
-    deployment_name: str,
+    llm_client,
+    llm_model: str,
     current_chat_history: List[Dict[str, str]],
+    embedding_service: EmbeddingService,
 ) -> str:
-    """Direct RAG chat using Azure OpenAI client"""
+    """
+    Perform RAG chat: vector search + LLM completion.
+    
+    Flow:
+    1. Generate query embedding using EmbeddingService
+    2. Perform vector search on knowledge_base_sessions collection
+    3. Build context from retrieved chunks
+    4. Send context + query to LLM for completion
+    """
     global last_retrieved_sources, last_retrieved_chunks
 
-    # Perform vector search
+    # RAG parameters
     rag_params = request.rag_params or {}
     num_sources = rag_params.get("num_sources", 3)
     max_chunk_length = rag_params.get("max_chunk_length", 2000)
 
-    # Get embedding service
-    embedding_service = get_embedding_service_for_app(APP_SLUG, engine)
-
-    if not embedding_service:
-        raise HTTPException(
-            status_code=503, detail="EmbeddingService unavailable. Cannot perform vector search."
-        )
-
-    # Type 4: Let errors bubble up to framework handler
-    # Generate query embedding
+    # Step 1: Generate query embedding
+    # EmbeddingService handles model selection and API calls
     query_vector = await embedding_service.embed_chunks(
         [request.query], model=request.embedding_model
     )
@@ -806,7 +721,8 @@ async def _direct_rag_chat(
             f"[RAG] No documents found for session '{request.session_id}'. Make sure documents are embedded first."
         )
 
-    # Vector search pipeline
+    # Step 2: Perform vector search
+    # MongoDB Atlas Vector Search uses $vectorSearch aggregation stage
     # Index name is prefixed with app slug by MongoDBEngine (e.g., "interactive_rag_embedding_vector_index")
     vector_index_name = f"{APP_SLUG}_embedding_vector_index"
     pipeline = [
@@ -943,22 +859,23 @@ async def _direct_rag_chat(
 
     user_prompt = f"Context from knowledge base:\n\n{context}\n\nUser question: {request.query}"
 
-    # Get LLM response using Azure OpenAI client
+    # Step 3: Get LLM response
+    # llm_client is injected via get_llm_client dependency (supports OpenAI and Azure OpenAI)
+    # llm_model is injected via get_llm_model_name dependency (from manifest.json)
     messages = [{"role": "system", "content": system_prompt}]
-    # Add recent chat history
-    for msg in current_chat_history[-5:]:  # Last 5 messages for context
+    # Add recent chat history for context
+    for msg in current_chat_history[-5:]:  # Last 5 messages
         messages.append(msg)
     messages.append({"role": "user", "content": user_prompt})
 
-    # Type 4: Let errors bubble up to framework handler
-    logger.info(
-        f"[RAG] Sending {len(messages)} messages to Azure OpenAI (model: {deployment_name})"
-    )
+    logger.info(f"[RAG] Sending {len(messages)} messages to LLM (model: {llm_model})")
     logger.debug(
         f"[RAG] User prompt length: {len(user_prompt)} chars, context length: {len(context)} chars"
     )
+    
+    # Use async wrapper for synchronous LLM client
     completion = await asyncio.to_thread(
-        client.chat.completions.create, model=deployment_name, messages=messages, max_tokens=1000
+        llm_client.chat.completions.create, model=llm_model, messages=messages, max_tokens=1000
     )
     response = completion.choices[0].message.content
     logger.info(

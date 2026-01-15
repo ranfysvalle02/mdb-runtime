@@ -1,5 +1,5 @@
 # ============================================================================
-# Multi-stage Dockerfile for MDB_ENGINE Vector Hacking Example
+# Multi-stage Dockerfile for MDB_ENGINE Parallax Example
 # Enterprise-grade best practices: security, caching, minimal image size
 # ============================================================================
 
@@ -27,10 +27,10 @@ RUN pip install --no-cache-dir --upgrade pip setuptools wheel
 # Copy source code
 COPY mdb_engine ./mdb_engine
 
-# Install mdb_engine with all dependencies
-RUN pip install --no-cache-dir . && \
-    pip install --no-cache-dir uvicorn[standard] jinja2 python-multipart websockets python-dotenv && \
-    pip install --no-cache-dir numpy instructor pydantic pydantic-settings tenacity
+# Install mdb_engine with LLM dependencies
+RUN pip install --no-cache-dir .[llm] && \
+    pip install --no-cache-dir uvicorn[standard] jinja2 python-multipart websockets && \
+    pip install --no-cache-dir requests httpx python-dotenv
 
 # Stage 2: Runtime - Minimal production image
 FROM python:3.11-slim
@@ -56,10 +56,17 @@ WORKDIR /app
 COPY --from=builder --chown=${APP_USER}:${APP_USER} /opt/venv /opt/venv
 
 # Copy example files with proper ownership
-COPY --chown=${APP_USER}:${APP_USER} examples/basic/vector_hacking/manifest.json ./
-COPY --chown=${APP_USER}:${APP_USER} examples/basic/vector_hacking/web.py ./
-COPY --chown=${APP_USER}:${APP_USER} examples/basic/vector_hacking/vector_hacking.py ./
-COPY --chown=${APP_USER}:${APP_USER} examples/basic/vector_hacking/templates ./templates
+COPY --chown=${APP_USER}:${APP_USER} examples/basic/parallax_memory/manifest.json ./
+COPY --chown=${APP_USER}:${APP_USER} examples/basic/parallax_memory/web.py ./
+COPY --chown=${APP_USER}:${APP_USER} examples/basic/parallax_memory/parallax.py ./
+COPY --chown=${APP_USER}:${APP_USER} examples/basic/parallax_memory/schemas.py ./
+COPY --chown=${APP_USER}:${APP_USER} examples/basic/parallax_memory/schema_generator.py ./
+COPY --chown=${APP_USER}:${APP_USER} examples/basic/parallax_memory/CALLS.json ./
+COPY --chown=${APP_USER}:${APP_USER} examples/basic/parallax_memory/templates ./templates
+# Copy module subdirectories
+COPY --chown=${APP_USER}:${APP_USER} examples/basic/parallax_memory/analysis ./analysis
+COPY --chown=${APP_USER}:${APP_USER} examples/basic/parallax_memory/memory ./memory
+COPY --chown=${APP_USER}:${APP_USER} examples/basic/parallax_memory/rag ./rag
 
 # Set environment variables
 ENV PATH="/opt/venv/bin:$PATH" \

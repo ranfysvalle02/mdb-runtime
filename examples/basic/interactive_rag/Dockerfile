@@ -35,6 +35,8 @@ RUN echo "=== Installing mdb-engine ===" && \
     pip install --no-cache-dir uvicorn[standard] jinja2 python-multipart python-dotenv && \
     echo "=== Installing LLM dependencies ===" && \
     pip install --no-cache-dir openai pydantic pydantic-settings tenacity semantic-text-splitter && \
+    echo "=== Installing numpy (compatible with mdb-engine) ===" && \
+    pip install --no-cache-dir "numpy<2.0.0,>=1.0.0" && \
     echo "=== Installing RAG dependencies ===" && \
     pip install --no-cache-dir ddgs docling requests && \
     echo "=== Installation complete ===" && \

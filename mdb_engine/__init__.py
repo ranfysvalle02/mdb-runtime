@@ -1,8 +1,11 @@
 """
 MDB_ENGINE - MongoDB Engine
 
-Enterprise-grade engine for building applications
-with automatic database scoping, authentication, and resource management.
+Enterprise-grade engine for building applications with:
+- Automatic database scoping and data isolation
+- Proper dependency injection with service lifetimes
+- Repository pattern for clean data access
+- Authentication and authorization
 
 Usage:
     # Simple usage
@@ -13,16 +16,20 @@ Usage:
 
     # With FastAPI integration
     app = engine.create_app(slug="my_app", manifest=Path("manifest.json"))
-
-    # With Ray support (optional)
-    engine = MongoDBEngine(..., enable_ray=True)
+    
+    # In routes - use RequestContext for clean DI
+    from mdb_engine import RequestContext
+    
+    @app.get("/users/{user_id}")
+    async def get_user(user_id: str, ctx: RequestContext = Depends()):
+        user = await ctx.uow.users.get(user_id)
+        return user
 """
 
 # Authentication
 from .auth import AuthorizationProvider, require_admin
 from .auth import get_current_user as auth_get_current_user  # noqa: F401
 
-# Optional Ray integration
 # Core MongoDB Engine
 from .core import (
     RAY_AVAILABLE,
@@ -37,9 +44,15 @@ from .core import (
 # Database layer
 from .database import AppDB, ScopedMongoWrapper
 
-# Request-scoped FastAPI dependencies
+# DI Container
+from .di import Container, Scope, ScopeManager
+
+# Repository pattern
+from .repositories import Entity, MongoRepository, Repository, UnitOfWork
+
+# FastAPI dependencies
 from .dependencies import (
-    AppContext,
+    RequestContext,
     get_app_config,
     get_app_slug,
     get_authz_provider,
@@ -50,7 +63,12 @@ from .dependencies import (
     get_llm_model_name,
     get_memory_service,
     get_scoped_db,
+    get_unit_of_work,
     get_user_roles,
+    inject,
+    Inject,
+    require_role,
+    require_user,
 )
 
 # Index management
@@ -60,14 +78,14 @@ from .indexes import (
     run_index_creation_for_collection,
 )
 
-__version__ = "0.1.6"
+__version__ = "0.2.0"  # Major version bump for new DI system
 
 __all__ = [
-    # Core (includes FastAPI integration and optional Ray)
+    # Core Engine
     "MongoDBEngine",
     "ManifestValidator",
     "ManifestParser",
-    # Ray Integration (optional - only active if Ray installed)
+    # Ray Integration (optional)
     "RAY_AVAILABLE",
     "AppRayActor",
     "get_ray_actor_handle",
@@ -75,15 +93,25 @@ __all__ = [
     # Database
     "ScopedMongoWrapper",
     "AppDB",
+    # DI Container
+    "Container",
+    "Scope",
+    "ScopeManager",
+    # Repository Pattern
+    "Repository",
+    "MongoRepository",
+    "Entity",
+    "UnitOfWork",
     # Auth
     "AuthorizationProvider",
-    "get_current_user",
     "require_admin",
-    # Request-scoped FastAPI dependencies
+    # FastAPI Dependencies
+    "RequestContext",
     "get_engine",
     "get_app_slug",
     "get_app_config",
     "get_scoped_db",
+    "get_unit_of_work",
     "get_embedding_service",
     "get_memory_service",
     "get_llm_client",
@@ -91,7 +119,10 @@ __all__ = [
     "get_authz_provider",
     "get_current_user",
     "get_user_roles",
-    "AppContext",
+    "require_user",
+    "require_role",
+    "inject",
+    "Inject",
     # Indexes
     "AsyncAtlasIndexManager",
     "AutoIndexManager",

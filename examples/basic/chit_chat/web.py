@@ -59,8 +59,17 @@ engine = MongoDBEngine(
 # Startup callback - runs after engine is fully initialized
 async def on_startup(app, engine, manifest):
     """Additional startup tasks beyond what create_app() handles."""
-    # Register WebSocket message handlers
+    # Register WebSocket message handlers FIRST (before route registration)
     register_websocket_message_handlers()
+    
+    # Register WebSocket routes (required for WebSocket endpoints to work)
+    # This must be called AFTER app is created but routes are registered during startup
+    try:
+        engine.register_websocket_routes(app, APP_SLUG)
+        logger.info("✅ WebSocket routes registered")
+    except Exception as e:
+        logger.warning(f"Failed to register WebSocket routes: {e}", exc_info=True)
+    
     logger.info("Conversations application ready!")
 
 
@@ -69,8 +78,7 @@ async def on_startup(app, engine, manifest):
 # - Engine initialization and shutdown
 # - Manifest loading and validation
 # - Auth setup from manifest (CORS, sessions, etc.)
-# - WebSocket route registration
-# - Custom startup via on_startup callback
+# - Custom startup via on_startup callback (where we register WebSocket routes)
 app = engine.create_app(
     slug=APP_SLUG,
     manifest=Path(__file__).parent / "manifest.json",

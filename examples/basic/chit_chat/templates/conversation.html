@@ -579,8 +579,8 @@ const MAX_RECONNECT_ATTEMPTS = 5;
 
 function connectMemoryWebSocket() {
     try {
-        // Get WebSocket URL from current page
-        // WebSocket authentication uses cookies automatically
+        // Get WebSocket URL - mdb-engine WebSocket configured to allow anonymous
+        // Cookies are sent automatically by browser (HttpOnly cookies work for WebSocket)
         const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
         const wsUrl = `${protocol}//${window.location.host}/ws`;
 

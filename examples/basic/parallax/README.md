@@ -1,26 +1,27 @@
-# Parallax - GitHub Repository Intelligence Tool
+# Parallax - Call Transcript Analysis Tool
 
-**A focused tool for analyzing GitHub repositories from two perspectives.**
+**A multi-lens analysis tool for call transcripts from three business perspectives.**
 
-Parallax searches GitHub repositories matching your watchlist keywords (with AGENTS.md or LLMs.md files) and analyzes them from Relevance and Technical perspectives.
+Parallax analyzes call transcripts through SALES, MARKETING, and PRODUCT lenses to extract actionable insights.
 
 ## The Parallax Concept
 
-In astronomy, **Parallax** is the apparent displacement of an object when viewed from two different lines of sight. In this tool, it represents one repository viewed from two angles:
+In astronomy, **Parallax** is the apparent displacement of an object when viewed from different lines of sight. In this tool, it represents one call transcript viewed from three business angles:
 
-1. **Relevance Lens** - Why this repository/implementation matters given your watchlist, code-level insights, urgency
-2. **Technical Lens** - Code architecture, design patterns, technology stack, complexity, readiness
+1. **SALES Lens** - Sales opportunities, objections, closing signals, deal value, decision stage
+2. **MARKETING Lens** - Messaging resonance, positioning, campaign insights, customer sentiment
+3. **PRODUCT Lens** - Feature requests, pain points, product-market fit, use cases
 
 ## Key Features
 
-- **Watchlist Filtering** - Automatically finds repositories matching your keywords
-- **File Detection** - Searches for repositories with AGENTS.md or LLMs.md files
-- **Search Configuration** - Configurable minimum stars and language filters
-- **Dual Analysis** - Concurrent Relevance and Technical perspectives
-- **Code-Focused Analysis** - Analyzes actual code implementation, not just descriptions
+- **Call Transcript Analysis** - Processes synthetic call transcripts from CALLS.json
+- **Vector Search** - Indexes transcripts with embeddings for semantic search
+- **Multi-Lens Analysis** - Concurrent SALES, MARKETING, and PRODUCT perspectives
 - **Structured Output** - Pydantic schemas ensure consistent analysis
-- **Scannable Feed** - Compact 2-column layout for quick insights
-- **Real-time Dashboard** - Clean interface for monitoring GitHub repositories
+- **Scannable Dashboard** - Clean 3-column layout for quick insights
+- **Real-time Updates** - WebSocket support for live analysis progress
+- **Per-Call Memory Extraction** - Intelligent memory extraction using Mem0 with conversation turn parsing
+- **Visual Progress Tracking** - See AI analysis steps in real-time
 - **MDB_ENGINE Integration** - Uses `engine.create_app()` for automatic lifecycle management
 
 ## Architecture
@@ -30,7 +31,7 @@ In astronomy, **Parallax** is the apparent displacement of an object when viewed
 │   Browser   │
 │ (Dashboard) │
 └──────┬──────┘
-       │ HTTP
+       │ HTTP/WebSocket
        ▼
 ┌─────────────┐
 │  FastAPI    │
@@ -38,13 +39,14 @@ In astronomy, **Parallax** is the apparent displacement of an object when viewed
 └──────┬──────┘
        │
        ├──► ParallaxEngine
-       │    ├──► GitHub GraphQL API
-       │    │    └──► Search repos by keywords
-       │    │    └──► Extract AGENTS.md/LLMs.md
-       │    ├──► Relevance Agent (Code-focused)
-       │    └──► Technical Agent (Code-focused)
+       │    ├──► Load CALLS.json
+       │    │    └──► Index transcripts with embeddings
+       │    ├──► SALES Agent
+       │    ├──► MARKETING Agent
+       │    └──► PRODUCT Agent
        │
        └──► MongoDB (via MDB_ENGINE)
+            ├── call_transcripts (with embeddings)
             └── parallax_reports
 ```
 
@@ -55,7 +57,7 @@ In astronomy, **Parallax** is the apparent displacement of an object when viewed
 - OR MongoDB running locally (for local setup)
 - MDB_ENGINE installed
 - **LLM API Key** (OpenAI, Azure OpenAI, or compatible provider) - **REQUIRED**
-- **GitHub Personal Access Token** - **REQUIRED** for GraphQL API access
+- **OpenAI API Key** (for embeddings) - **REQUIRED** for vector search
 
 ## Setup
 
@@ -66,10 +68,7 @@ In astronomy, **Parallax** is the apparent displacement of an object when viewed
 Create a `.env` file in this directory:
 
 ```bash
-# GitHub Personal Access Token (REQUIRED)
-GITHUB_TOKEN=your-github-token-here
-
-# OpenAI (default)
+# OpenAI (for embeddings and LLM)
 OPENAI_API_KEY=your-openai-api-key-here
 
 # OR Azure OpenAI
@@ -80,13 +79,6 @@ AZURE_OPENAI_API_VERSION=2024-02-01
 
 # Embeddings use the same API keys as above (OpenAI or AzureOpenAI)
 ```
-
-**Getting a GitHub Token:**
-1. Go to https://github.com/settings/tokens
-2. Click "Generate new token (classic)"
-3. Give it a name (e.g., "Parallax")
-4. Select scopes: `public_repo` (to read public repositories)
-5. Generate and copy the token
 
 **2. Run the application:**
 
@@ -102,7 +94,7 @@ That's it! The Docker Compose setup will:
 
 **Access the Dashboard:**
 - **Parallax Dashboard**: http://localhost:8000
-- Click "Scan" to start searching and analyzing GitHub repositories
+- Click "Scan" to index call transcripts and start analysis
 
 **With optional MongoDB Express UI:**
 ```bash
@@ -126,27 +118,127 @@ docker-compose up --build
 
 The `ParallaxEngine` orchestrates the analysis:
 
-1. **Search & Filter** - Searches GitHub repositories by watchlist keywords using GraphQL API
-2. **File Extraction** - Extracts AGENTS.md or LLMs.md file content from matching repositories
-3. **Fan-Out** - Launches two concurrent agents:
-   - **Relevance Agent** - Analyzes code-level relevance to watchlist keywords, implementation insights, urgency
-   - **Technical Agent** - Analyzes code architecture, design patterns, tech stack, complexity, readiness
-4. **Aggregate** - Combines both viewpoints into a `ParallaxReport`
+1. **Load Transcripts** - Loads call transcripts from CALLS.json file
+2. **Index** - Indexes transcripts in MongoDB with embeddings for vector search
+3. **Fan-Out** - Launches three concurrent agents:
+   - **SALES Agent** - Analyzes sales opportunities, objections, closing signals, deal value
+   - **MARKETING Agent** - Analyzes messaging, positioning, campaign insights, sentiment
+   - **PRODUCT Agent** - Analyzes feature requests, pain points, product-market fit
+4. **Aggregate** - Combines all three viewpoints into a `ParallaxReport`
 5. **Store** - Saves to MongoDB for dashboard visualization
 
 ### The Schemas
 
 Each agent uses a strict Pydantic schema:
 
-- **RelevanceView** - Relevance score, why it matters (code-level), key insight, urgency
-- **TechnicalView** - Architecture, tech stack, complexity, readiness, code patterns
+- **SALESView** - Deal value, decision stage, products discussed, objections, closing probability
+- **MARKETINGView** - Customer sentiment, messaging resonance, value propositions, competitive mentions
+- **PRODUCTView** - Feature requests, pain points, use cases, product fit score
 
 ### The Dashboard
 
-The dashboard displays each repository in a 2-column layout, showing Relevance and Technical perspectives side-by-side for quick scanning. Each card shows:
-- Repository name, owner, and star count
-- Which file was found (AGENTS.md or LLMs.md)
-- Matched keywords from your watchlist
+The dashboard displays each call transcript in a 3-column layout, showing SALES, MARKETING, and PRODUCT perspectives side-by-side for quick scanning. Each card shows:
+- Call ID, type, and participants
+- Timestamp and duration
+- Key insights from each lens
+- **Visual Progress Tracking** - When analyzing a call, see real-time progress through 9 steps:
+  1. Transcript loaded and parsed
+  2. Retrieving relevant memories from past calls
+  3. Analyzing through SALES, MARKETING, PRODUCT lenses
+  4. Multi-lens analysis complete
+  5. Extracting relevant snippets using RAG
+  6. Snippets extracted
+  7. Parsing transcript and extracting memories
+  8. Memories stored
+  9. Analysis complete
+
+### Debugging & Troubleshooting
+
+Parallax includes comprehensive debugging tools to help catch, debug, and fix issues quickly.
+
+### Debug Panel
+
+Click the **🐛 bug icon** in the bottom-right corner to open the debug panel. It shows:
+- **Recent Errors**: Last 10 errors with full context, stack traces, and call IDs
+- **Performance Metrics**: Timing information for operations
+- **Environment Info**: Configuration and environment variables
+- **Real-time Updates**: Auto-refreshes every 5 seconds when open
+
+### Debug Mode
+
+Enable debug mode for verbose logging:
+
+```bash
+# In docker-compose.yml or environment
+DEBUG=true
+LOG_LEVEL=DEBUG
+```
+
+### API Endpoints
+
+- `GET /api/debug` - Get debug information (errors, performance, config)
+- `POST /api/debug/clear-errors` - Clear error log
+
+### Error Tracking
+
+Errors are automatically tracked with:
+- Full stack traces
+- Context (function, call_id, stage)
+- Timestamps
+- Error types and messages
+
+### Performance Tracking
+
+Operations are automatically timed:
+- Function execution times
+- Call analysis duration
+- Memory extraction timing
+- Snippet extraction timing
+
+### Console Logging
+
+Enhanced console logging includes:
+- Step-by-step progress with emojis (🔵 ✅ ❌)
+- Function entry/exit with timing
+- Error details with context
+- WebSocket message logging
+
+### Frontend Error Catching
+
+The frontend automatically catches:
+- JavaScript errors
+- Unhandled promise rejections
+- WebSocket connection errors
+- API errors
+
+All errors are logged to the browser console and can be viewed in the debug panel.
+
+## Memory Extraction (Clever Usage)
+
+Parallax uses **per-call memory extraction** with a clever approach to maximize memory quality:
+
+1. **Conversation Turn Parsing**: Instead of sending raw transcripts as a single blob, Parallax intelligently parses transcripts into proper conversation turns:
+   - Customer lines → `"user"` messages
+   - Agent lines → `"assistant"` messages
+   - This format matches what Mem0 expects for effective memory extraction
+
+2. **Per-Call Storage**: Each call's memories are stored with `user_id = "call_{call_id}"`, ensuring:
+   - Memories are isolated per call (not aggregated by company)
+   - Easy retrieval of memories for a specific call
+   - Clean separation for per-call memory retrieval
+
+3. **Rich Context**: The memory extractor includes:
+   - Full conversation turns (parsed from transcript)
+   - Lens insights (SALES, MARKETING, PRODUCT summaries)
+   - Call metadata (customer, company, timestamp, call type)
+
+4. **Why This Works**: Mem0.ai extracts memories best from natural conversation flows. By parsing transcripts into proper user/assistant pairs, we give Mem0 the structure it needs to identify:
+   - Customer preferences ("We train thousands of models")
+   - Pain points ("We need to track versions, metrics")
+   - Facts and details ("We're planning v3")
+   - Use cases and requirements
+
+This approach transforms raw transcripts into structured conversation data that Mem0 can effectively process, resulting in higher-quality memory extraction compared to sending transcripts as unstructured text.
 
 ## API Endpoints
 
@@ -154,11 +246,11 @@ The dashboard displays each repository in a 2-column layout, showing Relevance a
 |----------|--------|-------------|
 | `/` | GET | Parallax dashboard (HTML) |
 | `/health` | GET | Health check for container healthchecks |
-| `/api/refresh` | POST | Trigger analysis of GitHub repositories (requires CSRF token) |
+| `/api/refresh` | POST | Index transcripts and trigger analysis (requires CSRF token) |
 | `/api/reports` | GET | Get recent Parallax reports (JSON) |
-| `/api/reports/{repo_id}` | GET | Get a single report by repo ID |
-| `/api/watchlist` | GET | Get current watchlist and search configuration |
-| `/api/watchlist` | POST | Update watchlist keywords and search parameters (requires CSRF token) |
+| `/api/reports/{call_id}` | GET | Get a single report by call ID |
+| `/api/watchlist` | GET | Get current watchlist keywords |
+| `/api/watchlist` | POST | Update watchlist keywords (requires CSRF token) |
 | `/api/lenses` | GET | Get all lens configurations |
 | `/api/lenses/{lens_name}` | GET/POST | Get or update a specific lens configuration (POST requires CSRF token) |
 
@@ -179,7 +271,7 @@ engine = MongoDBEngine(mongo_uri=mongo_uri, db_name=db_name)
 app = engine.create_app(
     slug="parallax",
     manifest=Path(__file__).parent / "manifest.json",
-    title="Parallax - GitHub Repository Intelligence",
+    title="Parallax - Call Transcript Analysis",
     description="...",
     version="1.0.0",
 )
@@ -189,7 +281,7 @@ from mdb_engine.dependencies import get_scoped_db
 
 @app.get("/reports")
 async def get_reports(db=Depends(get_scoped_db)):
-    return await db.reports.find({}).to_list(100)
+    return await db.parallax_reports.find({}).to_list(100)
 ```
 
 This automatically handles:
@@ -203,9 +295,10 @@ This automatically handles:
 ```
 parallax/
 ├── web.py              # FastAPI app with MDB_ENGINE integration
-├── parallax.py         # ParallaxEngine - GitHub search & LLM analysis
+├── parallax.py         # ParallaxEngine - Transcript loading & LLM analysis
 ├── schemas.py          # Pydantic models for reports
 ├── schema_generator.py # Dynamic schema generation for lenses
+├── CALLS.json          # Synthetic call transcripts (30 calls)
 ├── manifest.json       # MDB_ENGINE app configuration
 ├── Dockerfile          # Multi-stage Docker build
 ├── docker-compose.yml  # Full stack with MongoDB
@@ -214,34 +307,28 @@ parallax/
     └── parallax_dashboard.html  # Dashboard UI
 ```
 
-## Watchlist Keywords and Search Configuration
+## Call Transcripts
+
+The example includes `CALLS.json` with 30 synthetic call transcripts covering:
+- Sales discovery calls
+- Customer support calls
+- Product demos
+- Sales follow-ups
+
+Each transcript includes:
+- Call metadata (ID, timestamp, duration, type)
+- Participants (agent, customer, company, role)
+- Full transcript text
+- Metadata (products mentioned, pain points, budget range, etc.)
+
+## Watchlist Keywords
 
 The default watchlist includes:
 - **MongoDB** - Database and related technologies
-- **agents** - AI agents and automation
-- **memory** - Memory systems and context
+- **Atlas** - MongoDB Atlas cloud service
+- **database** - Database-related discussions
 
-### Search Parameters
-
-You can configure search parameters in the Settings modal:
-
-- **Keywords** - List of keywords to search for (e.g., "MongoDB", "vector", "python")
-- **Scan Limit** - Number of repositories to search per keyword (1-500, default: 50)
-- **Minimum Stars** - Only search repositories with at least this many stars (0-100000, default: 50)
-- **Language Filter** - Optional programming language filter (e.g., "python", "javascript", "typescript")
-
-### How Search Works
-
-For each keyword in your watchlist, Parallax searches GitHub using:
-```
-{keyword} agent stars:>{min_stars} [language:{language}]
-```
-
-For example, with watchlist `["MongoDB", "vector"]`, `min_stars: 50`, and `language: "python"`:
-- `MongoDB agent stars:>50 language:python`
-- `vector agent stars:>50 language:python`
-
-Results are aggregated and deduplicated across all keyword searches. Only repositories with AGENTS.md or LLMs.md files in the root are analyzed.
+You can customize the watchlist in the Settings modal to filter calls by keywords mentioned in transcripts.
 
 ## Troubleshooting
 
@@ -251,12 +338,11 @@ If you see errors about missing API keys:
 
 1. **Check environment variables:**
    ```bash
-   docker-compose exec app env | grep -E "API_KEY|GITHUB_TOKEN"
+   docker-compose exec app env | grep -E "API_KEY"
    ```
 
 2. **Set in `.env` file:**
    ```bash
-   GITHUB_TOKEN=your-github-token-here
    OPENAI_API_KEY=your-openai-key-here
    # OR
    AZURE_OPENAI_API_KEY=your-azure-key
@@ -266,23 +352,6 @@ If you see errors about missing API keys:
 3. **Restart the service:**
    ```bash
    docker-compose restart app
-   ```
-
-### GitHub Token Issues
-
-If you see GraphQL API errors:
-
-1. **Verify token has correct permissions:**
-   - Token needs `public_repo` scope to read public repositories
-   - Check token at https://github.com/settings/tokens
-
-2. **Check rate limits:**
-   - GitHub GraphQL API allows 5000 requests/hour
-   - If you hit limits, wait or use a token with higher rate limits
-
-3. **Verify token is set:**
-   ```bash
-   docker-compose exec app env | grep GITHUB_TOKEN
    ```
 
 ### ModuleNotFoundError
@@ -304,6 +373,25 @@ docker-compose up
 2. **Check MongoDB logs:**
    ```bash
    docker-compose logs mongodb
+   ```
+
+### Embedding Service Issues
+
+If vector search is not working:
+
+1. **Check embedding service is enabled in manifest.json:**
+   ```json
+   {
+     "embedding_config": {
+       "enabled": true,
+       "default_embedding_model": "text-embedding-3-small"
+     }
+   }
+   ```
+
+2. **Verify OpenAI API key is set:**
+   ```bash
+   docker-compose exec app env | grep OPENAI_API_KEY
    ```
 
 ## Resources

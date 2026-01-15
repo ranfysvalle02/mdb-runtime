@@ -138,8 +138,8 @@
       "path": "/ws",
       "description": "Real-time message updates and memory events",
       "auth": {
-        "required": true,
-        "allow_anonymous": false
+        "required": false,
+        "allow_anonymous": true
       },
       "ping_interval": 30
     }

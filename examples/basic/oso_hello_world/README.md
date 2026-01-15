@@ -108,15 +108,15 @@ When `engine.create_app()` is called, it automatically:
 
 ### 3. Authorization Checks
 
-Routes use the OSO provider to check permissions:
+Routes use dependency injection to get the current user and OSO provider:
 
 ```python
 @app.get("/api/documents")
 async def list_documents(
-    request: Request,
-    authz: AuthorizationProvider = Depends(get_authz_provider)
+    user=Depends(get_current_user),
+    authz=Depends(get_authz_provider),
+    db=Depends(get_scoped_db),
 ):
-    user = await get_current_app_user(request)
     if not await authz.check(user.get("email"), "documents", "read"):
         raise HTTPException(403, "Permission denied")
     # ...
@@ -126,8 +126,7 @@ async def list_documents(
 
 ### Health & Status
 
-- `GET /health` - Health check endpoint (for container orchestration)
-- `GET /api/oso-status` - Check OSO Cloud connection status
+- `GET /health` - Health check endpoint
 
 ### Authentication
 
@@ -293,9 +292,21 @@ oso_hello_world/
 ├── README.md             # This file
 ├── requirements.txt      # Python dependencies
 ├── templates/
-│   └── index.html        # Main HTML template
-└── web.py                # FastAPI application
+│   └── index.html        # Main HTML template (simplified UI)
+└── web.py                # FastAPI application (clean, minimal structure)
 ```
+
+## Code Structure
+
+The code follows a clean, easy-to-understand pattern:
+
+1. **Setup** - Environment and logging configuration
+2. **Create Engine** - Initialize MongoDBEngine
+3. **Create App** - Use `engine.create_app()` for automatic lifecycle management
+4. **Dependencies** - Define reusable dependency functions
+5. **Routes** - Define API endpoints with dependency injection
+
+This structure makes it easy to see how mdb-engine integrates with OSO Cloud for authorization.
 
 ## Troubleshooting
 

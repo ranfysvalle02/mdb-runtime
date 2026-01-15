@@ -1,8 +1,8 @@
 {
   "version": "2.0",
-  "slug": "vector_hacking",
-  "name": "Vector Hacking Demo",
-  "description": "A demonstration of vector inversion/hacking using LLMs with MDB_ENGINE",
+  "slug": "vector_hacking_api",
+  "name": "Vector Hacking API",
+  "description": "Backend-only API for vector inversion attacks with full Swagger documentation",
   "status": "active",
   "developer_id": "developer@example.com",
   "auth": {
@@ -63,3 +63,4 @@
     "allow_headers": ["*"]
   }
 }
+

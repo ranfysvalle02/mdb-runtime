@@ -133,7 +133,5 @@ volumes:
 networks:
   mdb_engine_network:
     driver: bridge
-    ipam:
-      config:
-        - subnet: 172.28.0.0/16
+    name: multi_app_mdb_engine_network
 

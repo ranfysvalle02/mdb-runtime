@@ -3,9 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>🔓 Vector Inversion Attack | Oblivio Security Labs</title>
+    <title>Vector Inversion Attack | Oblivio Security Labs</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=Inter:wght@400;600;800&family=Orbitron:wght@400;700;900&display=swap" rel="stylesheet">
+    
+    <!-- Load configuration first -->
+    <script src="config.js"></script>
+    
     <style>
         :root {
             --bg-dark: #0a0a0c;
@@ -430,32 +434,7 @@
             100% { top: 100%; opacity: 0; }
         }
 
-        .blur-text {
-            filter: blur(8px);
-            transition: filter 1.5s cubic-bezier(0.4, 0, 0.2, 1);
-            opacity: 0.5;
-        }
-
-        .unblur {
-            filter: blur(0);
-            opacity: 1;
-        }
-
-        /* Glitch effect */
-        .glitch {
-            position: relative;
-            animation: glitch 0.3s infinite;
-        }
-
-        @keyframes glitch {
-            0%, 100% { transform: translate(0); }
-            20% { transform: translate(-2px, 2px); }
-            40% { transform: translate(-2px, -2px); }
-            60% { transform: translate(2px, 2px); }
-            80% { transform: translate(2px, -2px); }
-        }
-
-        /* Celebration confetti */
+        /* Confetti */
         .confetti {
             position: fixed;
             width: 10px;
@@ -477,51 +456,13 @@
             }
         }
 
-        /* Typewriter effect */
-        .typewriter {
-            overflow: hidden;
-            border-right: 2px solid var(--accent-green);
-            white-space: nowrap;
-            animation: typing 1s steps(20, end), blink-caret 0.75s step-end infinite;
-        }
-
-        @keyframes typing {
-            from { width: 0; }
-            to { width: 100%; }
-        }
-
-        @keyframes blink-caret {
-            from, to { border-color: transparent; }
-            50% { border-color: var(--accent-green); }
-        }
-
-        /* Container with z-index */
+        /* Container */
         .container {
             position: relative;
             z-index: 1;
         }
 
-        /* Vector visualization */
-        .vector-viz {
-            height: 60px;
-            background: linear-gradient(90deg, #1a1a2e, #2a2a3e);
-            border-radius: 4px;
-            margin: 1rem 0;
-            position: relative;
-            overflow: hidden;
-        }
-
-        .vector-bar {
-            position: absolute;
-            bottom: 0;
-            width: 4px;
-            background: var(--accent-green);
-            margin: 0 1px;
-            transition: height 0.3s, background 0.3s;
-            box-shadow: 0 0 10px currentColor;
-        }
-
-        /* Modal for explanation */
+        /* Modal */
         .explanation-modal {
             position: fixed;
             top: 0;
@@ -575,16 +516,15 @@
             margin-bottom: 1rem;
         }
 
-        .explanation-content .target-reveal {
-            background: rgba(0, 255, 157, 0.1);
-            border: 1px solid var(--accent-green);
-            border-radius: 6px;
-            padding: 1rem;
-            margin: 1rem 0;
+        /* API URL display */
+        .api-url-display {
+            font-size: 0.75rem;
+            color: var(--text-secondary);
             font-family: var(--font-mono);
-            font-size: 1.2rem;
-            color: var(--accent-green);
-            text-align: center;
+            padding: 4px 8px;
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 4px;
+            border: 1px solid var(--border-color);
         }
 
         /* Responsive */
@@ -605,6 +545,7 @@
                 <span class="text-accent">🔓</span> OBLIVIO // SECURITY_LABS
             </span>
             <div class="d-flex align-items-center gap-3">
+                <span id="apiUrl" class="api-url-display">API: loading...</span>
                 <span id="connectionStatus" class="status-badge stopped">⚡ SYSTEM IDLE</span>
             </div>
         </div>
@@ -640,7 +581,7 @@
         </div>
 
         <div class="row">
-            <!-- Left Column: Visualizer & Stats -->
+            <!-- Left Column: Target & Stats -->
             <div class="col-lg-5">
                 <!-- Target Panel -->
                 <div class="panel position-relative overflow-hidden">
@@ -650,7 +591,7 @@
                         <span class="font-mono text-accent" style="font-size: 0.7rem;">ID: TGT-8842-X</span>
                     </div>
 
-                    <!-- Target Input (editable before attack) -->
+                    <!-- Target Input -->
                     <div id="targetInputSection" class="mb-3">
                         <label class="stat-label mb-2">🎯 Target Phrase (Edit before starting)</label>
                         <input
@@ -666,7 +607,7 @@
                         </small>
                     </div>
 
-                    <!-- Show target during attack (hidden initially) -->
+                    <!-- Target Display (during attack) -->
                     <div id="targetDisplaySection" class="mb-3" style="display: none;">
                         <div class="stat-label mb-2">🎯 Target Phrase (Hidden from AI)</div>
                         <div id="targetDisplay" class="font-mono text-accent" style="font-size: 1rem; padding: 0.75rem; background: rgba(0, 255, 157, 0.1); border: 1px solid var(--accent-green); border-radius: 4px; text-align: center;">
@@ -677,9 +618,8 @@
                         </small>
                     </div>
 
-                    <!-- Comparison Display: Shows Original vs Recovered after match -->
+                    <!-- Comparison Display -->
                     <div class="mb-4 py-4">
-                        <!-- After Compromise: Show side-by-side comparison -->
                         <div id="comparisonModeDisplay" style="display: none;">
                             <div class="stat-label mb-3 text-center">🎯 COMPARISON: Original vs Recovered</div>
                             <div class="row g-3">
@@ -703,6 +643,26 @@
                                 </div>
                             </div>
                         </div>
+                    </div>
+                </div>
+
+                <!-- Stats Panel -->
+                <div class="panel">
+                    <div class="panel-header">
+                        <h3 class="panel-title">📊 ATTACK METRICS</h3>
+                    </div>
+                    <div class="row g-3">
+                        <div class="col-6">
+                            <div class="stat-value" id="guessCount">0</div>
+                            <div class="stat-label">Guesses Made</div>
+                        </div>
+                        <div class="col-6">
+                            <div class="stat-value" id="costVal">$0.00</div>
+                            <div class="stat-label">API Cost</div>
+                        </div>
+                    </div>
+                    <div class="mt-3">
+                        <small class="text-secondary">Model: <span id="modelUsed" class="font-mono text-accent">-</span></small>
                     </div>
                 </div>
 
@@ -737,12 +697,11 @@
         </div>
     </div>
 
-    <!-- Explanation Modal -->
+    <!-- Victory Modal -->
     <div id="explanationModal" class="explanation-modal">
         <div class="explanation-content">
             <h2>🎯 TARGET COMPROMISED!</h2>
 
-            <!-- Comparison Section -->
             <div style="background: rgba(0, 255, 0, 0.1); border: 1px solid var(--accent-green); border-radius: 8px; padding: 1.5rem; margin: 1.5rem 0;">
                 <div style="margin-bottom: 1rem;">
                     <div style="color: var(--text-secondary); font-size: 0.9rem; margin-bottom: 0.5rem;">🎯 ORIGINAL TARGET (Hidden from AI):</div>
@@ -789,7 +748,24 @@
     </div>
 
     <script>
-        // Create particle background
+        // =================================================================
+        // Configuration
+        // =================================================================
+        const config = window.VECTOR_HACKING_CONFIG || {
+            API_URL: 'http://localhost:8000',
+            POLL_INTERVAL: 1000,
+            DEBUG: false
+        };
+        
+        const API_URL = config.API_URL;
+        const POLL_INTERVAL = config.POLL_INTERVAL;
+        
+        // Display API URL in navbar
+        document.getElementById('apiUrl').textContent = `API: ${API_URL}`;
+
+        // =================================================================
+        // Particle Background
+        // =================================================================
         function createParticles() {
             const particlesContainer = document.getElementById('particles');
             const colors = ['var(--accent-green)', 'var(--accent-blue)', 'var(--accent-purple)'];
@@ -805,23 +781,12 @@
         }
         createParticles();
 
-        // Helper to read cookies for CSRF token
-        function getCookie(name) {
-            const value = `; ${document.cookie}`;
-            const parts = value.split(`; ${name}=`);
-            if (parts.length === 2) return parts.pop().split(';').shift();
-            return '';
-        }
-
-        // Get base path from current URL
-        const currentPath = window.location.pathname;
-        const basePath = currentPath.replace(/\/$/, '');
-
-        // DOM elements
+        // =================================================================
+        // DOM Elements
+        // =================================================================
         const statusBadge = document.getElementById('connectionStatus');
         const startBtn = document.getElementById('startBtn');
         const stopBtn = document.getElementById('stopBtn');
-        // Removed: bestTextEl, bestErrorEl, proximityValEl, errorBar - logs show all the info
         const guessCountEl = document.getElementById('guessCount');
         const modelUsedEl = document.getElementById('modelUsed');
         const costValEl = document.getElementById('costVal');
@@ -833,19 +798,28 @@
         const targetDisplaySection = document.getElementById('targetDisplaySection');
         const targetDisplay = document.getElementById('targetDisplay');
 
+        // =================================================================
+        // State
+        // =================================================================
         let pollInterval = null;
         let consecutiveErrors = 0;
         let lastErrorTime = 0;
         let lastGuessCount = 0;
         let isRunning = false;
-        // Pause functionality removed - attack runs continuously
         let currentCountDisplay = 0;
         let targetCount = 0;
         let lastBestText = '';
         let celebrationShown = false;
         let matchFoundData = null;
 
-        // Animation loop for smooth counter
+        // =================================================================
+        // Helpers
+        // =================================================================
+        
+        function log(msg) {
+            if (config.DEBUG) console.log('[VectorHack]', msg);
+        }
+
         const animateStats = () => {
             if (currentCountDisplay < targetCount) {
                 const diff = targetCount - currentCountDisplay;
@@ -862,7 +836,6 @@
         };
         requestAnimationFrame(animateStats);
 
-        // Create confetti celebration
         function createConfetti() {
             const colors = ['#00ff9d', '#00ccff', '#b794f6', '#fbbf24', '#ff4d4d'];
             for (let i = 0; i < 100; i++) {
@@ -879,44 +852,34 @@
             }
         }
 
-        // Reset UI to initial state - allows user to start fresh attack with new text
         const resetUI = () => {
-            // Stop any ongoing polling
             stopPolling();
-
-            // Reset error tracking
             consecutiveErrors = 0;
             lastErrorTime = 0;
             statusBadge.textContent = '⚡ SYSTEM IDLE';
             statusBadge.className = 'status-badge stopped';
-
-            // Hide comparison display (only shows after match found)
             document.getElementById('comparisonModeDisplay').style.display = 'none';
-
             targetCount = 0;
             currentCountDisplay = 0;
             guessCountEl.textContent = '0';
-
             modelUsedEl.textContent = '-';
             costValEl.textContent = '$0.00';
             startBtn.disabled = false;
             startBtn.textContent = '🚀 INITIATE ATTACK';
             stopBtn.disabled = true;
             isRunning = false;
-            // Pause removed
             lastGuessCount = 0;
             lastBestText = '';
             celebrationShown = false;
             matchFoundData = null;
-            targetInput.disabled = false; // Re-enable target input
-            targetInput.value = ''; // Clear the input field for new text
-            targetInputSection.style.opacity = '1'; // Restore opacity
-            targetInputSection.style.display = 'block'; // Show input
-            targetDisplaySection.style.display = 'none'; // Hide target display
-            targetInput.focus(); // Focus on input for easy typing
+            targetInput.disabled = false;
+            targetInput.value = '';
+            targetInputSection.style.opacity = '1';
+            targetInputSection.style.display = 'block';
+            targetDisplaySection.style.display = 'none';
+            targetInput.focus();
         };
 
-        // Helper: Add line to terminal with type
         const logToTerminal = (msg, type = 'text-secondary', icon = '') => {
             const line = document.createElement('div');
             line.className = `terminal-line ${type}`;
@@ -927,33 +890,43 @@
             terminal.scrollTop = terminal.scrollHeight;
         };
 
-        // Format Error to Percentage - adjusted for harder challenge
         const calculateProximity = (error) => {
             if (error === null || error === undefined || error === Infinity || isNaN(error)) return 0;
-            const maxErr = 2.0;  // Higher max for longer phrases
-            const minErr = 0.35;  // Stricter threshold
+            const maxErr = 2.0;
+            const minErr = 0.35;
             let pct = (maxErr - error) / (maxErr - minErr) * 100;
             return Math.max(0, Math.min(100, pct));
         };
 
-        // Typewriter effect for text (disabled - was causing corruption)
-        // Using direct text assignment instead for reliability
-        function typewriterEffect(element, text, speed = 50) {
-            // Disabled - just set text directly
-            element.textContent = text;
+        // =================================================================
+        // API Calls
+        // =================================================================
+        
+        async function apiCall(endpoint, options = {}) {
+            const url = `${API_URL}${endpoint}`;
+            log(`API Call: ${options.method || 'GET'} ${url}`);
+            
+            const response = await fetch(url, {
+                ...options,
+                headers: {
+                    'Content-Type': 'application/json',
+                    ...options.headers
+                }
+            });
+            
+            if (!response.ok) {
+                throw new Error(`API Error: ${response.status}`);
+            }
+            
+            return response.json();
         }
 
-        // Update status from API
         const updateStatus = async () => {
             try {
-                const response = await fetch(`${basePath}/api/attack/status`);
-                if (!response.ok) throw new Error('API Error');
-                const data = await response.json();
+                const data = await apiCall('/api/attack/status');
 
-                // Reset error counter on successful poll
                 if (consecutiveErrors > 0) {
                     consecutiveErrors = 0;
-                    // Restore status badge if it was showing error
                     if (statusBadge.textContent.includes('CONNECTION ERROR')) {
                         if (data.running) {
                             statusBadge.textContent = '⚡ ATTACK IN PROGRESS';
@@ -968,16 +941,14 @@
                     }
                 }
 
-                // Check for match found first - PAUSE AND EXPLAIN
+                // Match found
                 if (data.MATCH_FOUND && !celebrationShown) {
                     celebrationShown = true;
                     matchFoundData = data;
-                    // Pause removed - attack continues
 
-                    // Stop the attack and polling
                     if (isRunning) {
                         isRunning = false;
-                        stopPolling(); // Stop polling
+                        stopPolling();
 
                         const targetPhrase = data.TARGET || 'Unknown';
                         const recoveredPhrase = data.CURRENT_BEST_TEXT || 'Unknown';
@@ -985,54 +956,30 @@
                         const guesses = data.GUESSES_MADE || 0;
                         const cost = data.TOTAL_COST || 0;
                         const isExactMatch = targetPhrase.toLowerCase().trim() === recoveredPhrase.toLowerCase().trim();
-
-                        // Calculate similarity for story
                         const similarity = isExactMatch ? 100 : Math.max(0, Math.round((1 - (error / 2.0)) * 100));
 
                         logToTerminal('🎉 *** MATCH FOUND *** Decryption successful!', 'success fw-bold', '🎉');
                         logToTerminal(`✅ Target: "${targetPhrase}"`, 'info', '🎯');
                         logToTerminal(`✅ Recovered: "${recoveredPhrase}"`, 'success', '✅');
                         logToTerminal(`⚡ Error: ${error.toFixed(4)}`, 'info', '⚡');
-                        if (isExactMatch) {
-                            logToTerminal('🎯 Perfect match! Vector inversion complete.', 'success', '🎯');
-                        } else {
-                            logToTerminal(`⚠️ Close match (${similarity}% similarity, error: ${error.toFixed(4)})`, 'warning', '⚠️');
-                        }
-                        // Match found - attack will auto-stop
-                        // Confetti will be shown when user clicks "UNDERSTOOD"
 
-                        // Show comparison mode display
                         document.getElementById('comparisonModeDisplay').style.display = 'block';
-
-                        // Update comparison display
                         document.getElementById('comparisonOriginal').textContent = `"${targetPhrase}"`;
                         document.getElementById('comparisonRecovered').textContent = `"${recoveredPhrase}"`;
                         document.getElementById('comparisonError').textContent = error.toFixed(4);
-                        const proximity = calculateProximity(error);
-                        document.getElementById('comparisonProximity').textContent = proximity.toFixed(2) + '%';
+                        document.getElementById('comparisonProximity').textContent = calculateProximity(error).toFixed(2) + '%';
 
-                        // Update modal with comparison and story
                         document.getElementById('originalTarget').textContent = `"${targetPhrase}"`;
                         document.getElementById('recoveredTarget').textContent = `"${recoveredPhrase}"`;
                         document.getElementById('matchError').textContent = error.toFixed(4);
                         document.getElementById('matchGuesses').textContent = guesses.toLocaleString();
                         document.getElementById('matchCost').textContent = `$${cost.toFixed(4)}`;
 
-                        // Create compelling story
-                        let story = '';
-                        if (isExactMatch) {
-                            story = `🎯 <strong>Perfect Match!</strong> The AI successfully reverse-engineered the exact target phrase "${targetPhrase}" after ${guesses} attempts. `;
-                            story += `Using iterative optimization, the agent converged on the target with zero error, demonstrating a complete vector inversion attack. `;
-                            story += `This shows that embedding-based systems can be vulnerable if vector distances are exposed.`;
-                        } else {
-                            story = `🔓 <strong>Close Match!</strong> The AI recovered "${recoveredPhrase}" which is ${similarity}% similar to the target "${targetPhrase}". `;
-                            story += `After ${guesses} attempts and $${cost.toFixed(4)} in API costs, the agent achieved a vector distance error of ${error.toFixed(4)}. `;
-                            story += `While not a perfect match, this demonstrates that semantic similarity in embedding space can be exploited to extract private information. `;
-                            story += `The attack successfully converged within the error threshold, showing the vulnerability of embedding-based systems.`;
-                        }
+                        let story = isExactMatch
+                            ? `🎯 <strong>Perfect Match!</strong> The AI successfully reverse-engineered the exact target phrase "${targetPhrase}" after ${guesses} attempts.`
+                            : `🔓 <strong>Close Match!</strong> The AI recovered "${recoveredPhrase}" which is ${similarity}% similar to the target "${targetPhrase}".`;
                         document.getElementById('matchStory').innerHTML = story;
 
-                        // Show explanation modal
                         explanationModal.classList.add('show');
                     }
 
@@ -1042,7 +989,6 @@
                     stopBtn.disabled = true;
                     startBtn.textContent = '🔄 RESTART ATTACK';
                 }
-                // State handling
                 else if (data.running && !isRunning) {
                     isRunning = true;
                     statusBadge.textContent = '⚡ ATTACK IN PROGRESS';
@@ -1050,7 +996,6 @@
                     startBtn.disabled = true;
                     stopBtn.disabled = false;
 
-                    // Show target display, hide input
                     if (data.TARGET) {
                         targetDisplay.textContent = `"${data.TARGET}"`;
                         targetInputSection.style.display = 'none';
@@ -1060,47 +1005,34 @@
                     logToTerminal('🚀 Attack sequence initiated!', 'info', '🚀');
                     logToTerminal('🤖 Deploying AI agents...', 'info', '🤖');
                     logToTerminal(`🎯 Target locked: "${data.TARGET || 'Unknown'}"`, 'info', '🎯');
-                    startPolling(); // Start polling for updates
+                    startPolling();
                 } else if (!data.running && isRunning && !data.MATCH_FOUND) {
                     isRunning = false;
-                    stopPolling(); // Stop polling
+                    stopPolling();
                     statusBadge.textContent = '⚡ SYSTEM IDLE';
                     statusBadge.className = 'status-badge stopped';
                     logToTerminal('⛔ Process halted by user.', 'warning', '⛔');
                     startBtn.disabled = false;
-                    // Resume button removed
                     stopBtn.disabled = true;
                     startBtn.textContent = '🚀 INITIATE ATTACK';
-                    targetInput.disabled = false; // Re-enable target input
-                    targetInputSection.style.opacity = '1'; // Restore opacity
-                    targetInputSection.style.display = 'block'; // Show input again
-                    targetDisplaySection.style.display = 'none'; // Hide target display
+                    targetInput.disabled = false;
+                    targetInputSection.style.opacity = '1';
+                    targetInputSection.style.display = 'block';
+                    targetDisplaySection.style.display = 'none';
                 }
 
-                // Pause functionality removed - attack runs continuously until match found
-
-                // Always update cost and guesses (not conditional on best text)
+                // Update stats
                 if (data.TOTAL_COST !== null && data.TOTAL_COST !== undefined && !isNaN(data.TOTAL_COST)) {
                     costValEl.textContent = '$' + data.TOTAL_COST.toFixed(4);
-                    if (data.TOTAL_COST > 0) {
-                        costValEl.classList.add('animate');
-                        setTimeout(() => costValEl.classList.remove('animate'), 500);
-                    }
-                } else {
-                    costValEl.textContent = '$0.00';
                 }
 
                 if (data.GUESSES_MADE !== null && data.GUESSES_MADE !== undefined && !isNaN(data.GUESSES_MADE)) {
                     targetCount = data.GUESSES_MADE;
                     lastGuessCount = data.GUESSES_MADE;
-                } else {
-                    targetCount = 0;
                 }
 
-                // Log new optimizations to terminal (all info is in logs now)
                 if (data.CURRENT_BEST_TEXT && data.CURRENT_BEST_TEXT !== "Be" && data.CURRENT_BEST_TEXT !== lastBestText) {
                     lastBestText = data.CURRENT_BEST_TEXT;
-
                     if (data.CURRENT_BEST_ERROR !== null && data.CURRENT_BEST_ERROR !== undefined &&
                         data.CURRENT_BEST_ERROR !== Infinity && !isNaN(data.CURRENT_BEST_ERROR)) {
                         logToTerminal(`✨ New optimization: "${data.CURRENT_BEST_TEXT}" (Error: ${data.CURRENT_BEST_ERROR.toFixed(4)})`, 'success', '✨');
@@ -1108,9 +1040,6 @@
                         logToTerminal(`✨ New optimization: "${data.CURRENT_BEST_TEXT}"`, 'success', '✨');
                     }
                 }
-
-                // Cost and guesses are now updated earlier in the function (above)
-                // This duplicate code is removed to avoid conflicts
 
                 if (data.LAST_ERROR) {
                     logToTerminal(`❌ System Error: ${data.LAST_ERROR}`, 'error', '❌');
@@ -1120,16 +1049,12 @@
                     modelUsedEl.textContent = data.MODEL_USED;
                 }
 
-                // Status updates automatically while running
-
             } catch (e) {
                 console.error('Poll error', e);
                 consecutiveErrors++;
                 const now = Date.now();
 
-                // Only show error if we're actively running and haven't shown error recently
                 if (isRunning && (now - lastErrorTime > 5000)) {
-                    // Only show error after 3 consecutive failures to avoid false positives
                     if (consecutiveErrors >= 3) {
                         statusBadge.textContent = '❌ CONNECTION ERROR';
                         statusBadge.className = 'status-badge stopped';
@@ -1137,15 +1062,13 @@
                         lastErrorTime = now;
                     }
                 }
-                // Continue polling - don't stop on transient errors
             }
         };
 
-        // Poll for status updates while running (but no automatic messages)
         const startPolling = () => {
             if (pollInterval) return;
             updateStatus();
-            pollInterval = setInterval(updateStatus, 1000); // Poll every second for updates
+            pollInterval = setInterval(updateStatus, POLL_INTERVAL);
         };
 
         const stopPolling = () => {
@@ -1159,18 +1082,18 @@
             await updateStatus();
         };
 
-        // Button Handlers
+        // =================================================================
+        // Event Handlers
+        // =================================================================
+        
         startBtn.addEventListener('click', async () => {
-            // Check if this is a restart (button says "RESTART ATTACK")
             const isRestart = startBtn.textContent.includes('RESTART');
 
             if (isRestart) {
-                // Restart: just reload the page for a fresh start
                 window.location.reload();
                 return;
             }
 
-            // Normal start attack flow
             const targetPhrase = targetInput.value.trim();
 
             if (!targetPhrase) {
@@ -1183,23 +1106,18 @@
             logToTerminal('🔐 Initializing attack vector...', 'info', '🔐');
             logToTerminal('🔑 Authenticating with AI services...', 'info', '🔑');
             startBtn.disabled = true;
-            targetInput.disabled = true; // Disable editing once attack starts
+            targetInput.disabled = true;
 
             try {
-                const res = await fetch(`${basePath}/api/attack/start`, {
+                const data = await apiCall('/api/attack/start', {
                     method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRF-Token': getCookie('csrf_token')
-                    },
                     body: JSON.stringify({ target: targetPhrase })
                 });
-                const data = await res.json();
+                
                 if (data.status === 'started' || data.status === 'already_running') {
                     logToTerminal('✅ Access granted. Agent active.', 'success', '✅');
-                    targetInputSection.style.opacity = '0.5'; // Dim the input
-                    await checkStatus(); // Check once to update UI
-                    // Polling will start automatically when status shows running
+                    targetInputSection.style.opacity = '0.5';
+                    await checkStatus();
                 } else {
                     logToTerminal('❌ Initialization failed: ' + (data.error || 'Unknown'), 'error', '❌');
                     startBtn.disabled = false;
@@ -1212,59 +1130,47 @@
             }
         });
 
-        // STEP button removed - updates happen automatically while running
-
         stopBtn.addEventListener('click', async () => {
             logToTerminal('⛔ Sending abort signal...', 'warning', '⛔');
             stopBtn.disabled = true;
 
             try {
-                await fetch(`${basePath}/api/attack/stop`, { 
-                    method: 'POST',
-                    headers: { 'X-CSRF-Token': getCookie('csrf_token') }
-                });
+                await apiCall('/api/attack/stop', { method: 'POST' });
                 await checkStatus();
             } catch (e) {
                 logToTerminal('❌ Network error on stop command.', 'error', '❌');
             }
         });
 
-        // Resume button removed - no more pause/continue functionality
-
         closeExplanationBtn.addEventListener('click', () => {
             explanationModal.classList.remove('show');
+            createConfetti();
+            
+            // Keep victory state visible - don't reset!
+            // User can click "RESTART ATTACK" button when ready
             if (matchFoundData) {
                 logToTerminal(`📊 Final stats: ${matchFoundData.GUESSES_MADE} guesses, $${matchFoundData.TOTAL_COST.toFixed(4)} cost`, 'info', '📊');
+                logToTerminal('🎉 Victory! Click "RESTART ATTACK" when ready for a new challenge.', 'success', '🎉');
             }
-
-            // Celebrate with confetti when user acknowledges the victory!
-            createConfetti();
-
-            // Reset UI completely so user can enter new text and start fresh attack
-            resetUI();
-
-            // Clear terminal and show ready message
-            terminal.innerHTML = '<div class="terminal-line text-secondary"><span class="font-mono">[SYS]</span> System ready. Enter a new target phrase to begin.</div>';
-            logToTerminal('🔄 Ready for new attack. Enter target phrase above.', 'info', '🔄');
         });
 
-        // Reset state on page load
+        // =================================================================
+        // Initialization
+        // =================================================================
+        
         const resetOnLoad = async () => {
             resetUI();
             terminal.innerHTML = '<div class="terminal-line text-secondary"><span class="font-mono">[SYS]</span> System ready. Waiting for initialization...</div>';
 
             try {
-                await fetch(`${basePath}/api/attack/stop`, { 
-                    method: 'POST',
-                    headers: { 'X-CSRF-Token': getCookie('csrf_token') }
-                });
+                await apiCall('/api/attack/stop', { method: 'POST' });
             } catch (e) {
-                // Ignore errors
+                // Ignore errors on initial stop
             }
 
             setTimeout(async () => {
-                await checkStatus(); // Check initial status once
-                setTimeout(() => logToTerminal('🔌 Connected to vector_hacking_demo node.', 'info', '🔌'), 500);
+                await checkStatus();
+                setTimeout(() => logToTerminal(`🔌 Connected to API: ${API_URL}`, 'info', '🔌'), 500);
                 setTimeout(() => logToTerminal('📡 Target vector loaded: [1024 dimensions]', 'info', '📡'), 1200);
                 setTimeout(() => logToTerminal('⚠️ Warning: Target is a longer phrase. This will be challenging!', 'warning', '⚠️'), 1800);
                 setTimeout(() => logToTerminal('⚡ System ready. Press INITIATE ATTACK to begin.', 'success', '⚡'), 2000);
@@ -1275,3 +1181,4 @@
     </script>
 </body>
 </html>
+

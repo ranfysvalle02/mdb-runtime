@@ -61,7 +61,12 @@ COPY --chown=${APP_USER}:${APP_USER} examples/basic/parallax/web.py ./
 COPY --chown=${APP_USER}:${APP_USER} examples/basic/parallax/parallax.py ./
 COPY --chown=${APP_USER}:${APP_USER} examples/basic/parallax/schemas.py ./
 COPY --chown=${APP_USER}:${APP_USER} examples/basic/parallax/schema_generator.py ./
+COPY --chown=${APP_USER}:${APP_USER} examples/basic/parallax/CALLS.json ./
 COPY --chown=${APP_USER}:${APP_USER} examples/basic/parallax/templates ./templates
+# Copy module subdirectories
+COPY --chown=${APP_USER}:${APP_USER} examples/basic/parallax/analysis ./analysis
+COPY --chown=${APP_USER}:${APP_USER} examples/basic/parallax/memory ./memory
+COPY --chown=${APP_USER}:${APP_USER} examples/basic/parallax/rag ./rag
 
 # Set environment variables
 ENV PATH="/opt/venv/bin:$PATH" \
