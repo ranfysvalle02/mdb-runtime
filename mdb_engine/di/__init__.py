@@ -21,7 +21,7 @@ Usage:
 """
 
 from .container import Container
-from .providers import Provider, FactoryProvider, SingletonProvider
+from .providers import FactoryProvider, Provider, SingletonProvider
 from .scopes import Scope, ScopeManager
 
 __all__ = [
@@ -32,4 +32,3 @@ __all__ = [
     "FactoryProvider",
     "SingletonProvider",
 ]
-

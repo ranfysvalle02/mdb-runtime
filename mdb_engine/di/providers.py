@@ -5,10 +5,10 @@ Providers are responsible for creating and managing service instances
 according to their configured scope.
 """
 
+import inspect
+import logging
 from abc import ABC, abstractmethod
 from typing import TYPE_CHECKING, Any, Callable, Dict, Generic, Optional, Type, TypeVar
-import logging
-import inspect
 
 from .scopes import Scope, ScopeManager
 
@@ -23,11 +23,11 @@ T = TypeVar("T")
 class Provider(ABC, Generic[T]):
     """
     Abstract base class for service providers.
-    
+
     Providers know how to create instances of a service and manage
     their lifecycle according to the configured scope.
     """
-    
+
     def __init__(
         self,
         service_type: Type[T],
@@ -37,48 +37,48 @@ class Provider(ABC, Generic[T]):
         self.service_type = service_type
         self.scope = scope
         self._factory = factory or service_type
-    
+
     @abstractmethod
     def get(self, container: "Container") -> T:
         """
         Get or create a service instance.
-        
+
         Args:
             container: The DI container for resolving dependencies
-            
+
         Returns:
             Service instance
         """
         pass
-    
+
     def _create_instance(self, container: "Container") -> T:
         """
         Create a new instance, injecting dependencies.
-        
+
         Inspects the factory/constructor signature and resolves
         any type-hinted parameters from the container.
         """
         # Get constructor signature
         sig = inspect.signature(self._factory)
         kwargs: Dict[str, Any] = {}
-        
+
         for param_name, param in sig.parameters.items():
             if param_name == "self":
                 continue
-                
+
             # Check if parameter has a type annotation
             if param.annotation != inspect.Parameter.empty:
                 param_type = param.annotation
-                
+
                 # Skip primitive types and Optional markers
                 if param_type in (str, int, float, bool, type(None)):
                     continue
-                
+
                 # Handle Optional[X] - extract X
                 origin = getattr(param_type, "__origin__", None)
                 if origin is type(None):
                     continue
-                    
+
                 # Try to resolve from container
                 try:
                     kwargs[param_name] = container.resolve(param_type)
@@ -88,17 +88,17 @@ class Provider(ABC, Generic[T]):
                         continue
                     # If not registered and no default, re-raise
                     raise
-        
+
         return self._factory(**kwargs)
 
 
 class SingletonProvider(Provider[T]):
     """
     Provider that creates a single instance shared across the application.
-    
+
     The instance is created lazily on first request and cached forever.
     """
-    
+
     def __init__(
         self,
         service_type: Type[T],
@@ -106,13 +106,13 @@ class SingletonProvider(Provider[T]):
     ):
         super().__init__(service_type, Scope.SINGLETON, factory)
         self._instance: Optional[T] = None
-    
+
     def get(self, container: "Container") -> T:
         if self._instance is None:
             self._instance = self._create_instance(container)
             logger.debug(f"Created singleton: {self.service_type.__name__}")
         return self._instance
-    
+
     def reset(self) -> None:
         """Reset the singleton (useful for testing)."""
         self._instance = None
@@ -121,21 +121,20 @@ class SingletonProvider(Provider[T]):
 class RequestProvider(Provider[T]):
     """
     Provider that creates one instance per request.
-    
+
     Uses ScopeManager to cache instances within the request scope.
     """
-    
+
     def __init__(
         self,
         service_type: Type[T],
         factory: Optional[Callable[..., T]] = None,
     ):
         super().__init__(service_type, Scope.REQUEST, factory)
-    
+
     def get(self, container: "Container") -> T:
         return ScopeManager.get_or_create(
-            self.service_type,
-            lambda: self._create_instance(container)
+            self.service_type, lambda: self._create_instance(container)
         )
 
 
@@ -143,14 +142,14 @@ class TransientProvider(Provider[T]):
     """
     Provider that creates a new instance every time.
     """
-    
+
     def __init__(
         self,
         service_type: Type[T],
         factory: Optional[Callable[..., T]] = None,
     ):
         super().__init__(service_type, Scope.TRANSIENT, factory)
-    
+
     def get(self, container: "Container") -> T:
         instance = self._create_instance(container)
         logger.debug(f"Created transient: {self.service_type.__name__}")
@@ -160,18 +159,18 @@ class TransientProvider(Provider[T]):
 class FactoryProvider(Provider[T]):
     """
     Provider that uses a custom factory function.
-    
+
     The factory is called with the container as the first argument,
     allowing manual dependency resolution.
-    
+
     Usage:
         def create_user_service(container: Container) -> UserService:
             db = container.resolve(Database)
             return UserService(db, custom_config=...)
-        
+
         container.register_factory(UserService, create_user_service, Scope.REQUEST)
     """
-    
+
     def __init__(
         self,
         service_type: Type[T],
@@ -181,19 +180,18 @@ class FactoryProvider(Provider[T]):
         super().__init__(service_type, scope, None)
         self._custom_factory = factory
         self._singleton_instance: Optional[T] = None
-    
+
     def get(self, container: "Container") -> T:
         if self.scope == Scope.SINGLETON:
             if self._singleton_instance is None:
                 self._singleton_instance = self._custom_factory(container)
             return self._singleton_instance
-        
+
         elif self.scope == Scope.REQUEST:
             return ScopeManager.get_or_create(
-                self.service_type,
-                lambda: self._custom_factory(container)
+                self.service_type, lambda: self._custom_factory(container)
             )
-        
+
         else:  # TRANSIENT
             return self._custom_factory(container)
 
@@ -205,4 +203,3 @@ __all__ = [
     "TransientProvider",
     "FactoryProvider",
 ]
-

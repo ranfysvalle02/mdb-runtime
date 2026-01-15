@@ -16,10 +16,10 @@ Usage:
 
     # With FastAPI integration
     app = engine.create_app(slug="my_app", manifest=Path("manifest.json"))
-    
+
     # In routes - use RequestContext for clean DI
     from mdb_engine import RequestContext
-    
+
     @app.get("/users/{user_id}")
     async def get_user(user_id: str, ctx: RequestContext = Depends()):
         user = await ctx.uow.users.get(user_id)
@@ -44,14 +44,9 @@ from .core import (
 # Database layer
 from .database import AppDB, ScopedMongoWrapper
 
-# DI Container
-from .di import Container, Scope, ScopeManager
-
-# Repository pattern
-from .repositories import Entity, MongoRepository, Repository, UnitOfWork
-
 # FastAPI dependencies
 from .dependencies import (
+    Inject,
     RequestContext,
     get_app_config,
     get_app_slug,
@@ -66,10 +61,12 @@ from .dependencies import (
     get_unit_of_work,
     get_user_roles,
     inject,
-    Inject,
     require_role,
     require_user,
 )
+
+# DI Container
+from .di import Container, Scope, ScopeManager
 
 # Index management
 from .indexes import (
@@ -77,6 +74,9 @@ from .indexes import (
     AutoIndexManager,
     run_index_creation_for_collection,
 )
+
+# Repository pattern
+from .repositories import Entity, MongoRepository, Repository, UnitOfWork
 
 __version__ = "0.2.0"  # Major version bump for new DI system
 

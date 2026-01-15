@@ -1295,6 +1295,7 @@ class MongoDBEngine:
 
             # Initialize DI container (if not already set)
             from ..di import Container
+
             if not hasattr(app.state, "container") or app.state.container is None:
                 app.state.container = Container()
                 logger.debug(f"DI Container initialized for '{slug}'")
@@ -1326,10 +1327,12 @@ class MongoDBEngine:
         # Add request scope middleware (innermost layer - runs first on request)
         # This sets up the DI request scope for each request
         from starlette.middleware.base import BaseHTTPMiddleware
+
         from ..di import ScopeManager
 
         class RequestScopeMiddleware(BaseHTTPMiddleware):
             """Middleware that manages request-scoped DI instances."""
+
             async def dispatch(self, request, call_next):
                 ScopeManager.begin_request()
                 try:
