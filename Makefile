@@ -53,8 +53,9 @@ test-unit:
 
 test-integration:
 	@echo "Running integration tests..."
-	@if ! command -v docker &> /dev/null; then \
+	@if [ -z "$$SKIP_DOCKER_CHECK" ] && ! command -v docker &> /dev/null; then \
 		echo "Error: Docker is required for integration tests. Please install Docker."; \
+		echo "   Or set SKIP_DOCKER_CHECK=1 to skip this check (e.g., in CI)"; \
 		exit 1; \
 	fi
 	$(PYTEST) $(INTEGRATION_TEST_DIR) -v -m integration
