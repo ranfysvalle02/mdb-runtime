@@ -902,6 +902,7 @@ class TestMongoDBEngineHealthMetrics:
                     with patch("mdb_engine.core.engine.check_pool_health") as mock_pool_check:
                         mock_pool_result = MagicMock()
                         mock_pool_result.status.value = "healthy"
+                        mock_pool_result.details = {}  # Ensure details is a dict, not MagicMock
                         mock_pool_check.return_value = mock_pool_result
 
                         health = await mongodb_engine.get_health_status()

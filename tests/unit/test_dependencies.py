@@ -11,7 +11,7 @@ import pytest
 from fastapi import HTTPException
 
 from mdb_engine.dependencies import (
-    AppContext,
+    RequestContext,
     get_app_config,
     get_app_slug,
     get_authz_provider,
@@ -425,65 +425,65 @@ class TestAuthDependencies:
         assert result == []
 
 
-class TestAppContext:
-    """Tests for AppContext all-in-one dependency."""
+class TestRequestContext:
+    """Tests for RequestContext all-in-one dependency."""
 
-    def test_app_context_engine(self, mock_request, mock_engine):
-        """Test AppContext.engine property."""
+    def test_request_context_engine(self, mock_request, mock_engine):
+        """Test RequestContext.engine property."""
         mock_request.app.state.engine = mock_engine
 
-        ctx = AppContext(request=mock_request)
+        ctx = RequestContext(request=mock_request)
 
         assert ctx.engine == mock_engine
 
     def test_app_context_slug(self, mock_request, mock_engine):
-        """Test AppContext.slug property."""
+        """Test RequestContext.slug property."""
         mock_request.app.state.engine = mock_engine
         mock_request.app.state.app_slug = "my_app"
 
-        ctx = AppContext(request=mock_request)
+        ctx = RequestContext(request=mock_request)
 
         assert ctx.slug == "my_app"
 
     def test_app_context_db(self, mock_request, mock_engine):
-        """Test AppContext.db property."""
+        """Test RequestContext.db property."""
         mock_db = MagicMock()
         mock_engine.get_scoped_db.return_value = mock_db
         mock_request.app.state.engine = mock_engine
         mock_request.app.state.app_slug = "my_app"
 
-        ctx = AppContext(request=mock_request)
+        ctx = RequestContext(request=mock_request)
 
         assert ctx.db == mock_db
         mock_engine.get_scoped_db.assert_called_once_with("my_app")
 
     def test_app_context_user(self, mock_request, mock_engine):
-        """Test AppContext.user property."""
+        """Test RequestContext.user property."""
         mock_user = {"email": "test@example.com"}
         mock_request.app.state.engine = mock_engine
         mock_request.state.user = mock_user
 
-        ctx = AppContext(request=mock_request)
+        ctx = RequestContext(request=mock_request)
 
         assert ctx.user == mock_user
 
     def test_app_context_require_user_success(self, mock_request, mock_engine):
-        """Test AppContext.require_user when authenticated."""
+        """Test RequestContext.require_user when authenticated."""
         mock_user = {"email": "test@example.com"}
         mock_request.app.state.engine = mock_engine
         mock_request.state.user = mock_user
 
-        ctx = AppContext(request=mock_request)
+        ctx = RequestContext(request=mock_request)
         result = ctx.require_user()
 
         assert result == mock_user
 
     def test_app_context_require_user_not_authenticated(self, mock_request, mock_engine):
-        """Test AppContext.require_user when not authenticated."""
+        """Test RequestContext.require_user when not authenticated."""
         mock_request.app.state.engine = mock_engine
         mock_request.state.user = None
 
-        ctx = AppContext(request=mock_request)
+        ctx = RequestContext(request=mock_request)
 
         with pytest.raises(HTTPException) as exc_info:
             ctx.require_user()
@@ -491,25 +491,25 @@ class TestAppContext:
         assert exc_info.value.status_code == 401
 
     def test_app_context_require_role_success(self, mock_request, mock_engine):
-        """Test AppContext.require_role when user has role."""
+        """Test RequestContext.require_role when user has role."""
         mock_user = {"email": "test@example.com"}
         mock_request.app.state.engine = mock_engine
         mock_request.state.user = mock_user
         mock_request.state.user_roles = ["admin", "editor"]
 
-        ctx = AppContext(request=mock_request)
+        ctx = RequestContext(request=mock_request)
         result = ctx.require_role("admin")
 
         assert result == mock_user
 
     def test_app_context_require_role_missing(self, mock_request, mock_engine):
-        """Test AppContext.require_role when user lacks role."""
+        """Test RequestContext.require_role when user lacks role."""
         mock_user = {"email": "test@example.com"}
         mock_request.app.state.engine = mock_engine
         mock_request.state.user = mock_user
         mock_request.state.user_roles = ["viewer"]
 
-        ctx = AppContext(request=mock_request)
+        ctx = RequestContext(request=mock_request)
 
         with pytest.raises(HTTPException) as exc_info:
             ctx.require_role("admin")
@@ -518,14 +518,14 @@ class TestAppContext:
 
     @pytest.mark.asyncio
     async def test_app_context_check_permission(self, mock_request, mock_engine):
-        """Test AppContext.check_permission method."""
+        """Test RequestContext.check_permission method."""
         mock_authz = MagicMock()
         mock_authz.check = AsyncMock(return_value=True)
         mock_request.app.state.engine = mock_engine
         mock_request.app.state.authz_provider = mock_authz
         mock_request.state.user = {"email": "test@example.com"}
 
-        ctx = AppContext(request=mock_request)
+        ctx = RequestContext(request=mock_request)
         result = await ctx.check_permission("documents", "read")
 
         assert result is True
