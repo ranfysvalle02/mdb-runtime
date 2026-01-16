@@ -11,7 +11,7 @@ from __future__ import annotations  # MUST be first import for string type hints
 import asyncio
 import logging
 import time
-from typing import TYPE_CHECKING, Any, Optional, Protocol
+from typing import TYPE_CHECKING, Any, Protocol
 
 from ..constants import AUTHZ_CACHE_TTL, MAX_CACHE_SIZE
 
@@ -38,7 +38,7 @@ class AuthorizationProvider(Protocol):
         subject: str,
         resource: str,
         action: str,
-        user_object: Optional[dict[str, Any]] = None,
+        user_object: dict[str, Any] | None = None,
     ) -> bool:
         """
         Checks if a subject is allowed to perform an action on a resource.
@@ -91,7 +91,7 @@ class CasbinAdapter(BaseAuthorizationProvider):
         subject: str,
         resource: str,
         action: str,
-        user_object: Optional[dict[str, Any]] = None,
+        user_object: dict[str, Any] | None = None,
     ) -> bool:
         """
         Check authorization using Casbin's enforce method.
@@ -321,7 +321,7 @@ class OsoAdapter(BaseAuthorizationProvider):
         subject: str,
         resource: str,
         action: str,
-        user_object: Optional[dict[str, Any]] = None,
+        user_object: dict[str, Any] | None = None,
     ) -> bool:
         """
         Check authorization using OSO's authorize method.

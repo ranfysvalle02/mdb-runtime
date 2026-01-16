@@ -5,12 +5,10 @@ A lightweight, FastAPI-native DI container with proper service lifetimes.
 """
 
 import logging
-from typing import TYPE_CHECKING, Any, Callable, Dict, Optional, Type, TypeVar
+from typing import Any, Callable, Dict, Optional, Type, TypeVar
 
+from .providers import Provider
 from .scopes import Scope
-
-if TYPE_CHECKING:
-    from .providers import Provider
 
 logger = logging.getLogger(__name__)
 
@@ -50,7 +48,7 @@ class Container:
     _global_instance: Optional["Container"] = None
 
     def __init__(self):
-        self._providers: Dict[type, "Provider"] = {}
+        self._providers: Dict[type, Provider] = {}
         self._instances: Dict[type, Any] = {}  # For register_instance
 
     @classmethod
