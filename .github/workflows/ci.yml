@@ -72,7 +72,13 @@ jobs:
       - name: Check code formatting
         run: |
           echo "Checking code formatting..."
-          ruff format --check mdb_engine tests scripts
+          if ! ruff format --check mdb_engine tests scripts; then
+            echo "❌ Formatting check failed. Files need reformatting:"
+            ruff format --check --diff mdb_engine tests scripts || true
+            echo ""
+            echo "To fix locally, run: ruff format mdb_engine tests scripts"
+            exit 1
+          fi
           echo "✅ All files are properly formatted!"
 
       - name: Run linting (CI mode)
