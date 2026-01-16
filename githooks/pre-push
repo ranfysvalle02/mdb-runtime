@@ -47,26 +47,8 @@ if ! make lint-ci 2>&1; then
     exit 1
 fi
 
-# Optional: Run integration tests (can be skipped with SKIP_INTEGRATION_TESTS=1)
-if [ "$SKIP_INTEGRATION_TESTS" != "1" ] && command -v docker &> /dev/null; then
-    echo "🐳 Running integration tests (requires Docker)..."
-    if make test-integration >/dev/null 2>&1; then
-        echo "✅ Integration tests passed!"
-    else
-        echo "⚠️  Integration tests failed or Docker not available."
-        echo "   To skip integration tests: SKIP_INTEGRATION_TESTS=1 git push"
-        echo "   To see errors: make test-integration"
-        # Don't block push - integration tests are optional
-    fi
-else
-    if [ "$SKIP_INTEGRATION_TESTS" = "1" ]; then
-        echo "⏭️  Skipping integration tests (SKIP_INTEGRATION_TESTS=1)"
-    elif ! command -v docker &> /dev/null; then
-        echo "⏭️  Skipping integration tests (Docker not available)"
-        echo "   Install Docker to run integration tests before push"
-    fi
-fi
-
 echo "✅ All pre-push checks passed!"
+echo ""
+echo "💡 Note: Integration tests run in CI/CD, not locally."
 exit 0
 

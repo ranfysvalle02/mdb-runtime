@@ -39,14 +39,8 @@ If any check fails, the push is blocked.
 **What it does:**
 1. Verifies formatting with `ruff format --check` (no auto-fix)
 2. Verifies code quality with `make lint-ci` (no auto-fix)
-3. Optionally runs integration tests if Docker is available (can be skipped)
 
-**Skip integration tests:**
-```bash
-SKIP_INTEGRATION_TESTS=1 git push
-```
-
-**Note:** Formatting and linting should be handled by the pre-commit hook. This is a final verification step. Integration tests are optional and won't block the push if they fail or Docker isn't available.
+**Note:** Formatting and linting should be handled by the pre-commit hook. This is a final verification step. Integration tests are handled by CI/CD, not the pre-push hook.
 
 **Skip the hook (not recommended):**
 ```bash
