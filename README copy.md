@@ -387,13 +387,13 @@ We welcome contributions! Please read our [Contributing Guide](CONTRIBUTING.md) 
 - Exception handling best practices (Staff Engineer level)
 - Code style guidelines
 - Makefile commands for development
-- Code quality checks (`make lint`, `make format`)
+- Code quality checks (`make lint-local`, `make format`)
 - Testing requirements
 - Pull request process
 
 **Key Requirements:**
 - All exception handling must follow our [best practices](CONTRIBUTING.md#exception-handling-best-practices)
-- Code quality checks must pass (`make lint`) before submitting PRs
+- Code quality checks must pass (`make lint-local`) before submitting PRs
 - Tests must be included for new features
 
 **Quick Start for Contributors:**

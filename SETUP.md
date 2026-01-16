@@ -60,7 +60,7 @@ make test-coverage-html # Run tests with HTML coverage report
 
 # Code Quality
 make format           # Format code (black + isort)
-make lint             # Run linting checks (fails on errors)
+make lint-local        # Run linting checks (fails on errors)
 make lint-check       # Run linting checks (non-failing)
 make check            # Quick quality check (lint + unit tests)
 
@@ -81,7 +81,7 @@ make check
 
 # Or verify individual components:
 make format      # Format code (auto-fix)
-make lint        # Linting checks
+make lint-local   # Linting checks
 make test-unit   # Unit tests
 ```
 

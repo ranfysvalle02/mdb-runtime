@@ -86,7 +86,7 @@ make test-coverage    # Run tests with coverage report (terminal)
 make test-coverage-html # Run tests with HTML coverage report
 
 # Code Quality
-make lint             # Run linters (flake8, isort check) - fails on errors
+make lint-local        # Run linters (ruff check, format check, semgrep) - fails on errors
 make lint-check       # Run linters (non-failing, for CI)
 make format           # Format code (black, isort)
 make check            # Run lint + unit tests (quick quality check)
@@ -227,7 +227,7 @@ See [`docs/guides/error_handling.md`](docs/guides/error_handling.md) for detaile
 
 ## Code Quality Checks
 
-We use `make lint` and `make format` to ensure code quality. The checks include:
+We use `make lint-local` and `make format` to ensure code quality. The checks include:
 
 - Code formatting (Black)
 - Import sorting (isort)
@@ -272,7 +272,7 @@ The pre-push hook automatically:
 
 1. **Runs `make format`** - Formats your code with Black and isort
 2. **Checks for formatting changes** - If formatting modified files, it blocks the push and asks you to commit the changes
-3. **Runs `make lint`** - Checks for linting errors (flake8, isort, exception handling)
+3. **Runs `make lint-local`** - Checks for linting errors (ruff check, format check, semgrep)
 4. **Blocks the push** - If any check fails, the push is prevented
 
 ### Example Output
@@ -284,7 +284,7 @@ When you run `git push`, you'll see:
 📝 Formatting code with 'make format'...
 Formatting code...
 ✅ All linting checks passed!
-🔍 Running linter with 'make lint'...
+🔍 Running linter with 'make lint-local'...
 Checking flake8...
 Checking import sorting (isort)...
 Checking exception handling (Grinberg framework)...
@@ -404,7 +404,7 @@ async def test_insert_one_operation_failure_raises_mongodb_engine_error():
 3. **Run code quality checks**:
    ```bash
    make format  # Auto-fix formatting
-   make lint    # Check for issues
+   make lint-local    # Check for issues
    ```
 
 4. **Write/update tests** for your changes

@@ -29,7 +29,7 @@ See `docs/guides/error_handling.md` for full documentation.
 python scripts/check_exception_handling.py file1.py file2.py
 
 # Run via Makefile (recommended)
-make lint  # Includes exception handling checks
+make lint-local  # Includes exception handling checks
 ```
 
 ### Exclusions:
@@ -39,4 +39,4 @@ make lint  # Includes exception handling checks
 
 ### Integration:
 
-This script is automatically run as part of `make lint`. See the Makefile for configuration.
+This script is automatically run as part of `make lint-local`. See the Makefile for configuration.

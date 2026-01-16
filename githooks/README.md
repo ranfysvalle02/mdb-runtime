@@ -16,7 +16,7 @@ Run the install script to copy these hooks to `.git/hooks/`:
 
 Runs before pushing to GitHub. Ensures:
 - Code is formatted (`make format`)
-- Code passes linting checks (`ruff check` + `make lint`)
+- Code passes linting checks (`ruff check` + `make lint-local`)
 
 If any check fails, the push is blocked.
 
@@ -25,7 +25,7 @@ If any check fails, the push is blocked.
 2. Checks if formatting changed files (requires commit)
 3. Runs `ruff check` for fast linting feedback
 4. Runs `ruff format --check` for formatting validation
-5. Runs full `make lint` (including semgrep) for comprehensive checks
+5. Runs full `make lint-local` (including semgrep) for comprehensive checks
 
 **Skip the hook (not recommended):**
 ```bash
@@ -49,7 +49,7 @@ SKIP_HOOKS=1 git push
 - **"Linting failed"**: Fix the errors shown, or run:
   ```bash
   make fix    # Auto-fix issues
-  make lint   # See all errors
+  make lint-local   # See all errors
   ```
 
 ## Adding New Hooks

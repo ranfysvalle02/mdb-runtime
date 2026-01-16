@@ -361,7 +361,7 @@ make check
 
 # Or individually:
 make format  # Format code
-make lint    # Check linting
+make lint-local    # Check linting
 make test-unit  # Run unit tests
 ```
 
@@ -428,7 +428,7 @@ pytest -n auto
 
 ### Linting Fails
 
-**Problem**: `make lint` fails
+**Problem**: `make lint-local` fails
 
 **Solution**:
 ```bash

@@ -76,7 +76,7 @@ Before publishing, update the version in **both** files:
 - [ ] Version updated in `setup.py` and `pyproject.toml`
 - [ ] Author/email/URL verified (currently: Fabian Valle, oblivio.company@gmail.com)
 - [ ] Tests pass: `make test`
-- [ ] Linting passes: `make lint`
+- [ ] Linting passes: `make lint-local`
 - [ ] Build succeeds: `make build`
 - [ ] Package check passes: `make build-check`
 
