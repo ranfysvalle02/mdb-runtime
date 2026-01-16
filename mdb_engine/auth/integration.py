@@ -273,10 +273,10 @@ async def _setup_demo_users(app: FastAPI, engine, slug_id: str, config: Dict[str
                         if role_assignment.get("user") == user_email:
                             role = role_assignment.get("role")
                             resource = role_assignment.get("resource", "documents")
-                            
+
                             # Check if provider is Casbin (uses email as subject for initial_roles)
                             is_casbin = hasattr(app.state.authz_provider, "_enforcer")
-                            
+
                             try:
                                 if is_casbin:
                                     # For Casbin, use email as subject to match initial_roles format

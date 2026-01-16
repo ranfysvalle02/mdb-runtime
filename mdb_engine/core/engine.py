@@ -1216,12 +1216,15 @@ class MongoDBEngine:
 
             # Auto-initialize authorization provider from manifest config
             try:
-                logger.info(f"🔍 Checking auth config for '{slug}': auth_config keys={list(auth_config.keys())}")
+                logger.info(
+                    f"🔍 Checking auth config for '{slug}': "
+                    f"auth_config keys={list(auth_config.keys())}"
+                )
                 auth_policy = auth_config.get("policy", {})
                 logger.info(f"🔍 Auth policy for '{slug}': {auth_policy}")
                 authz_provider_type = auth_policy.get("provider")
                 logger.info(f"🔍 Authz provider type for '{slug}': {authz_provider_type}")
-            except Exception as e:
+            except (KeyError, AttributeError, TypeError) as e:
                 logger.exception(f"❌ Error reading auth config for '{slug}': {e}")
                 authz_provider_type = None
 
@@ -1257,37 +1260,72 @@ class MongoDBEngine:
                     authz_provider = await initialize_casbin_from_manifest(
                         engine, slug, app_manifest
                     )
-                    logger.debug(f"initialize_casbin_from_manifest returned: {authz_provider is not None}")
+                    logger.debug(
+                        f"initialize_casbin_from_manifest returned: {authz_provider is not None}"
+                    )
                     if authz_provider:
                         app.state.authz_provider = authz_provider
-                        logger.info(f"✅ Casbin provider auto-initialized for '{slug}' and set on app.state")
-                        logger.info(f"✅ Provider type: {type(authz_provider).__name__}, initialized: {getattr(authz_provider, '_initialized', 'unknown')}")
+                        logger.info(
+                            f"✅ Casbin provider auto-initialized for '{slug}' "
+                            f"and set on app.state"
+                        )
+                        logger.info(
+                            f"✅ Provider type: {type(authz_provider).__name__}, "
+                            f"initialized: {getattr(authz_provider, '_initialized', 'unknown')}"
+                        )
                         # Verify it's actually set
                         if hasattr(app.state, "authz_provider") and app.state.authz_provider:
-                            logger.info(f"✅ Verified: app.state.authz_provider is set and not None")
+                            logger.info("✅ Verified: app.state.authz_provider is set and not None")
                         else:
-                            logger.error(f"❌ CRITICAL: app.state.authz_provider was set but is now None or missing!")
+                            logger.error(
+                                "❌ CRITICAL: app.state.authz_provider was set but is now "
+                                "None or missing!"
+                            )
                     else:
-                        logger.error(f"❌ Casbin provider initialization returned None for '{slug}' - check logs above for errors")
+                        logger.error(
+                            f"❌ Casbin provider initialization returned None for '{slug}' - "
+                            f"check logs above for errors"
+                        )
                         logger.error(f"❌ This means authorization will NOT work for '{slug}'")
                 except ImportError as e:
-                    logger.error(
+                    # ImportError is expected if Casbin is not installed
+                    logger.warning(
                         f"❌ Casbin not available for '{slug}': {e}. "
                         "Install with: pip install mdb-engine[casbin]"
                     )
                 except (ValueError, TypeError, RuntimeError, AttributeError, KeyError) as e:
-                    logger.exception(f"❌ Failed to initialize Casbin provider for '{slug}': {e}")
-                    logger.error(f"❌ Exception type: {type(e).__name__}, message: {str(e)}")
-                    logger.error(f"❌ This means authorization will NOT work for '{slug}' - app.state.authz_provider will remain None")
-                except Exception as e:
-                    # Catch-all for any other exceptions
-                    logger.exception(f"❌ Unexpected error initializing Casbin provider for '{slug}': {e}")
-                    logger.error(f"❌ Exception type: {type(e).__name__}, message: {str(e)}")
-                    logger.error(f"❌ This means authorization will NOT work for '{slug}' - app.state.authz_provider will remain None")
-            
+                    logger.exception(
+                        f"❌ Failed to initialize Casbin provider for '{slug}': {e}"
+                    )
+                    # Informational message, not exception logging
+                    logger.error(  # noqa: TRY400
+                        f"❌ This means authorization will NOT work for '{slug}' - "
+                        f"app.state.authz_provider will remain None"
+                    )
+                except (
+                    RuntimeError,
+                    ValueError,
+                    AttributeError,
+                    TypeError,
+                    ConnectionError,
+                    OSError,
+                ) as e:
+                    # Catch specific exceptions that might occur during initialization
+                    logger.exception(
+                        f"❌ Unexpected error initializing Casbin provider for '{slug}': {e}"
+                    )
+                    # Informational message, not exception logging
+                    logger.error(  # noqa: TRY400
+                        f"❌ This means authorization will NOT work for '{slug}' - "
+                        f"app.state.authz_provider will remain None"
+                    )
+
             elif authz_provider_type is None and auth_policy:
                 # Default to Casbin if provider not specified but auth.policy exists
-                logger.info(f"⚠️  No provider specified in auth.policy for '{slug}', defaulting to Casbin")
+                logger.info(
+                    f"⚠️  No provider specified in auth.policy for '{slug}', "
+                    f"defaulting to Casbin"
+                )
                 try:
                     from ..auth.casbin_factory import initialize_casbin_from_manifest
 
@@ -1298,16 +1336,30 @@ class MongoDBEngine:
                         app.state.authz_provider = authz_provider
                         logger.info(f"✅ Casbin provider auto-initialized for '{slug}' (default)")
                     else:
-                        logger.warning(f"⚠️  Casbin provider not initialized for '{slug}' (default attempt failed)")
+                        logger.warning(
+                            f"⚠️  Casbin provider not initialized for '{slug}' "
+                            f"(default attempt failed)"
+                        )
                 except ImportError as e:
                     logger.warning(
                         f"⚠️  Casbin not available for '{slug}': {e}. "
                         "Install with: pip install mdb-engine[casbin]"
                     )
-                except (ValueError, TypeError, RuntimeError, AttributeError, KeyError) as e:
-                    logger.exception(f"❌ Failed to initialize Casbin provider for '{slug}' (default): {e}")
+                except (
+                    ValueError,
+                    TypeError,
+                    RuntimeError,
+                    AttributeError,
+                    KeyError,
+                ) as e:
+                    logger.exception(
+                        f"❌ Failed to initialize Casbin provider for '{slug}' (default): {e}"
+                    )
             elif authz_provider_type:
-                logger.warning(f"⚠️  Unknown authz provider type '{authz_provider_type}' for '{slug}' - skipping initialization")
+                logger.warning(
+                    f"⚠️  Unknown authz provider type '{authz_provider_type}' for '{slug}' - "
+                    f"skipping initialization"
+                )
 
             # Auto-seed demo users if configured in manifest
             users_config = auth_config.get("users", {})

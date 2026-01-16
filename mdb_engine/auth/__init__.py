@@ -9,6 +9,9 @@ This module is part of MDB_ENGINE - MongoDB Engine.
 # Audit logging
 from .audit import AuthAction, AuthAuditLog
 
+# Base classes
+from .base import AuthorizationError, BaseAuthorizationProvider
+
 # Casbin Factory
 from .casbin_factory import (
     create_casbin_enforcer,
@@ -59,9 +62,6 @@ from .jwt import (
     extract_token_metadata,
     generate_token_pair,
 )
-
-# Base classes
-from .base import AuthorizationError, BaseAuthorizationProvider
 
 # Middleware
 from .middleware import SecurityMiddleware, create_security_middleware

@@ -325,7 +325,8 @@ MANIFEST_SCHEMA_V2 = {
                                                 "additionalProperties": False,
                                                 "description": (
                                                     "OSO policy as object: "
-                                                    '{"role": "admin", "resource": "documents", "action": "read"}'
+                                                    '{"role": "admin", "resource": "documents", '
+                                                    '"action": "read"}'
                                                 ),
                                             },
                                         ],
@@ -335,7 +336,8 @@ MANIFEST_SCHEMA_V2 = {
                                         "For Casbin provider: use arrays like "
                                         '["admin", "clicks", "read"]. '
                                         "For OSO Cloud provider: use objects like "
-                                        '{"role": "admin", "resource": "documents", "action": "read"}.'
+                                        '{"role": "admin", "resource": "documents", '
+                                        '"action": "read"}.'
                                     ),
                                 },
                             },
