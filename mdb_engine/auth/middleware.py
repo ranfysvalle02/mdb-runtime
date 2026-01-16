@@ -234,7 +234,7 @@ class StaleSessionMiddleware(BaseHTTPMiddleware):
                                     "session_cookie_name", "app_session"
                                 )
                                 cookie_name = f"{session_cookie_name}_{self.slug_id}"
-                    except (AttributeError, KeyError, TypeError, Exception):
+                    except (AttributeError, KeyError, TypeError):
                         pass
 
                 # Final fallback to default naming convention

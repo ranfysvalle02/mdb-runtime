@@ -11,7 +11,7 @@ from __future__ import annotations
 
 import logging
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Optional
+from typing import TYPE_CHECKING, Any
 
 from .casbin_models import DEFAULT_RBAC_MODEL, SIMPLE_ACL_MODEL
 
@@ -46,7 +46,7 @@ async def get_casbin_model(model_type: str = "rbac") -> str:
                 # Try async file reading (non-blocking)
                 import aiofiles
 
-                async with aiofiles.open(model_path, "r") as f:
+                async with aiofiles.open(model_path) as f:
                     content = await f.read()
                     logger.debug(f"Read model file asynchronously: {model_path}")
                     return content
@@ -67,7 +67,7 @@ async def create_casbin_enforcer(
     db_name: str,
     model: str = "rbac",
     policies_collection: str = "casbin_policies",
-    default_roles: Optional[list] = None,
+    default_roles: list | None = None,
 ) -> casbin.AsyncEnforcer:
     """
     Create a Casbin AsyncEnforcer with MongoDB adapter.
@@ -189,7 +189,7 @@ async def create_casbin_enforcer(
 
 async def initialize_casbin_from_manifest(
     engine, app_slug: str, auth_config: dict[str, Any]
-) -> Optional[CasbinAdapter]:
+) -> CasbinAdapter | None:
     """
     Initialize Casbin provider from manifest configuration.
 
