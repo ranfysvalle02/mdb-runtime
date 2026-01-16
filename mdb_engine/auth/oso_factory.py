@@ -46,7 +46,7 @@ async def create_oso_cloud_client(
 
     # Import OSO Cloud SDK - the class is named "Oso"
     try:
-        from oso_cloud import Oso
+        from oso_cloud import Oso  # type: ignore
 
         logger.debug("✅ Imported Oso from oso_cloud")
     except ImportError as e:
@@ -212,7 +212,7 @@ async def initialize_oso_from_manifest(
             try:
                 import asyncio
 
-                from oso_cloud import Value
+                from oso_cloud import Value  # type: ignore
 
                 # Try a simple test authorization to verify connection
                 test_actor = Value("User", "test")

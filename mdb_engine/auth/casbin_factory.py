@@ -16,7 +16,7 @@ from typing import TYPE_CHECKING, Any, Optional
 from .casbin_models import DEFAULT_RBAC_MODEL, SIMPLE_ACL_MODEL
 
 if TYPE_CHECKING:
-    import casbin
+    import casbin  # type: ignore
 
     from .provider import CasbinAdapter
 
@@ -86,8 +86,8 @@ async def create_casbin_enforcer(
         ImportError: If casbin or casbin-motor-adapter is not installed
     """
     try:
-        import casbin
-        from casbin_motor_adapter import Adapter
+        import casbin  # type: ignore
+        from casbin_motor_adapter import Adapter  # type: ignore
     except ImportError as e:
         raise ImportError(
             "Casbin dependencies not installed. Install with: pip install mdb-engine[casbin]"
