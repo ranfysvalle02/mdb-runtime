@@ -11,7 +11,7 @@ from __future__ import annotations
 
 import logging
 import os
-from typing import TYPE_CHECKING, Any, Dict, List, Optional
+from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
     from .provider import OsoAdapter
@@ -114,8 +114,8 @@ async def create_oso_cloud_client(
 
 async def setup_initial_oso_facts(
     authz_provider: OsoAdapter,
-    initial_roles: Optional[List[Dict[str, Any]]] = None,
-    initial_policies: Optional[List[Dict[str, Any]]] = None,
+    initial_roles: list[dict[str, Any]] | None = None,
+    initial_policies: list[dict[str, Any]] | None = None,
 ) -> None:
     """
     Set up initial roles and policies in OSO Cloud.
@@ -148,7 +148,7 @@ async def setup_initial_oso_facts(
 
 
 async def initialize_oso_from_manifest(
-    engine, app_slug: str, auth_config: Dict[str, Any]
+    engine, app_slug: str, auth_config: dict[str, Any]
 ) -> OsoAdapter | None:
     """
     Initialize OSO Cloud provider from manifest configuration.

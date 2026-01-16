@@ -11,7 +11,7 @@ from __future__ import annotations
 
 import abc
 import logging
-from typing import Any, Dict, Optional
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -71,7 +71,7 @@ class BaseAuthorizationProvider(abc.ABC):
         subject: str,
         resource: str,
         action: str,
-        user_object: Optional[Dict[str, Any]] = None,
+        user_object: dict[str, Any] | None = None,
     ) -> bool:
         """
         Check if a subject is allowed to perform an action on a resource.

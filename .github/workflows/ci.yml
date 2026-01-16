@@ -118,7 +118,7 @@ jobs:
       # For PRs, only test latest Python version for faster feedback
       # For main branch, test all supported versions
       matrix:
-        python-version: ["3.8", "3.9", "3.10", "3.11"]
+        python-version: ["3.10", "3.11", "3.12"]
       fail-fast: false
     
     steps:
@@ -140,7 +140,7 @@ jobs:
 
       - name: Run unit tests with coverage
         # Skip older Python versions on PRs for faster feedback
-        if: github.event_name != 'pull_request' || matrix.python-version == '3.11'
+        if: github.event_name != 'pull_request' || matrix.python-version == '3.12'
         run: |
           # Use parallel execution if pytest-xdist is available, otherwise sequential
           pytest tests/unit -v \
@@ -174,7 +174,7 @@ jobs:
 
       - name: Upload coverage reports
         uses: actions/upload-artifact@v4
-        if: matrix.python-version == '3.11'
+        if: matrix.python-version == '3.12'
         with:
           name: coverage-report
           path: |
