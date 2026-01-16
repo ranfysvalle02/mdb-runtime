@@ -8,15 +8,44 @@ on:
   release:
     types: [published]
   workflow_dispatch:
+    inputs:
+      run_integration_tests:
+        description: 'Run integration tests'
+        required: false
+        default: 'true'
+        type: boolean
+      publish_to_pypi:
+        description: 'Publish to PyPI'
+        required: false
+        default: 'false'
+        type: boolean
+      skip_cache:
+        description: 'Skip dependency cache (force fresh install)'
+        required: false
+        default: 'false'
+        type: boolean
+
+# Cancel outdated workflow runs to save CI minutes
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}-${{ github.event.pull_request.number || github.sha }}
+  cancel-in-progress: true
+
+env:
+  PYTHON_VERSION_DEFAULT: '3.11'
+  PIP_CACHE_DIR: ~/.cache/pip
+  RUFF_CACHE_DIR: ~/.cache/ruff
 
 jobs:
   # Detect which paths changed to optimize job execution
   detect-changes:
+    name: Detect Changes
     runs-on: ubuntu-latest
     outputs:
       code: ${{ steps.filter.outputs.code }}
       tests: ${{ steps.filter.outputs.tests }}
       docs: ${{ steps.filter.outputs.docs }}
+      python: ${{ steps.filter.outputs.python }}
+      ci: ${{ steps.filter.outputs.ci }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -37,22 +66,26 @@ jobs:
               - 'Makefile'
               - '.flake8'
               - '.semgrep.yml'
-              - '.github/workflows/**'
             tests:
               - 'mdb_engine/**'
               - 'tests/**'
               - 'pyproject.toml'
               - 'setup.py'
-              - '.github/workflows/**'
             docs:
               - 'docs/**'
               - '*.md'
               - 'examples/**'
+            python:
+              - 'pyproject.toml'
+              - 'setup.py'
+              - '.python-version'
+            ci:
+              - '.github/workflows/**'
 
   # Code quality checks (formatting, linting, security)
   # Run once per PR/push, not per Python version for efficiency
-  # Always run on push/PR to main, or if code files changed, or on workflow_dispatch
   code-quality:
+    name: Code Quality
     runs-on: ubuntu-latest
     needs: detect-changes
     if: |
@@ -68,44 +101,61 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: '3.11'
+          python-version: ${{ env.PYTHON_VERSION_DEFAULT }}
           cache: 'pip'
+          cache-dependency-path: |
+            pyproject.toml
+            setup.py
+
+      - name: Cache Ruff
+        if: github.event.inputs.skip_cache != 'true'
+        uses: actions/cache@v4
+        with:
+          path: ${{ env.RUFF_CACHE_DIR }}
+          key: ruff-${{ runner.os }}-${{ hashFiles('pyproject.toml') }}
+          restore-keys: |
+            ruff-${{ runner.os }}-
 
       - name: Install dependencies
         run: |
-          python -m pip install --upgrade pip
-          pip install -e ".[test,dev]"
+          python -m pip install --upgrade pip setuptools wheel
+          pip install -e ".[dev]"
 
       - name: Check code formatting
         run: |
-          echo "Checking code formatting..."
-          if ! ruff format --check mdb_engine tests scripts; then
-            echo "❌ Formatting check failed. Files need reformatting:"
-            ruff format --check --diff mdb_engine tests scripts || true
-            echo ""
-            echo "To fix locally, run: ruff format mdb_engine tests scripts"
-            exit 1
-          fi
-          echo "✅ All files are properly formatted!"
+          echo "::group::Formatting Check"
+          ruff format --check mdb_engine tests scripts
+          echo "::endgroup::"
+        continue-on-error: false
 
       - name: Run linting (CI mode)
         run: |
+          echo "::group::Linting"
           make lint-ci
+          echo "::endgroup::"
 
       - name: Run Ruff type checking
         run: |
-          echo "Running type checking with Ruff..."
+          echo "::group::Type Checking"
           ruff check --select TYP mdb_engine tests scripts || echo "⚠️ Type checking found issues (non-blocking)"
+          echo "::endgroup::"
 
       - name: Check for dependency vulnerabilities
         run: |
-          echo "Checking for known security vulnerabilities..."
+          echo "::group::Security Scan"
           pip install safety || true
-          safety check --file requirements.txt 2>/dev/null || safety check 2>/dev/null || echo "⚠️ Safety check skipped (install with: pip install safety)"
+          safety check --file requirements.txt 2>/dev/null || safety check 2>/dev/null || echo "⚠️ Safety check skipped"
+          echo "::endgroup::"
+
+      - name: Run Semgrep security scan
+        run: |
+          echo "::group::Semgrep Security Scan"
+          semgrep scan --config .semgrep.yml --error --quiet mdb_engine/ || echo "⚠️ Semgrep scan completed with findings"
+          echo "::endgroup::"
 
   # Unit tests across multiple Python versions
-  # Always run on push/PR to main, or if test-related files changed, or on workflow_dispatch
   test-unit:
+    name: Unit Tests (Python ${{ matrix.python-version }})
     runs-on: ubuntu-latest
     needs: detect-changes
     if: |
@@ -113,13 +163,18 @@ jobs:
       github.event_name == 'push' ||
       github.event_name == 'pull_request' ||
       needs.detect-changes.outputs.tests == 'true'
-    timeout-minutes: 15
+    timeout-minutes: 20
     strategy:
-      # For PRs, only test latest Python version for faster feedback
-      # For main branch, test all supported versions
+      fail-fast: false
       matrix:
         python-version: ["3.10", "3.11", "3.12"]
-      fail-fast: false
+        include:
+          - python-version: "3.10"
+            is-latest: false
+          - python-version: "3.11"
+            is-latest: false
+          - python-version: "3.12"
+            is-latest: true
     
     steps:
       - name: Checkout code
@@ -130,37 +185,43 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
           cache: 'pip'
+          cache-dependency-path: |
+            pyproject.toml
+            setup.py
 
       - name: Install dependencies
         run: |
-          python -m pip install --upgrade pip
+          python -m pip install --upgrade pip setuptools wheel
           pip install -e ".[test,dev]"
-          # Install pytest-xdist for parallel test execution
-          pip install pytest-xdist || echo "pytest-xdist not available, running tests sequentially"
+          pip install pytest-xdist
+
+      - name: Cache pytest cache
+        if: github.event.inputs.skip_cache != 'true'
+        uses: actions/cache@v4
+        with:
+          path: .pytest_cache
+          key: pytest-${{ runner.os }}-${{ matrix.python-version }}-${{ hashFiles('**/test_*.py', '**/conftest.py') }}
+          restore-keys: |
+            pytest-${{ runner.os }}-${{ matrix.python-version }}-
 
       - name: Run unit tests with coverage
-        # Skip older Python versions on PRs for faster feedback
+        # Skip older Python versions on PRs for faster feedback (only run 3.12)
         if: github.event_name != 'pull_request' || matrix.python-version == '3.12'
         run: |
-          # Use parallel execution if pytest-xdist is available, otherwise sequential
+          echo "::group::Unit Tests (Python ${{ matrix.python-version }})"
           pytest tests/unit -v \
             --cov=mdb_engine/core \
             --cov=mdb_engine/database \
             --cov-report=term-missing \
-            --cov-report=xml \
-            --cov-report=html \
+            --cov-report=xml:coverage-${{ matrix.python-version }}.xml \
+            --cov-report=html:htmlcov-${{ matrix.python-version }} \
             --cov-fail-under=70 \
             --junit-xml=junit-unit-${{ matrix.python-version }}.xml \
             -m "not integration" \
-            -n auto || pytest tests/unit -v \
-            --cov=mdb_engine/core \
-            --cov=mdb_engine/database \
-            --cov-report=term-missing \
-            --cov-report=xml \
-            --cov-report=html \
-            --cov-fail-under=70 \
-            --junit-xml=junit-unit-${{ matrix.python-version }}.xml \
-            -m "not integration"
+            -n auto \
+            --maxfail=5 \
+            --tb=short
+          echo "::endgroup::"
 
       - name: Test Summary
         if: always()
@@ -173,14 +234,15 @@ jobs:
           fi
 
       - name: Upload coverage reports
+        if: matrix.is-latest == true
         uses: actions/upload-artifact@v4
-        if: matrix.python-version == '3.12'
         with:
           name: coverage-report
           path: |
-            htmlcov/
-            coverage.xml
+            htmlcov-${{ matrix.python-version }}/
+            coverage-${{ matrix.python-version }}.xml
           retention-days: 30
+          if-no-files-found: warn
 
       - name: Upload test results
         uses: actions/upload-artifact@v4
@@ -189,16 +251,46 @@ jobs:
           name: test-results-py${{ matrix.python-version }}
           path: junit-unit-${{ matrix.python-version }}.xml
           retention-days: 7
+          if-no-files-found: ignore
+
+      - name: Comment PR with test results
+        if: github.event_name == 'pull_request' && matrix.is-latest == true && always()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const path = 'junit-unit-${{ matrix.python-version }}.xml';
+            if (fs.existsSync(path)) {
+              const xml = fs.readFileSync(path, 'utf8');
+              const tests = xml.match(/tests="(\d+)"/)?.[1] || '0';
+              const failures = xml.match(/failures="(\d+)"/)?.[1] || '0';
+              const errors = xml.match(/errors="(\d+)"/)?.[1] || '0';
+              
+              const body = `## 🧪 Test Results (Python ${{ matrix.python-version }})
+              
+              - ✅ Tests: ${tests}
+              - ❌ Failures: ${failures}
+              - ⚠️ Errors: ${errors}
+              
+              [View full results](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})`;
+              
+              github.rest.issues.createComment({
+                issue_number: context.issue.number,
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                body: body
+              });
+            }
 
   # Integration tests (run on latest Python version only, requires Docker)
   test-integration:
+    name: Integration Tests
     runs-on: ubuntu-latest
     needs: [code-quality, detect-changes]
-    # Only run integration tests on main branch or if explicitly requested via workflow_dispatch
-    # Note: To run integration tests on a PR, use workflow_dispatch or merge to main
     if: |
-      (github.ref == 'refs/heads/main' || github.event_name == 'workflow_dispatch') &&
-      (needs.detect-changes.outputs.tests == 'true' || github.event_name == 'workflow_dispatch')
+      (github.event_name == 'workflow_dispatch' && (github.event.inputs.run_integration_tests == 'true' || github.event.inputs.run_integration_tests == '')) ||
+      (github.ref == 'refs/heads/main' && needs.detect-changes.outputs.tests == 'true') ||
+      (github.event_name == 'pull_request' && needs.detect-changes.outputs.tests == 'true')
     timeout-minutes: 30
     
     steps:
@@ -208,12 +300,15 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: '3.11'
+          python-version: ${{ env.PYTHON_VERSION_DEFAULT }}
           cache: 'pip'
+          cache-dependency-path: |
+            pyproject.toml
+            setup.py
 
       - name: Install dependencies
         run: |
-          python -m pip install --upgrade pip
+          python -m pip install --upgrade pip setuptools wheel
           pip install -e ".[test,dev]"
 
       - name: Set up Docker Buildx
@@ -221,22 +316,29 @@ jobs:
 
       - name: Verify Docker is available
         run: |
-          docker --version || echo "Docker not found in PATH, checking /usr/bin/docker"
-          /usr/bin/docker --version || echo "Docker not available"
-          docker info || echo "Docker daemon not running"
+          docker --version
+          docker info
 
       - name: Run integration tests
         env:
           SKIP_DOCKER_CHECK: 1
         run: |
-          # Use pytest directly to avoid Makefile Docker check issues
-          pytest tests/integration -v -m integration
+          echo "::group::Integration Tests"
+          pytest tests/integration -v -m integration \
+            --junit-xml=junit-integration.xml \
+            --maxfail=3 \
+            --tb=short
+          echo "::endgroup::"
 
       - name: Integration Test Summary
         if: always()
         run: |
           echo "## Integration Test Results" >> $GITHUB_STEP_SUMMARY
-          echo "✅ Integration tests completed" >> $GITHUB_STEP_SUMMARY
+          if [ -f junit-integration.xml ]; then
+            echo "✅ Integration tests completed" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "⚠️ Integration test results file not found" >> $GITHUB_STEP_SUMMARY
+          fi
 
       - name: Upload integration test results
         uses: actions/upload-artifact@v4
@@ -244,19 +346,21 @@ jobs:
         with:
           name: integration-test-results
           path: |
+            junit-integration.xml
             .pytest_cache/
           retention-days: 7
+          if-no-files-found: ignore
 
   # Publish job (only runs on release or manual dispatch)
   publish:
+    name: Publish to PyPI
     needs: [code-quality, test-unit]
     runs-on: ubuntu-latest
-    # Trigger on: release published, workflow_dispatch, or git tag push
     if: |
+      (github.event_name == 'workflow_dispatch' && github.event.inputs.publish_to_pypi == 'true') ||
       (github.event_name == 'release' && github.event.action == 'published') ||
-      github.event_name == 'workflow_dispatch' ||
       (github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v'))
-    timeout-minutes: 10
+    timeout-minutes: 15
     permissions:
       contents: read
       id-token: write
@@ -265,83 +369,67 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0  # Full history for version detection
+          fetch-depth: 0
 
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: '3.11'
+          python-version: ${{ env.PYTHON_VERSION_DEFAULT }}
           cache: 'pip'
+          cache-dependency-path: |
+            pyproject.toml
+            setup.py
 
       - name: Install build tools
         run: |
-          python -m pip install --upgrade pip
+          python -m pip install --upgrade pip setuptools wheel
           pip install build twine
 
+      - name: Verify PyPI token from GitHub secrets
+        run: |
+          if [ -z "${{ secrets.PYPI_API_TOKEN }}" ]; then
+            echo "::error::PYPI_API_TOKEN secret is not configured in GitHub repository secrets"
+            echo ""
+            echo "To configure:"
+            echo "1. Go to: Settings → Secrets and variables → Actions"
+            echo "2. Click 'New repository secret'"
+            echo "3. Name: PYPI_API_TOKEN"
+            echo "4. Value: Your PyPI API token from https://pypi.org/manage/account/token/"
+            echo "5. Click 'Add secret'"
+            exit 1
+          fi
+          echo "✅ PyPI token is configured from GitHub repository secrets"
+
       - name: Build package
-        run: python -m build
+        run: |
+          echo "::group::Building Package"
+          python -m build
+          echo "::endgroup::"
 
       - name: Check package
-        run: python -m twine check dist/*
+        run: |
+          echo "::group::Package Validation"
+          python -m twine check dist/*
+          echo "::endgroup::"
 
       - name: Show package info
         run: |
-          echo "📦 Built packages:"
-          ls -lh dist/
-          echo ""
-          echo "Package version:"
-          grep "^version" pyproject.toml setup.py || echo "Version not found"
+          echo "## 📦 Package Information" >> $GITHUB_STEP_SUMMARY
+          echo "**Built packages:**" >> $GITHUB_STEP_SUMMARY
+          ls -lh dist/ | sed 's/^/  - /' >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Package version:**" >> $GITHUB_STEP_SUMMARY
+          grep "^version" pyproject.toml setup.py | head -1 >> $GITHUB_STEP_SUMMARY
 
-      - name: Publish to PyPI
+      - name: Publish to PyPI using GitHub secret
         env:
           TWINE_USERNAME: __token__
           TWINE_PASSWORD: ${{ secrets.PYPI_API_TOKEN }}
         run: |
-          echo "🚀 Publishing to PyPI..."
-          echo ""
-          echo "Package files to upload:"
-          ls -lh dist/
-          echo ""
-          echo "Package version:"
-          grep "^version" pyproject.toml setup.py || echo "Version not found"
-          echo ""
-          echo "Uploading with twine (verbose mode)..."
-          echo ""
-          if ! python -m twine upload dist/* --verbose; then
-            echo ""
-            echo "=========================================="
-            echo "❌ PyPI Upload Failed!"
-            echo "=========================================="
-            echo ""
-            echo "Common issues and fixes:"
-            echo ""
-            echo "1. Invalid/Expired Token:"
-            echo "   - Check token at: https://pypi.org/manage/account/token/"
-            echo "   - Generate new token if needed"
-            echo "   - Update secret: Settings → Secrets → PYPI_API_TOKEN"
-            echo ""
-            echo "2. Token Permissions:"
-            echo "   - Token must have 'Upload packages' scope"
-            echo "   - Check token permissions at PyPI"
-            echo ""
-            echo "3. Version Already Exists:"
-            echo "   - Current version: $(grep '^version' pyproject.toml | cut -d'"' -f2 || echo 'unknown')"
-            echo "   - Bump version in pyproject.toml and setup.py"
-            echo "   - Check existing versions: https://pypi.org/project/mdb-engine/"
-            echo ""
-            echo "4. Package Name Conflict:"
-            echo "   - Check if package exists: https://pypi.org/project/mdb-engine/"
-            echo "   - If taken, update name in pyproject.toml and setup.py"
-            echo ""
-            echo "5. Network/API Issues:"
-            echo "   - Check PyPI status: https://status.python.org/"
-            echo "   - Try again in a few minutes"
-            echo ""
-            echo "Check the error output above for specific details."
-            exit 1
-          fi
-          echo ""
-          echo "✅ Upload successful!"
+          echo "::group::Publishing to PyPI"
+          echo "Using PyPI API token from GitHub repository secrets (PYPI_API_TOKEN)"
+          python -m twine upload dist/* --verbose --non-interactive
+          echo "::endgroup::"
 
       - name: Publish Summary
         if: success()
@@ -349,8 +437,8 @@ jobs:
           echo "## 📦 Package Published Successfully" >> $GITHUB_STEP_SUMMARY
           echo "✅ Package built and published to PyPI" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "Install with: \`pip install mdb-engine\`" >> $GITHUB_STEP_SUMMARY
-          echo "View on PyPI: https://pypi.org/project/mdb-engine/" >> $GITHUB_STEP_SUMMARY
+          echo "**Install with:** \`pip install mdb-engine\`" >> $GITHUB_STEP_SUMMARY
+          echo "**View on PyPI:** https://pypi.org/project/mdb-engine/" >> $GITHUB_STEP_SUMMARY
 
       - name: Publish Error Summary
         if: failure()
@@ -358,7 +446,11 @@ jobs:
           echo "## ❌ PyPI Publish Failed" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "**Common issues:**" >> $GITHUB_STEP_SUMMARY
-          echo "1. Missing PYPI_API_TOKEN secret (check Settings → Secrets)" >> $GITHUB_STEP_SUMMARY
-          echo "2. Invalid PyPI token (get new token from https://pypi.org/manage/account/token/)" >> $GITHUB_STEP_SUMMARY
-          echo "3. Version already exists on PyPI (bump version in pyproject.toml and setup.py)" >> $GITHUB_STEP_SUMMARY
-          echo "4. Package name conflict (check https://pypi.org/project/mdb-engine/)" >> $GITHUB_STEP_SUMMARY
+          echo "1. **Missing PYPI_API_TOKEN secret**: Configure in Settings → Secrets → Actions" >> $GITHUB_STEP_SUMMARY
+          echo "2. **Invalid token**: Get a new token from https://pypi.org/manage/account/token/" >> $GITHUB_STEP_SUMMARY
+          echo "3. **Version already exists**: Bump version in pyproject.toml and setup.py" >> $GITHUB_STEP_SUMMARY
+          echo "4. **Package name conflict**: Check https://pypi.org/project/mdb-engine/" >> $GITHUB_STEP_SUMMARY
+          echo "5. **Network/API issues**: Check PyPI status at https://status.python.org/" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Note**: The workflow uses the \`PYPI_API_TOKEN\` secret from GitHub repository secrets." >> $GITHUB_STEP_SUMMARY
+          echo "Check the logs above for specific error details." >> $GITHUB_STEP_SUMMARY

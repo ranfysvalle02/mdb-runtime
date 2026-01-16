@@ -108,6 +108,21 @@ lint-local: _check-tools
 	@$(MAKE) _lint-semgrep
 	@echo "✅ All linting checks passed!"
 
+# Code quality - Fast mode (only changed files, for git hooks)
+lint-fast:
+	@echo "Fast linting (changed files only)..."
+	@if command -v git >/dev/null 2>&1; then \
+		CHANGED=$$(git diff --name-only --diff-filter=ACM HEAD | grep -E '\.(py)$$' || true); \
+		if [ -n "$$CHANGED" ]; then \
+			echo "$$CHANGED" | xargs -r ruff check; \
+			echo "$$CHANGED" | xargs -r ruff format --check || (echo "❌ Formatting issues found. Run 'make format'"; exit 1); \
+		else \
+			echo "No Python files changed"; \
+		fi \
+	else \
+		$(MAKE) lint-local; \
+	fi
+
 # Code quality - CI context (no formatting, assumes pre-push handled it)
 lint-ci: _check-tools
 	@echo "Checking code quality (CI mode)..."
