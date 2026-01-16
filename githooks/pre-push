@@ -2,6 +2,14 @@
 
 # Pre-push hook to ensure code is formatted and linted before pushing
 # This hook runs `make format` and `make lint` before allowing a push
+#
+# To skip this hook (not recommended): SKIP_HOOKS=1 git push
+
+# Allow skipping hooks with environment variable
+if [ "$SKIP_HOOKS" = "1" ]; then
+    echo "⚠️  Skipping pre-push checks (SKIP_HOOKS=1)"
+    exit 0
+fi
 
 echo "🔍 Running pre-push checks..."
 
@@ -9,10 +17,20 @@ echo "🔍 Running pre-push checks..."
 PROJECT_ROOT="$(git rev-parse --show-toplevel)"
 cd "$PROJECT_ROOT" || exit 1
 
-# Run make format first
+# Check if required tools are available
+if ! command -v ruff >/dev/null 2>&1; then
+    echo "⚠️  Warning: ruff not found. Installing dev dependencies..."
+    if ! pip install -e ".[dev]" >/dev/null 2>&1; then
+        echo "❌ Error: Failed to install dev dependencies. Please run: pip install -e '.[dev]'"
+        exit 1
+    fi
+fi
+
+# Run make format first (auto-fixes issues)
 echo "📝 Formatting code with 'make format'..."
-if ! make format; then
+if ! make format >/dev/null 2>&1; then
     echo "❌ Error: 'make format' failed. Please fix formatting issues and try again."
+    echo "   Run 'make format' manually to see detailed errors."
     exit 1
 fi
 
@@ -20,17 +38,34 @@ fi
 if [ -n "$(git diff --name-only)" ]; then
     echo "⚠️  Warning: 'make format' modified some files. Please review and commit the changes before pushing."
     echo "Modified files:"
-    git diff --name-only
+    git diff --name-only | sed 's/^/   - /'
     echo ""
     echo "You can review changes with: git diff"
     echo "To commit the formatting changes: git add . && git commit -m 'Format code'"
     exit 1
 fi
 
-# Run make lint
-echo "🔍 Running linter with 'make lint'..."
-if ! make lint; then
+# Run ruff check directly for faster feedback (before full make lint)
+echo "🔍 Running ruff linter..."
+SOURCE_DIRS="mdb_engine tests scripts"
+if ! ruff check $SOURCE_DIRS 2>&1; then
+    echo ""
+    echo "❌ Error: Ruff linting failed. Please fix the errors above and try again."
+    echo "   Tip: Run 'make fix' to auto-fix some issues, or 'make lint' for full checks."
+    exit 1
+fi
+
+# Run ruff format check
+if ! ruff format --check $SOURCE_DIRS >/dev/null 2>&1; then
+    echo "❌ Error: Code formatting check failed. Run 'make format' to fix."
+    exit 1
+fi
+
+# Run full make lint for comprehensive checks (including semgrep)
+echo "🔍 Running full lint checks (including semgrep)..."
+if ! make lint >/dev/null 2>&1; then
     echo "❌ Error: 'make lint' failed. Please fix linting issues and try again."
+    echo "   Run 'make lint' manually to see detailed errors."
     exit 1
 fi
 

@@ -33,6 +33,7 @@ jobs:
       - name: Run linting
         run: |
           make lint
+        continue-on-error: false
 
       - name: Run unit tests
         run: |

@@ -96,7 +96,13 @@ format: fix
 lint: _check-tools
 	@echo "Checking code quality..."
 	@ruff check $(SOURCE_DIRS)
-	@ruff format --check $(SOURCE_DIRS)
+	@echo "Checking code formatting..."
+	@if ! ruff format --check $(SOURCE_DIRS); then \
+		echo ""; \
+		echo "❌ Formatting check failed. Run 'make format' to auto-fix formatting issues."; \
+		echo "   Or run: ruff format $(SOURCE_DIRS)"; \
+		exit 1; \
+	fi
 	@$(MAKE) _lint-semgrep
 	@echo "✅ All linting checks passed!"
 

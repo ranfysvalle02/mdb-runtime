@@ -16,9 +16,41 @@ Run the install script to copy these hooks to `.git/hooks/`:
 
 Runs before pushing to GitHub. Ensures:
 - Code is formatted (`make format`)
-- Code passes linting checks (`make lint`)
+- Code passes linting checks (`ruff check` + `make lint`)
 
-If either check fails, the push is blocked.
+If any check fails, the push is blocked.
+
+**What it does:**
+1. Auto-formats code with `make format`
+2. Checks if formatting changed files (requires commit)
+3. Runs `ruff check` for fast linting feedback
+4. Runs `ruff format --check` for formatting validation
+5. Runs full `make lint` (including semgrep) for comprehensive checks
+
+**Skip the hook (not recommended):**
+```bash
+SKIP_HOOKS=1 git push
+```
+
+**Common issues:**
+
+- **"ruff not found"**: The hook will try to install dev dependencies automatically, or run:
+  ```bash
+  pip install -e ".[dev]"
+  ```
+
+- **"Formatting modified files"**: The hook auto-formatted your code. Review and commit:
+  ```bash
+  git diff                    # Review changes
+  git add .                   # Stage formatting changes
+  git commit -m "Format code"  # Commit them
+  ```
+
+- **"Linting failed"**: Fix the errors shown, or run:
+  ```bash
+  make fix    # Auto-fix issues
+  make lint   # See all errors
+  ```
 
 ## Adding New Hooks
 
