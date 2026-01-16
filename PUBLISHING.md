@@ -18,9 +18,9 @@ This guide shows you the **least effort** way to publish `mdb-engine` to PyPI.
 
 2. **Update package metadata** (if not done):
    - Edit `setup.py` and `pyproject.toml`:
-     - Replace `"Your Name"` with your name
-     - Replace `"your.email@example.com"` with your email
-     - GitHub repo URL is already set to: `https://github.com/ranfysvalle02/mdb-engine`
+     - Author: Fabian Valle
+     - Email: oblivio.company@gmail.com
+     - GitHub repo URL: `https://github.com/ranfysvalle02/mdb-engine`
 
 ### Publishing
 
@@ -74,7 +74,7 @@ Before publishing, update the version in **both** files:
 ## Checklist Before Publishing
 
 - [ ] Version updated in `setup.py` and `pyproject.toml`
-- [ ] Author/email/URL updated (if not done)
+- [ ] Author/email/URL verified (currently: Fabian Valle, oblivio.company@gmail.com)
 - [ ] Tests pass: `make test`
 - [ ] Linting passes: `make lint`
 - [ ] Build succeeds: `make build`

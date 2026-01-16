@@ -4,13 +4,13 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "mdb-engine"
-version = "0.2.1"
+version = "0.2.2"
 description = "MongoDB Engine"
 readme = "README.md"
 requires-python = ">=3.8"
 license = {text = "AGPL-3.0"}
 authors = [
-    {name = "Your Name", email = "your.email@example.com"}
+    {name = "Fabian Valle", email = "oblivio.company@gmail.com"}
 ]
 keywords = ["mongodb", "runtime", "engine", "database", "scoping"]
 classifiers = [
