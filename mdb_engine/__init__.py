@@ -78,7 +78,7 @@ from .indexes import (
 # Repository pattern
 from .repositories import Entity, MongoRepository, Repository, UnitOfWork
 
-__version__ = "0.2.0"  # Major version bump for new DI system
+__version__ = "0.2.1"  # Major version bump for new DI system
 
 __all__ = [
     # Core Engine
