@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "mdb-engine"
-version = "0.2.2"
+version = "0.2.3"
 description = "MongoDB Engine"
 readme = "README.md"
 requires-python = ">=3.8"
@@ -55,10 +55,13 @@ test = [
     "pytest-cov>=4.1.0",
     "pytest-mock>=3.11.0",
     "pytest-timeout>=2.1.0",
+    "pytest-xdist>=3.3.0",  # Parallel test execution
     "testcontainers>=3.7.0",
 ]
 dev = [
-    "ruff>=0.4.0",
+    # Pin ruff version to prevent local/CI drift
+    # Version policy: Use >=0.4.0,<0.6.0 to allow patch/minor updates but prevent major breaking changes
+    "ruff>=0.4.0,<0.6.0",
     "semgrep>=1.50.0",
 ]
 all = [

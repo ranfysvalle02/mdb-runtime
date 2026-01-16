@@ -9,7 +9,7 @@ UNIT_TEST_DIR := tests/unit
 INTEGRATION_TEST_DIR := tests/integration
 COV_ARGS := --cov=mdb_engine/core --cov=mdb_engine/database --cov-fail-under=$(COV_FAIL_UNDER)
 
-.PHONY: help install install-dev test test-unit test-integration test-coverage test-coverage-html lint fix format clean clean-pyc clean-cache check _check-tools _lint-exceptions build build-check publish
+.PHONY: help install install-dev test test-unit test-integration test-coverage test-coverage-html lint-local lint-ci fix format clean clean-pyc clean-cache check _check-tools _lint-exceptions build build-check publish
 
 # Default target
 help:
@@ -23,7 +23,8 @@ help:
 	@echo "  make test-coverage    - Run tests with coverage report (terminal)"
 	@echo "  make test-coverage-html - Run tests with HTML coverage report"
 	@echo "  make fix              - Auto-fix all linting issues (format + lint fixes)"
-	@echo "  make lint             - Check for linting issues (strict, fails on errors)"
+	@echo "  make lint-local       - Check code quality + formatting (for local dev/pre-push)"
+	@echo "  make lint-ci          - Check code quality only, no formatting (for CI)"
 	@echo "  make format           - Alias for 'make fix'"
 	@echo "  make check            - Run fix + lint + unit tests (quick quality check)"
 	@echo "  make clean            - Remove build artifacts and caches"
@@ -92,8 +93,8 @@ fix: _check-tools
 # Alias for backwards compatibility
 format: fix
 
-# Code quality - Check only (strict)
-lint: _check-tools
+# Code quality - Local context (includes formatting)
+lint-local: _check-tools
 	@echo "Checking code quality..."
 	@ruff check $(SOURCE_DIRS)
 	@echo "Checking code formatting..."
@@ -106,6 +107,13 @@ lint: _check-tools
 	@$(MAKE) _lint-semgrep
 	@echo "✅ All linting checks passed!"
 
+# Code quality - CI context (no formatting, assumes pre-push handled it)
+lint-ci: _check-tools
+	@echo "Checking code quality (CI mode)..."
+	@ruff check $(SOURCE_DIRS)
+	@$(MAKE) _lint-semgrep
+	@echo "✅ Code quality checks passed!"
+
 # Cleanup
 clean: clean-pyc clean-cache
 	rm -rf build/ dist/ *.egg-info htmlcov/ .coverage
@@ -117,8 +125,8 @@ clean-pyc:
 clean-cache:
 	rm -rf .pytest_cache/ .mypy_cache/ .ruff_cache/
 
-# Quick quality check (fix + lint + unit tests)
-check: fix lint test-unit
+# Quick quality check (fix + lint-local + unit tests)
+check: fix lint-local test-unit
 	@echo ""
 	@echo "✅ Quality check complete: linting and unit tests passed!"
 
