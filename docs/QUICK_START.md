@@ -566,4 +566,5 @@ mdb_engine/
 ## Next Steps
 
 - See main [README.md](../README.md) for detailed documentation
+- Deep dive into [manifest.json nuances and incremental adoption](MANIFEST_DEEP_DIVE.md) - Learn how mdb-engine works "with you" rather than requiring everything
 - Check [tests/README.md](../tests/README.md) for testing information

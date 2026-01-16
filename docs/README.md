@@ -6,6 +6,7 @@ Welcome to the MDB Engine documentation. This directory contains comprehensive d
 
 ### Getting Started
 - **[Quick Start Guide](QUICK_START.md)** - Get up and running quickly
+- **[Manifest Deep Dive](MANIFEST_DEEP_DIVE.md)** - Deep analysis of manifest.json, its convenience, and incremental adoption
 - **[Best Practices](BEST_PRACTICES.md)** - Dependency injection, patterns, and clean code
 - **[Setup Guide](../SETUP.md)** - Development environment setup
 
