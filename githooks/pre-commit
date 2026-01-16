@@ -1,0 +1,53 @@
+#!/bin/sh
+
+# Pre-commit hook to auto-format and lint code before committing
+# This hook runs `make format` and `make lint-local` before allowing a commit
+#
+# To skip this hook (not recommended): SKIP_HOOKS=1 git commit
+
+# Allow skipping hooks with environment variable
+if [ "$SKIP_HOOKS" = "1" ]; then
+    echo "⚠️  Skipping pre-commit checks (SKIP_HOOKS=1)"
+    exit 0
+fi
+
+echo "🔍 Running pre-commit checks..."
+
+# Get the directory where the hook is located (project root)
+PROJECT_ROOT="$(git rev-parse --show-toplevel)"
+cd "$PROJECT_ROOT" || exit 1
+
+# Check if required tools are available
+if ! command -v ruff >/dev/null 2>&1; then
+    echo "⚠️  Warning: ruff not found. Installing dev dependencies..."
+    if ! pip install -e ".[dev]" >/dev/null 2>&1; then
+        echo "❌ Error: Failed to install dev dependencies. Please run: pip install -e '.[dev]'"
+        exit 1
+    fi
+fi
+
+# Auto-format code (fixes formatting issues automatically)
+echo "📝 Auto-formatting code with 'make format'..."
+if ! make format >/dev/null 2>&1; then
+    echo "❌ Error: 'make format' failed. Please fix formatting issues and try again."
+    echo "   Run 'make format' manually to see detailed errors."
+    exit 1
+fi
+
+# Stage any formatting changes (so they're included in the commit)
+if [ -n "$(git diff --name-only)" ]; then
+    echo "📝 Staging auto-formatted files..."
+    git add $(git diff --name-only)
+    echo "✅ Formatted files staged for commit"
+fi
+
+# Run linting (will fail if there are issues)
+echo "🔍 Running lint checks..."
+if ! make lint-local 2>&1; then
+    echo "❌ Error: Linting failed. Please fix linting issues and try again."
+    echo "   Run 'make lint-local' manually to see detailed errors."
+    exit 1
+fi
+
+echo "✅ All pre-commit checks passed!"
+exit 0

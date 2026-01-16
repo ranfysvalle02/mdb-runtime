@@ -8,7 +8,7 @@ This allows domain services to work with any data store implementation.
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from datetime import datetime
-from typing import Any, Dict, Generic, List, Optional, TypeVar
+from typing import Any, Generic, TypeVar
 
 from bson import ObjectId
 
@@ -28,11 +28,11 @@ class Entity:
             role: str = "user"
     """
 
-    id: Optional[str] = None
-    created_at: Optional[datetime] = field(default=None)
-    updated_at: Optional[datetime] = field(default=None)
+    id: str | None = None
+    created_at: datetime | None = field(default=None)
+    updated_at: datetime | None = field(default=None)
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert entity to dictionary for storage."""
         data = {}
         for key, value in self.__dict__.items():
@@ -48,7 +48,7 @@ class Entity:
         return data
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "Entity":
+    def from_dict(cls, data: dict[str, Any]) -> "Entity":
         """Create entity from dictionary (e.g., from database)."""
         if data is None:
             return None
@@ -88,7 +88,7 @@ class Repository(ABC, Generic[T]):
     """
 
     @abstractmethod
-    async def get(self, id: str) -> Optional[T]:
+    async def get(self, id: str) -> T | None:
         """
         Get a single entity by ID.
 
@@ -103,11 +103,11 @@ class Repository(ABC, Generic[T]):
     @abstractmethod
     async def find(
         self,
-        filter: Optional[Dict[str, Any]] = None,
+        filter: dict[str, Any] | None = None,
         skip: int = 0,
         limit: int = 100,
-        sort: Optional[List[tuple]] = None,
-    ) -> List[T]:
+        sort: list[tuple] | None = None,
+    ) -> list[T]:
         """
         Find entities matching a filter.
 
@@ -125,8 +125,8 @@ class Repository(ABC, Generic[T]):
     @abstractmethod
     async def find_one(
         self,
-        filter: Dict[str, Any],
-    ) -> Optional[T]:
+        filter: dict[str, Any],
+    ) -> T | None:
         """
         Find a single entity matching a filter.
 
@@ -152,7 +152,7 @@ class Repository(ABC, Generic[T]):
         pass
 
     @abstractmethod
-    async def add_many(self, entities: List[T]) -> List[str]:
+    async def add_many(self, entities: list[T]) -> list[str]:
         """
         Add multiple entities.
 
@@ -179,7 +179,7 @@ class Repository(ABC, Generic[T]):
         pass
 
     @abstractmethod
-    async def update_fields(self, id: str, fields: Dict[str, Any]) -> bool:
+    async def update_fields(self, id: str, fields: dict[str, Any]) -> bool:
         """
         Update specific fields of an entity.
 
@@ -206,7 +206,7 @@ class Repository(ABC, Generic[T]):
         pass
 
     @abstractmethod
-    async def count(self, filter: Optional[Dict[str, Any]] = None) -> int:
+    async def count(self, filter: dict[str, Any] | None = None) -> int:
         """
         Count entities matching a filter.
 
@@ -242,10 +242,10 @@ class InMemoryRepository(Repository[T]):
 
     def __init__(self, entity_class: type):
         self._entity_class = entity_class
-        self._storage: Dict[str, Dict[str, Any]] = {}
+        self._storage: dict[str, dict[str, Any]] = {}
         self._counter = 0
 
-    async def get(self, id: str) -> Optional[T]:
+    async def get(self, id: str) -> T | None:
         data = self._storage.get(id)
         if data is None:
             return None
@@ -253,11 +253,11 @@ class InMemoryRepository(Repository[T]):
 
     async def find(
         self,
-        filter: Optional[Dict[str, Any]] = None,
+        filter: dict[str, Any] | None = None,
         skip: int = 0,
         limit: int = 100,
-        sort: Optional[List[tuple]] = None,
-    ) -> List[T]:
+        sort: list[tuple] | None = None,
+    ) -> list[T]:
         results = []
         for data in self._storage.values():
             if filter is None or self._matches_filter(data, filter):
@@ -266,7 +266,7 @@ class InMemoryRepository(Repository[T]):
         # Apply skip and limit
         return results[skip : skip + limit]
 
-    async def find_one(self, filter: Dict[str, Any]) -> Optional[T]:
+    async def find_one(self, filter: dict[str, Any]) -> T | None:
         results = await self.find(filter, limit=1)
         return results[0] if results else None
 
@@ -278,7 +278,7 @@ class InMemoryRepository(Repository[T]):
         self._storage[id] = entity.to_dict()
         return id
 
-    async def add_many(self, entities: List[T]) -> List[str]:
+    async def add_many(self, entities: list[T]) -> list[str]:
         return [await self.add(e) for e in entities]
 
     async def update(self, id: str, entity: T) -> bool:
@@ -289,7 +289,7 @@ class InMemoryRepository(Repository[T]):
         self._storage[id] = entity.to_dict()
         return True
 
-    async def update_fields(self, id: str, fields: Dict[str, Any]) -> bool:
+    async def update_fields(self, id: str, fields: dict[str, Any]) -> bool:
         if id not in self._storage:
             return False
         self._storage[id].update(fields)
@@ -302,7 +302,7 @@ class InMemoryRepository(Repository[T]):
         del self._storage[id]
         return True
 
-    async def count(self, filter: Optional[Dict[str, Any]] = None) -> int:
+    async def count(self, filter: dict[str, Any] | None = None) -> int:
         if filter is None:
             return len(self._storage)
         return len(await self.find(filter, limit=999999))
@@ -310,7 +310,7 @@ class InMemoryRepository(Repository[T]):
     async def exists(self, id: str) -> bool:
         return id in self._storage
 
-    def _matches_filter(self, data: Dict[str, Any], filter: Dict[str, Any]) -> bool:
+    def _matches_filter(self, data: dict[str, Any], filter: dict[str, Any]) -> bool:
         """Simple filter matching for testing."""
         for key, value in filter.items():
             if key not in data:

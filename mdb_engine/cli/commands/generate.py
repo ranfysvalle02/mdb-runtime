@@ -17,7 +17,7 @@ This module is part of MDB_ENGINE - MongoDB Engine.
 
 import json
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 import click
 
@@ -210,7 +210,7 @@ class AppGenerator:
         output_dir: Path = Path("."),
         multi_site: bool = False,
         enable_ray: bool = False,
-        read_scopes: Optional[List[str]] = None,
+        read_scopes: list[str] | None = None,
     ) -> Path:
         """
         Generate a new app with proper structure.
@@ -283,10 +283,10 @@ class AppGenerator:
         description: str,
         multi_site: bool,
         enable_ray: bool,
-        read_scopes: List[str],
-    ) -> Dict[str, Any]:
+        read_scopes: list[str],
+    ) -> dict[str, Any]:
         """Generate manifest.json content."""
-        manifest: Dict[str, Any] = {
+        manifest: dict[str, Any] = {
             "schema_version": CURRENT_SCHEMA_VERSION,
             "slug": app_slug,
             "name": app_name,
@@ -476,7 +476,7 @@ def generate_manifest(
             )
 
         # Generate template manifest
-        manifest: Dict[str, Any] = {
+        manifest: dict[str, Any] = {
             "schema_version": CURRENT_SCHEMA_VERSION,
             "slug": slug,
             "name": name,

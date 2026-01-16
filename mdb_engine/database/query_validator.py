@@ -14,7 +14,7 @@ Security Features:
 
 import logging
 import re
-from typing import Any, Dict, List, Optional, Set
+from typing import Any
 
 from ..constants import (
     DANGEROUS_OPERATORS,
@@ -46,7 +46,7 @@ class QueryValidator:
         max_pipeline_stages: int = MAX_PIPELINE_STAGES,
         max_regex_length: int = MAX_REGEX_LENGTH,
         max_regex_complexity: int = MAX_REGEX_COMPLEXITY,
-        dangerous_operators: Optional[Set[str]] = None,
+        dangerous_operators: set[str] | None = None,
     ):
         """
         Initialize the query validator.
@@ -80,7 +80,7 @@ class QueryValidator:
                 else DANGEROUS_OPERATORS
             )
 
-    def validate_filter(self, filter: Optional[Dict[str, Any]], path: str = "") -> None:
+    def validate_filter(self, filter: dict[str, Any] | None, path: str = "") -> None:
         """
         Validate a MongoDB query filter.
 
@@ -105,7 +105,7 @@ class QueryValidator:
         self._check_dangerous_operators(filter, path)
         self._check_query_depth(filter, path, depth=0)
 
-    def validate_pipeline(self, pipeline: List[Dict[str, Any]]) -> None:
+    def validate_pipeline(self, pipeline: list[dict[str, Any]]) -> None:
         """
         Validate an aggregation pipeline.
 
@@ -201,7 +201,7 @@ class QueryValidator:
                 path=path,
             ) from e
 
-    def validate_sort(self, sort: Optional[Any]) -> None:
+    def validate_sort(self, sort: Any | None) -> None:
         """
         Validate a sort specification.
 
@@ -228,7 +228,7 @@ class QueryValidator:
             )
 
     def _check_dangerous_operators(
-        self, query: Dict[str, Any], path: str = "", depth: int = 0
+        self, query: dict[str, Any], path: str = "", depth: int = 0
     ) -> None:
         """
         Recursively check for dangerous operators in a query.
@@ -287,7 +287,7 @@ class QueryValidator:
                 # Direct $regex value (less common but possible)
                 self.validate_regex(value, current_path)
 
-    def _check_query_depth(self, query: Dict[str, Any], path: str = "", depth: int = 0) -> None:
+    def _check_query_depth(self, query: dict[str, Any], path: str = "", depth: int = 0) -> None:
         """
         Check query nesting depth.
 
@@ -348,7 +348,7 @@ class QueryValidator:
 
         return complexity
 
-    def _extract_sort_fields(self, sort: Any) -> List[str]:
+    def _extract_sort_fields(self, sort: Any) -> list[str]:
         """
         Extract field names from a sort specification.
 

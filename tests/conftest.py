@@ -10,7 +10,8 @@ This module provides:
 
 import asyncio
 import os
-from typing import Any, AsyncGenerator, Dict
+from collections.abc import AsyncGenerator
+from typing import Any
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -230,7 +231,7 @@ def mock_mongo_collection() -> MagicMock:
 
 
 @pytest.fixture
-def mongodb_engine_config() -> Dict[str, Any]:
+def mongodb_engine_config() -> dict[str, Any]:
     """Provide default configuration for MongoDBEngine."""
     return {
         "mongo_uri": "mongodb://localhost:27017",
@@ -242,7 +243,7 @@ def mongodb_engine_config() -> Dict[str, Any]:
 
 @pytest.fixture
 async def mongodb_engine(
-    mock_mongo_client: MagicMock, mongodb_engine_config: Dict[str, Any]
+    mock_mongo_client: MagicMock, mongodb_engine_config: dict[str, Any]
 ) -> AsyncGenerator[MongoDBEngine, None]:
     """Create a MongoDBEngine instance with mocked MongoDB client."""
     # Patch AsyncIOMotorClient in connection module where it's actually used
@@ -255,7 +256,7 @@ async def mongodb_engine(
 
 @pytest.fixture
 async def uninitialized_mongodb_engine(
-    mongodb_engine_config: Dict[str, Any],
+    mongodb_engine_config: dict[str, Any],
 ) -> MongoDBEngine:
     """Create an uninitialized MongoDBEngine instance."""
     return MongoDBEngine(**mongodb_engine_config)
@@ -267,7 +268,7 @@ async def uninitialized_mongodb_engine(
 
 
 @pytest.fixture
-def scoped_db_config() -> Dict[str, Any]:
+def scoped_db_config() -> dict[str, Any]:
     """Provide default configuration for ScopedMongoWrapper."""
     return {
         "read_scopes": ["test_experiment"],
@@ -278,7 +279,7 @@ def scoped_db_config() -> Dict[str, Any]:
 
 @pytest.fixture
 async def scoped_db(
-    mock_mongo_database: MagicMock, scoped_db_config: Dict[str, Any]
+    mock_mongo_database: MagicMock, scoped_db_config: dict[str, Any]
 ) -> ScopedMongoWrapper:
     """Create a ScopedMongoWrapper instance with mocked database."""
     return ScopedMongoWrapper(real_db=mock_mongo_database, **scoped_db_config)
@@ -286,7 +287,7 @@ async def scoped_db(
 
 @pytest.fixture
 async def scoped_collection(
-    mock_mongo_collection: MagicMock, scoped_db_config: Dict[str, Any]
+    mock_mongo_collection: MagicMock, scoped_db_config: dict[str, Any]
 ) -> ScopedCollectionWrapper:
     """Create a ScopedCollectionWrapper instance with mocked collection."""
     return ScopedCollectionWrapper(real_collection=mock_mongo_collection, **scoped_db_config)
@@ -298,7 +299,7 @@ async def scoped_collection(
 
 
 @pytest.fixture
-def sample_manifest() -> Dict[str, Any]:
+def sample_manifest() -> dict[str, Any]:
     """Provide a sample valid manifest for testing."""
     return {
         "schema_version": "2.0",
@@ -313,7 +314,7 @@ def sample_manifest() -> Dict[str, Any]:
 
 
 @pytest.fixture
-def sample_manifest_v1() -> Dict[str, Any]:
+def sample_manifest_v1() -> dict[str, Any]:
     """Provide a sample v1.0 manifest for testing."""
     return {
         "schema_version": "1.0",
@@ -327,7 +328,7 @@ def sample_manifest_v1() -> Dict[str, Any]:
 
 
 @pytest.fixture
-def sample_manifest_with_indexes() -> Dict[str, Any]:
+def sample_manifest_with_indexes() -> dict[str, Any]:
     """Provide a sample manifest with managed indexes."""
     return {
         "schema_version": "2.0",
@@ -348,7 +349,7 @@ def sample_manifest_with_indexes() -> Dict[str, Any]:
 
 
 @pytest.fixture
-def invalid_manifest() -> Dict[str, Any]:
+def invalid_manifest() -> dict[str, Any]:
     """Provide an invalid manifest for testing validation."""
     return {
         "slug": "invalid-experiment!@#",  # Invalid characters
@@ -358,7 +359,7 @@ def invalid_manifest() -> Dict[str, Any]:
 
 
 @pytest.fixture
-def sample_websocket_config() -> Dict[str, Any]:
+def sample_websocket_config() -> dict[str, Any]:
     """Provide a sample WebSocket configuration for testing."""
     return {
         "endpoint1": {
@@ -375,7 +376,7 @@ def sample_websocket_config() -> Dict[str, Any]:
 
 
 @pytest.fixture
-def sample_observability_config() -> Dict[str, Any]:
+def sample_observability_config() -> dict[str, Any]:
     """Provide a sample observability configuration for testing."""
     return {
         "health_checks": {
@@ -421,7 +422,7 @@ def mock_memory_service() -> MagicMock:
 # ============================================================================
 
 
-def assert_experiment_id_in_document(doc: Dict[str, Any], expected_scope: str) -> None:
+def assert_experiment_id_in_document(doc: dict[str, Any], expected_scope: str) -> None:
     """Assert that a document has the correct experiment_id."""
     assert "experiment_id" in doc, "Document missing experiment_id field"
     assert (
@@ -429,7 +430,7 @@ def assert_experiment_id_in_document(doc: Dict[str, Any], expected_scope: str) -
     ), f"Expected experiment_id={expected_scope}, got {doc.get('experiment_id')}"
 
 
-def assert_filter_has_experiment_scope(filter_dict: Dict[str, Any], expected_scopes: list) -> None:
+def assert_filter_has_experiment_scope(filter_dict: dict[str, Any], expected_scopes: list) -> None:
     """Assert that a filter includes experiment_id scoping."""
     if "$and" in filter_dict:
         # Check if any $and condition has experiment_id

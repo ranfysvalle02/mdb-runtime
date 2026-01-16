@@ -12,20 +12,35 @@ Run the install script to copy these hooks to `.git/hooks/`:
 
 ## Available Hooks
 
+### pre-commit
+
+Runs before committing. Automatically formats and lints code:
+- Auto-formats code with `make format`
+- Stages formatted files automatically
+- Runs linting checks (`make lint-local`)
+
+If any check fails, the commit is blocked.
+
+**What it does:**
+1. Auto-formats code with `make format`
+2. Stages any formatting changes automatically
+3. Runs full `make lint-local` (including semgrep) for comprehensive checks
+
+**Note:** Formatted files are automatically staged, so they'll be included in your commit.
+
 ### pre-push
 
-Runs before pushing to GitHub. Ensures:
-- Code is formatted (`make format`)
-- Code passes linting checks (`ruff check` + `make lint-local`)
+Runs before pushing to GitHub. Verifies code quality (read-only checks):
+- Verifies code formatting (`ruff format --check`)
+- Verifies code quality (`make lint-ci`)
 
 If any check fails, the push is blocked.
 
 **What it does:**
-1. Auto-formats code with `make format`
-2. Checks if formatting changed files (requires commit)
-3. Runs `ruff check` for fast linting feedback
-4. Runs `ruff format --check` for formatting validation
-5. Runs full `make lint-local` (including semgrep) for comprehensive checks
+1. Verifies formatting with `ruff format --check` (no auto-fix)
+2. Verifies code quality with `make lint-ci` (no auto-fix)
+
+**Note:** Formatting and linting should be handled by the pre-commit hook. This is a final verification step.
 
 **Skip the hook (not recommended):**
 ```bash
@@ -39,17 +54,30 @@ SKIP_HOOKS=1 git push
   pip install -e ".[dev]"
   ```
 
-- **"Formatting modified files"**: The hook auto-formatted your code. Review and commit:
+- **Pre-commit: "Formatting failed"**: Run manually to see errors:
   ```bash
-  git diff                    # Review changes
-  git add .                   # Stage formatting changes
-  git commit -m "Format code"  # Commit them
+  make format
   ```
 
-- **"Linting failed"**: Fix the errors shown, or run:
+- **Pre-commit: "Linting failed"**: Fix the errors shown, or run:
   ```bash
-  make fix    # Auto-fix issues
-  make lint-local   # See all errors
+  make fix         # Auto-fix issues
+  make lint-local  # See all errors
+  ```
+
+- **Pre-push: "Formatting check failed"**: Code wasn't formatted before commit:
+  ```bash
+  make format
+  git add .
+  git commit --amend --no-edit  # Add formatting to last commit
+  ```
+
+- **Pre-push: "Code quality check failed"**: Linting issues weren't fixed before commit:
+  ```bash
+  make lint-local  # See issues
+  # Fix issues, then:
+  git add .
+  git commit --amend --no-edit
   ```
 
 ## Adding New Hooks

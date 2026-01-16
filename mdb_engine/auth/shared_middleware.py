@@ -32,7 +32,8 @@ Manual usage:
 import fnmatch
 import hashlib
 import logging
-from typing import Any, Callable, Dict, List, Optional
+from collections.abc import Callable
+from typing import Any
 
 import jwt
 from starlette.middleware.base import BaseHTTPMiddleware
@@ -49,7 +50,7 @@ AUTH_HEADER_NAME = "Authorization"
 AUTH_HEADER_PREFIX = "Bearer "
 
 
-def _get_client_ip(request: Request) -> Optional[str]:
+def _get_client_ip(request: Request) -> str | None:
     """Extract client IP address from request, handling proxies."""
     # Check X-Forwarded-For header (behind load balancer/proxy)
     forwarded_for = request.headers.get("x-forwarded-for")
@@ -99,12 +100,12 @@ class SharedAuthMiddleware(BaseHTTPMiddleware):
     def __init__(
         self,
         app: Callable,
-        user_pool: Optional[SharedUserPool],
+        user_pool: SharedUserPool | None,
         app_slug: str,
-        require_role: Optional[str] = None,
-        public_routes: Optional[List[str]] = None,
-        role_hierarchy: Optional[Dict[str, List[str]]] = None,
-        session_binding: Optional[Dict[str, Any]] = None,
+        require_role: str | None = None,
+        public_routes: list[str] | None = None,
+        role_hierarchy: dict[str, list[str]] | None = None,
+        session_binding: dict[str, Any] | None = None,
         cookie_name: str = AUTH_COOKIE_NAME,
         header_name: str = AUTH_HEADER_NAME,
         header_prefix: str = AUTH_HEADER_PREFIX,
@@ -145,7 +146,7 @@ class SharedAuthMiddleware(BaseHTTPMiddleware):
             f"session_binding={bool(self._session_binding)})"
         )
 
-    def get_user_pool(self, request: Request) -> Optional[SharedUserPool]:
+    def get_user_pool(self, request: Request) -> SharedUserPool | None:
         """Get the user pool instance. Override in subclasses for lazy loading."""
         return self._user_pool
 
@@ -219,7 +220,7 @@ class SharedAuthMiddleware(BaseHTTPMiddleware):
         self,
         request: Request,
         token: str,
-    ) -> Optional[str]:
+    ) -> str | None:
         """
         Validate session binding claims in token.
 
@@ -260,7 +261,7 @@ class SharedAuthMiddleware(BaseHTTPMiddleware):
             logger.warning(f"Error validating session binding: {e}")
             return None  # Don't reject for binding check errors
 
-    def _extract_token(self, request: Request) -> Optional[str]:
+    def _extract_token(self, request: Request) -> str | None:
         """Extract JWT token from cookie or header."""
         # Try cookie first
         token = request.cookies.get(self._cookie_name)
@@ -317,7 +318,7 @@ class SharedAuthMiddleware(BaseHTTPMiddleware):
 def create_shared_auth_middleware(
     user_pool: SharedUserPool,
     app_slug: str,
-    manifest_auth: Dict[str, Any],
+    manifest_auth: dict[str, Any],
 ) -> type:
     """
     Factory function to create SharedAuthMiddleware configured from manifest.
@@ -365,7 +366,7 @@ def create_shared_auth_middleware(
 
 def create_shared_auth_middleware_lazy(
     app_slug: str,
-    manifest_auth: Dict[str, Any],
+    manifest_auth: dict[str, Any],
 ) -> type:
     """
     Factory function to create a lazy SharedAuthMiddleware that reads user_pool from app.state.
@@ -441,7 +442,7 @@ def create_shared_auth_middleware_lazy(
             request.state.user_roles = []
 
             # Get user_pool from app.state (set during lifespan)
-            user_pool: Optional[SharedUserPool] = getattr(request.app.state, "user_pool", None)
+            user_pool: SharedUserPool | None = getattr(request.app.state, "user_pool", None)
 
             if user_pool is None:
                 # User pool not initialized yet, skip auth
@@ -498,7 +499,7 @@ def create_shared_auth_middleware_lazy(
 
             return await call_next(request)
 
-        def _extract_token(self, request: Request) -> Optional[str]:
+        def _extract_token(self, request: Request) -> str | None:
             """Extract JWT token from cookie or header."""
             # Try cookie first
             token = request.cookies.get(self._cookie_name)
@@ -555,7 +556,7 @@ def create_shared_auth_middleware_lazy(
             self,
             request: Request,
             token: str,
-        ) -> Optional[str]:
+        ) -> str | None:
             """
             Validate session binding claims in token.
 

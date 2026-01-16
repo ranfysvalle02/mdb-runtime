@@ -10,12 +10,12 @@ Defines service lifetime scopes following enterprise patterns:
 import logging
 from contextvars import ContextVar
 from enum import Enum
-from typing import Any, Dict, Optional
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
 # Context variable for request-scoped instances
-_request_scope: ContextVar[Optional[Dict[type, Any]]] = ContextVar("request_scope", default=None)
+_request_scope: ContextVar[dict[type, Any] | None] = ContextVar("request_scope", default=None)
 
 
 class Scope(Enum):
@@ -51,13 +51,13 @@ class ScopeManager:
     """
 
     @classmethod
-    def begin_request(cls) -> Dict[type, Any]:
+    def begin_request(cls) -> dict[type, Any]:
         """
         Begin a new request scope.
 
         Returns the scope dictionary for manual management if needed.
         """
-        scope_dict: Dict[type, Any] = {}
+        scope_dict: dict[type, Any] = {}
         _request_scope.set(scope_dict)
         logger.debug("Request scope started")
         return scope_dict
@@ -82,7 +82,7 @@ class ScopeManager:
         logger.debug("Request scope ended")
 
     @classmethod
-    def get_request_scope(cls) -> Optional[Dict[type, Any]]:
+    def get_request_scope(cls) -> dict[type, Any] | None:
         """Get the current request scope dictionary."""
         return _request_scope.get()
 

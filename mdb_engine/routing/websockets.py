@@ -23,9 +23,10 @@ This module is part of MDB_ENGINE - MongoDB Engine.
 import asyncio
 import json
 import logging
+from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Any, Awaitable, Callable, Dict, List, Optional, Tuple
+from typing import Any
 
 # Check if FastAPI WebSocket support is available (OPTIONAL dependency)
 try:
@@ -47,8 +48,8 @@ class WebSocketConnection:
 
     websocket: Any
     app_slug: str
-    user_id: Optional[str] = None
-    user_email: Optional[str] = None
+    user_id: str | None = None
+    user_email: str | None = None
     connected_at: datetime = None
 
     def __post_init__(self):
@@ -72,15 +73,15 @@ class WebSocketConnectionManager:
             app_slug: App slug for scoping connections (ensures isolation)
         """
         self.app_slug = app_slug
-        self.active_connections: List[WebSocketConnection] = []  # List of connection metadata
+        self.active_connections: list[WebSocketConnection] = []  # List of connection metadata
         self._lock = asyncio.Lock()
         logger.debug(f"Initialized WebSocket manager for app: {app_slug}")
 
     async def connect(
         self,
         websocket: Any,
-        user_id: Optional[str] = None,
-        user_email: Optional[str] = None,
+        user_id: str | None = None,
+        user_email: str | None = None,
     ) -> WebSocketConnection:
         """
         Accept and register a WebSocket connection with metadata.
@@ -134,7 +135,7 @@ class WebSocketConnectionManager:
 
         asyncio.create_task(_disconnect())
 
-    async def broadcast(self, message: Dict[str, Any], filter_by_user: Optional[str] = None) -> int:
+    async def broadcast(self, message: dict[str, Any], filter_by_user: str | None = None) -> int:
         """
         Broadcast a message to all connected clients for this app.
 
@@ -196,7 +197,7 @@ class WebSocketConnectionManager:
 
         return sent_count
 
-    async def send_to_connection(self, websocket: Any, message: Dict[str, Any]) -> None:
+    async def send_to_connection(self, websocket: Any, message: dict[str, Any]) -> None:
         """
         Send a message to a specific WebSocket connection.
 
@@ -232,7 +233,7 @@ class WebSocketConnectionManager:
                 logger.debug(f"Error sending message to specific WebSocket: {e}")
             self.disconnect(websocket)
 
-    def get_connections_by_user(self, user_id: str) -> List[WebSocketConnection]:
+    def get_connections_by_user(self, user_id: str) -> list[WebSocketConnection]:
         """
         Get all connections for a specific user.
 
@@ -262,12 +263,12 @@ class WebSocketConnectionManager:
 
 
 # Global registry of WebSocket managers per app (app-level isolation)
-_websocket_managers: Dict[str, WebSocketConnectionManager] = {}
+_websocket_managers: dict[str, WebSocketConnectionManager] = {}
 _manager_lock = asyncio.Lock()
 
 # Global registry of message handlers per app (for listening to client messages)
 # Note: Registration happens synchronously during app startup, so no lock needed
-_message_handlers: Dict[str, Dict[str, Callable[[Any, Dict[str, Any]], Awaitable[None]]]] = {}
+_message_handlers: dict[str, dict[str, Callable[[Any, dict[str, Any]], Awaitable[None]]]] = {}
 
 
 async def get_websocket_manager(app_slug: str) -> WebSocketConnectionManager:
@@ -308,7 +309,7 @@ def get_websocket_manager_sync(app_slug: str) -> WebSocketConnectionManager:
 
 async def authenticate_websocket(
     websocket: Any, app_slug: str, require_auth: bool = True
-) -> Tuple[Optional[str], Optional[str]]:
+) -> tuple[str | None, str | None]:
     """
     Authenticate a WebSocket connection.
 
@@ -416,7 +417,7 @@ async def authenticate_websocket(
 def register_message_handler(
     app_slug: str,
     endpoint_name: str,
-    handler: Callable[[Any, Dict[str, Any]], Awaitable[None]],
+    handler: Callable[[Any, dict[str, Any]], Awaitable[None]],
 ) -> None:
     """
     Register a message handler for a WebSocket endpoint.
@@ -453,7 +454,7 @@ def register_message_handler(
 
 def get_message_handler(
     app_slug: str, endpoint_name: str
-) -> Optional[Callable[[Any, Dict[str, Any]], Awaitable[None]]]:
+) -> Callable[[Any, dict[str, Any]], Awaitable[None]] | None:
     """
     Get a registered message handler for an endpoint.
 
@@ -528,11 +529,11 @@ async def _authenticate_websocket_connection(
 
 async def _handle_websocket_message(
     websocket: Any,
-    message: Dict[str, Any],
+    message: dict[str, Any],
     manager: Any,
     app_slug: str,
     endpoint_name: str,
-    handler: Optional[Callable],
+    handler: Callable | None,
 ) -> bool:
     """Handle incoming WebSocket message. Returns True if should continue, False if disconnect."""
     if message.get("type") == "websocket.disconnect":
@@ -569,7 +570,7 @@ def create_websocket_endpoint(
     app_slug: str,
     path: str,
     endpoint_name: str,
-    handler: Optional[Callable[[Any, Dict[str, Any]], Awaitable[None]]] = None,
+    handler: Callable[[Any, dict[str, Any]], Awaitable[None]] | None = None,
     require_auth: bool = True,
     ping_interval: int = 30,
 ) -> Callable:
@@ -741,7 +742,7 @@ def create_websocket_endpoint(
 
 
 async def broadcast_to_app(
-    app_slug: str, message: Dict[str, Any], user_id: Optional[str] = None
+    app_slug: str, message: dict[str, Any], user_id: str | None = None
 ) -> int:
     """
     Convenience function to broadcast a message to all WebSocket clients for an app.

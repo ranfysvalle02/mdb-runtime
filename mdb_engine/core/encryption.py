@@ -19,7 +19,6 @@ import base64
 import logging
 import os
 import secrets
-from typing import Tuple
 
 import cryptography.exceptions
 from cryptography.hazmat.primitives.ciphers.aead import AESGCM
@@ -121,7 +120,7 @@ class EnvelopeEncryptionService:
         """
         return secrets.token_bytes(AES_KEY_SIZE)
 
-    def encrypt_secret(self, secret: str, master_key: bytes | None = None) -> Tuple[bytes, bytes]:
+    def encrypt_secret(self, secret: str, master_key: bytes | None = None) -> tuple[bytes, bytes]:
         """
         Encrypt a secret using envelope encryption.
 

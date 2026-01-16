@@ -23,7 +23,7 @@ Usage:
 import logging
 import os
 import threading
-from typing import Any, Dict, Optional
+from typing import Any
 
 from motor.motor_asyncio import AsyncIOMotorClient
 from pymongo.errors import (
@@ -36,7 +36,7 @@ from pymongo.errors import (
 logger = logging.getLogger(__name__)
 
 # Global singleton instance
-_shared_client: Optional[AsyncIOMotorClient] = None
+_shared_client: AsyncIOMotorClient | None = None
 # Use threading.Lock for cross-thread safety in multi-threaded environments
 # asyncio.Lock isn't sufficient for thread-safe initialization
 _init_lock = threading.Lock()
@@ -44,8 +44,8 @@ _init_lock = threading.Lock()
 
 def get_shared_mongo_client(
     mongo_uri: str,
-    max_pool_size: Optional[int] = None,
-    min_pool_size: Optional[int] = None,
+    max_pool_size: int | None = None,
+    min_pool_size: int | None = None,
     server_selection_timeout_ms: int = 5000,
     max_idle_time_ms: int = 45000,
     retry_writes: bool = True,
@@ -203,8 +203,8 @@ def register_client_for_metrics(client: AsyncIOMotorClient) -> None:
 
 
 async def get_pool_metrics(
-    client: Optional[AsyncIOMotorClient] = None,
-) -> Dict[str, Any]:
+    client: AsyncIOMotorClient | None = None,
+) -> dict[str, Any]:
     """
     Gets connection pool metrics for monitoring.
     Returns information about pool size, active connections, etc.
@@ -247,7 +247,7 @@ async def get_pool_metrics(
     }
 
 
-async def _get_client_pool_metrics(client: AsyncIOMotorClient) -> Dict[str, Any]:
+async def _get_client_pool_metrics(client: AsyncIOMotorClient) -> dict[str, Any]:
     """
     Internal helper to get pool metrics from a specific client.
 

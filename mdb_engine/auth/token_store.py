@@ -8,7 +8,6 @@ This module is part of MDB_ENGINE - MongoDB Engine.
 
 import logging
 from datetime import datetime, timedelta
-from typing import Optional
 
 try:
     from pymongo.errors import (
@@ -79,9 +78,9 @@ class TokenBlacklist:
     async def revoke_token(
         self,
         jti: str,
-        user_id: Optional[str] = None,
-        expires_at: Optional[datetime] = None,
-        reason: Optional[str] = None,
+        user_id: str | None = None,
+        expires_at: datetime | None = None,
+        reason: str | None = None,
     ) -> bool:
         """
         Revoke a token by adding it to the blacklist.
@@ -161,7 +160,7 @@ class TokenBlacklist:
             # On error, assume not revoked (fail open for availability)
             return False
 
-    async def revoke_all_user_tokens(self, user_id: str, reason: Optional[str] = None) -> int:
+    async def revoke_all_user_tokens(self, user_id: str, reason: str | None = None) -> int:
         """
         Revoke all tokens for a specific user.
 

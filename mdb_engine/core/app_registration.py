@@ -10,8 +10,9 @@ This module is part of MDB_ENGINE - MongoDB Engine.
 import asyncio
 import logging
 import time
+from collections.abc import Callable
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Callable, Dict, List, Optional, Tuple
+from typing import TYPE_CHECKING, Any, Optional
 
 from jsonschema import SchemaError
 from jsonschema import ValidationError as JsonSchemaValidationError
@@ -58,11 +59,11 @@ class AppRegistrationManager:
         self._mongo_db = mongo_db
         self.manifest_validator = manifest_validator
         self.manifest_parser = manifest_parser
-        self._apps: Dict[str, Dict[str, Any]] = {}
+        self._apps: dict[str, dict[str, Any]] = {}
 
     async def validate_manifest(
         self, manifest: "ManifestDict"
-    ) -> Tuple[bool, Optional[str], Optional[List[str]]]:
+    ) -> tuple[bool, str | None, list[str] | None]:
         """
         Validate a manifest against the schema.
 
@@ -115,13 +116,12 @@ class AppRegistrationManager:
     async def register_app(
         self,
         manifest: "ManifestDict",
-        create_indexes_callback: Optional[Callable[[str, "ManifestDict"], Any]] = None,
-        seed_data_callback: Optional[Callable[[str, Dict[str, List[Dict[str, Any]]]], Any]] = None,
-        initialize_memory_callback: Optional[Callable[[str, Dict[str, Any]], Any]] = None,
-        register_websockets_callback: Optional[Callable[[str, Dict[str, Any]], Any]] = None,
-        setup_observability_callback: Optional[
-            Callable[[str, "ManifestDict", Dict[str, Any]], Any]
-        ] = None,
+        create_indexes_callback: Callable[[str, "ManifestDict"], Any] | None = None,
+        seed_data_callback: Callable[[str, dict[str, list[dict[str, Any]]]], Any] | None = None,
+        initialize_memory_callback: Callable[[str, dict[str, Any]], Any] | None = None,
+        register_websockets_callback: Callable[[str, dict[str, Any]], Any] | None = None,
+        setup_observability_callback: Callable[[str, "ManifestDict", dict[str, Any]], Any]
+        | None = None,
     ) -> bool:
         """
         Register an app from its manifest.
@@ -142,7 +142,7 @@ class AppRegistrationManager:
         """
         start_time = time.time()
 
-        slug: Optional[str] = manifest.get("slug")
+        slug: str | None = manifest.get("slug")
         if not slug:
             contextual_logger.error(
                 "Cannot register app: missing 'slug' in manifest",
@@ -359,7 +359,7 @@ class AppRegistrationManager:
         """
         return self._apps.get(slug)
 
-    def list_apps(self) -> List[str]:
+    def list_apps(self) -> list[str]:
         """
         List all registered app slugs.
 

@@ -5,7 +5,8 @@ A lightweight, FastAPI-native DI container with proper service lifetimes.
 """
 
 import logging
-from typing import Any, Callable, Dict, Optional, Type, TypeVar
+from collections.abc import Callable
+from typing import Any, Optional, TypeVar
 
 from .providers import Provider
 from .scopes import Scope
@@ -48,8 +49,8 @@ class Container:
     _global_instance: Optional["Container"] = None
 
     def __init__(self):
-        self._providers: Dict[type, Provider] = {}
-        self._instances: Dict[type, Any] = {}  # For register_instance
+        self._providers: dict[type, Provider] = {}
+        self._instances: dict[type, Any] = {}  # For register_instance
 
     @classmethod
     def get_global(cls) -> "Container":
@@ -70,8 +71,8 @@ class Container:
 
     def register(
         self,
-        service_type: Type[T],
-        implementation: Optional[Type[T]] = None,
+        service_type: type[T],
+        implementation: type[T] | None = None,
         scope: Scope = Scope.SINGLETON,
     ) -> "Container":
         """
@@ -105,7 +106,7 @@ class Container:
 
     def register_factory(
         self,
-        service_type: Type[T],
+        service_type: type[T],
         factory: Callable[["Container"], T],
         scope: Scope = Scope.SINGLETON,
     ) -> "Container":
@@ -135,7 +136,7 @@ class Container:
         logger.debug(f"Registered factory for {service_type.__name__} as {scope.value}")
         return self
 
-    def register_instance(self, service_type: Type[T], instance: T) -> "Container":
+    def register_instance(self, service_type: type[T], instance: T) -> "Container":
         """
         Register an existing instance as a singleton.
 
@@ -152,7 +153,7 @@ class Container:
         logger.debug(f"Registered instance for {service_type.__name__}")
         return self
 
-    def resolve(self, service_type: Type[T]) -> T:
+    def resolve(self, service_type: type[T]) -> T:
         """
         Resolve a service instance.
 
@@ -178,7 +179,7 @@ class Container:
 
         return self._providers[service_type].get(self)
 
-    def try_resolve(self, service_type: Type[T]) -> Optional[T]:
+    def try_resolve(self, service_type: type[T]) -> T | None:
         """
         Try to resolve a service, returning None if not registered.
 
@@ -216,7 +217,7 @@ class Container:
 
 
 # FastAPI integration helpers
-def inject(service_type: Type[T]) -> T:
+def inject(service_type: type[T]) -> T:
     """
     FastAPI dependency that resolves a service from the global container.
 

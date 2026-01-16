@@ -7,7 +7,7 @@ This provides automatic app scoping and security features.
 
 import logging
 from datetime import datetime
-from typing import Any, Dict, Generic, List, Optional, Type, TypeVar
+from typing import Any, Generic, TypeVar
 
 from bson import ObjectId
 
@@ -41,7 +41,7 @@ class MongoRepository(Repository[T], Generic[T]):
     def __init__(
         self,
         collection: Any,  # ScopedCollectionWrapper - avoid import cycle
-        entity_class: Type[T],
+        entity_class: type[T],
     ):
         """
         Initialize the MongoDB repository.
@@ -53,20 +53,20 @@ class MongoRepository(Repository[T], Generic[T]):
         self._collection = collection
         self._entity_class = entity_class
 
-    def _to_entity(self, doc: Optional[Dict[str, Any]]) -> Optional[T]:
+    def _to_entity(self, doc: dict[str, Any] | None) -> T | None:
         """Convert a MongoDB document to an entity."""
         if doc is None:
             return None
         return self._entity_class.from_dict(doc)
 
-    def _to_document(self, entity: T, include_id: bool = False) -> Dict[str, Any]:
+    def _to_document(self, entity: T, include_id: bool = False) -> dict[str, Any]:
         """Convert an entity to a MongoDB document."""
         doc = entity.to_dict()
         if not include_id and "_id" in doc:
             del doc["_id"]
         return doc
 
-    async def get(self, id: str) -> Optional[T]:
+    async def get(self, id: str) -> T | None:
         """Get entity by ID."""
         try:
             object_id = ObjectId(id) if ObjectId.is_valid(id) else id
@@ -78,11 +78,11 @@ class MongoRepository(Repository[T], Generic[T]):
 
     async def find(
         self,
-        filter: Optional[Dict[str, Any]] = None,
+        filter: dict[str, Any] | None = None,
         skip: int = 0,
         limit: int = 100,
-        sort: Optional[List[tuple]] = None,
-    ) -> List[T]:
+        sort: list[tuple] | None = None,
+    ) -> list[T]:
         """Find entities matching a filter."""
         cursor = self._collection.find(filter or {})
 
@@ -96,7 +96,7 @@ class MongoRepository(Repository[T], Generic[T]):
         docs = await cursor.to_list(length=limit)
         return [self._to_entity(doc) for doc in docs]
 
-    async def find_one(self, filter: Dict[str, Any]) -> Optional[T]:
+    async def find_one(self, filter: dict[str, Any]) -> T | None:
         """Find a single entity matching a filter."""
         doc = await self._collection.find_one(filter)
         return self._to_entity(doc)
@@ -112,7 +112,7 @@ class MongoRepository(Repository[T], Generic[T]):
         logger.debug(f"Added {self._entity_class.__name__} with id={entity.id}")
         return entity.id
 
-    async def add_many(self, entities: List[T]) -> List[str]:
+    async def add_many(self, entities: list[T]) -> list[str]:
         """Add multiple entities and return their IDs."""
         now = datetime.utcnow()
         docs = []
@@ -124,7 +124,7 @@ class MongoRepository(Repository[T], Generic[T]):
         result = await self._collection.insert_many(docs)
         ids = [str(id) for id in result.inserted_ids]
 
-        for entity, id in zip(entities, ids):
+        for entity, id in zip(entities, ids, strict=False):
             entity.id = id
 
         logger.debug(f"Added {len(ids)} {self._entity_class.__name__} entities")
@@ -144,7 +144,7 @@ class MongoRepository(Repository[T], Generic[T]):
 
         return result.modified_count > 0
 
-    async def update_fields(self, id: str, fields: Dict[str, Any]) -> bool:
+    async def update_fields(self, id: str, fields: dict[str, Any]) -> bool:
         """Update specific fields of an entity."""
         try:
             object_id = ObjectId(id) if ObjectId.is_valid(id) else id
@@ -167,7 +167,7 @@ class MongoRepository(Repository[T], Generic[T]):
         result = await self._collection.delete_one({"_id": object_id})
         return result.deleted_count > 0
 
-    async def count(self, filter: Optional[Dict[str, Any]] = None) -> int:
+    async def count(self, filter: dict[str, Any] | None = None) -> int:
         """Count entities matching a filter."""
         return await self._collection.count_documents(filter or {})
 
@@ -183,7 +183,7 @@ class MongoRepository(Repository[T], Generic[T]):
 
     # Additional MongoDB-specific methods
 
-    async def aggregate(self, pipeline: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    async def aggregate(self, pipeline: list[dict[str, Any]]) -> list[dict[str, Any]]:
         """
         Run an aggregation pipeline.
 
@@ -198,8 +198,8 @@ class MongoRepository(Repository[T], Generic[T]):
 
     async def update_many(
         self,
-        filter: Dict[str, Any],
-        update: Dict[str, Any],
+        filter: dict[str, Any],
+        update: dict[str, Any],
     ) -> int:
         """
         Update multiple documents matching a filter.
@@ -219,7 +219,7 @@ class MongoRepository(Repository[T], Generic[T]):
         result = await self._collection.update_many(filter, update)
         return result.modified_count
 
-    async def delete_many(self, filter: Dict[str, Any]) -> int:
+    async def delete_many(self, filter: dict[str, Any]) -> int:
         """
         Delete multiple documents matching a filter.
 

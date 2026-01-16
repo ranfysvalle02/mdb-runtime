@@ -6,7 +6,7 @@ The UnitOfWork acts as a factory for repositories and manages their lifecycle.
 """
 
 import logging
-from typing import Any, Dict, Generic, Optional, Type, TypeVar
+from typing import Any, Generic, TypeVar
 
 from .base import Entity, Repository
 from .mongo import MongoRepository
@@ -49,7 +49,7 @@ class UnitOfWork:
     def __init__(
         self,
         db: Any,  # ScopedMongoWrapper - avoid import cycle
-        entity_registry: Optional[Dict[str, Type[Entity]]] = None,
+        entity_registry: dict[str, type[Entity]] | None = None,
     ):
         """
         Initialize the Unit of Work.
@@ -59,10 +59,10 @@ class UnitOfWork:
             entity_registry: Optional mapping of collection names to entity classes
         """
         self._db = db
-        self._repositories: Dict[str, Repository] = {}
-        self._entity_registry: Dict[str, Type[Entity]] = entity_registry or {}
+        self._repositories: dict[str, Repository] = {}
+        self._entity_registry: dict[str, type[Entity]] = entity_registry or {}
 
-    def register_entity(self, collection_name: str, entity_class: Type[Entity]) -> None:
+    def register_entity(self, collection_name: str, entity_class: type[Entity]) -> None:
         """
         Register an entity class for a collection.
 
@@ -77,7 +77,7 @@ class UnitOfWork:
     def repository(
         self,
         name: str,
-        entity_class: Optional[Type[T]] = None,
+        entity_class: type[T] | None = None,
     ) -> Repository[T]:
         """
         Get or create a repository for a collection.

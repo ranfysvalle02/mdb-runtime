@@ -1,7 +1,8 @@
 #!/bin/sh
 
-# Pre-push hook to ensure code is formatted and linted before pushing
-# This hook runs `make format` and `make lint-local` before allowing a push
+# Pre-push hook to verify code quality before pushing
+# This hook verifies that code is properly formatted and linted
+# Note: Formatting and linting should be handled by pre-commit hook
 #
 # To skip this hook (not recommended): SKIP_HOOKS=1 git push
 
@@ -11,7 +12,7 @@ if [ "$SKIP_HOOKS" = "1" ]; then
     exit 0
 fi
 
-echo "🔍 Running pre-push checks..."
+echo "🔍 Running pre-push verification..."
 
 # Get the directory where the hook is located (project root)
 PROJECT_ROOT="$(git rev-parse --show-toplevel)"
@@ -26,30 +27,23 @@ if ! command -v ruff >/dev/null 2>&1; then
     fi
 fi
 
-# Run make format first (auto-fixes issues)
-echo "📝 Formatting code with 'make format'..."
-if ! make format >/dev/null 2>&1; then
-    echo "❌ Error: 'make format' failed. Please fix formatting issues and try again."
-    echo "   Run 'make format' manually to see detailed errors."
-    exit 1
-fi
-
-# Check if formatting changed any files
-if [ -n "$(git diff --name-only)" ]; then
-    echo "⚠️  Warning: 'make format' modified some files. Please review and commit the changes before pushing."
-    echo "Modified files:"
-    git diff --name-only | sed 's/^/   - /'
+# Verify formatting (read-only check, no auto-fix)
+echo "📝 Verifying code formatting..."
+if ! ruff format --check mdb_engine tests scripts >/dev/null 2>&1; then
+    echo "❌ Error: Code formatting check failed!"
+    echo "   Some files are not properly formatted."
+    echo "   Run 'make format' and commit the changes."
     echo ""
-    echo "You can review changes with: git diff"
-    echo "To commit the formatting changes: git add . && git commit -m 'Format code'"
+    echo "   Files that need formatting:"
+    ruff format --check mdb_engine tests scripts 2>&1 | grep "Would reformat" || true
     exit 1
 fi
 
-# Run lint-local for comprehensive checks (includes formatting + code quality + semgrep)
-echo "🔍 Running lint checks (lint-local includes formatting + code quality + semgrep)..."
-if ! make lint-local 2>&1; then
-    echo "❌ Error: 'make lint-local' failed. Please fix linting issues and try again."
-    echo "   Run 'make lint-local' manually to see detailed errors."
+# Verify linting (read-only check)
+echo "🔍 Verifying code quality..."
+if ! make lint-ci 2>&1; then
+    echo "❌ Error: Code quality check failed!"
+    echo "   Run 'make lint-local' to see issues and fix them."
     exit 1
 fi
 

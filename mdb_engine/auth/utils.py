@@ -11,7 +11,7 @@ import logging
 import re
 import uuid
 from datetime import datetime
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any
 
 import bcrypt
 from fastapi import Request, Response
@@ -43,7 +43,7 @@ def _detect_browser(user_agent: str) -> str:
     return "unknown"
 
 
-def _detect_os_and_device_type(user_agent: str) -> Tuple[str, str]:
+def _detect_os_and_device_type(user_agent: str) -> tuple[str, str]:
     """Detect OS and device type from user agent string."""
     if not user_agent:
         return "unknown", "desktop"
@@ -64,7 +64,7 @@ def _detect_os_and_device_type(user_agent: str) -> Tuple[str, str]:
     return "unknown", "desktop"
 
 
-def get_device_info(request: Request) -> Dict[str, Any]:
+def get_device_info(request: Request) -> dict[str, Any]:
     """
     Extract device information from request.
 
@@ -236,15 +236,15 @@ async def check_password_breach(password: str) -> bool:
 
 def validate_password_strength(
     password: str,
-    min_length: Optional[int] = None,
-    require_uppercase: Optional[bool] = None,
-    require_lowercase: Optional[bool] = None,
-    require_numbers: Optional[bool] = None,
-    require_special: Optional[bool] = None,
-    min_entropy_bits: Optional[int] = None,
-    check_common_passwords: Optional[bool] = None,
-    config: Optional[Dict[str, Any]] = None,
-) -> Tuple[bool, List[str]]:
+    min_length: int | None = None,
+    require_uppercase: bool | None = None,
+    require_lowercase: bool | None = None,
+    require_numbers: bool | None = None,
+    require_special: bool | None = None,
+    min_entropy_bits: int | None = None,
+    check_common_passwords: bool | None = None,
+    config: dict[str, Any] | None = None,
+) -> tuple[bool, list[str]]:
     """
     Validate password strength with configurable rules.
 
@@ -338,9 +338,9 @@ def validate_password_strength(
 
 async def validate_password_strength_async(
     password: str,
-    config: Optional[Dict[str, Any]] = None,
-    check_breaches: Optional[bool] = None,
-) -> Tuple[bool, List[str]]:
+    config: dict[str, Any] | None = None,
+    check_breaches: bool | None = None,
+) -> tuple[bool, list[str]]:
     """
     Async version of validate_password_strength with breach checking.
 
@@ -404,10 +404,10 @@ async def login_user(
     email: str,
     password: str,
     db,
-    config: Optional[Dict[str, Any]] = None,
+    config: dict[str, Any] | None = None,
     remember_me: bool = False,
-    redirect_url: Optional[str] = None,
-) -> Dict[str, Any]:
+    redirect_url: str | None = None,
+) -> dict[str, Any]:
     """
     Handle user login with automatic token generation and cookie setting.
 
@@ -571,8 +571,8 @@ def _validate_email_format(email: str) -> bool:
 
 
 def _get_password_policy_from_config(
-    request: Request, config: Optional[Dict[str, Any]]
-) -> Optional[Dict[str, Any]]:
+    request: Request, config: dict[str, Any] | None
+) -> dict[str, Any] | None:
     """Get password policy from config or request."""
     if config:
         security = config.get("security", {})
@@ -585,8 +585,8 @@ def _get_password_policy_from_config(
 
 
 async def _create_user_document(
-    email: str, password: str, extra_data: Optional[Dict[str, Any]]
-) -> Dict[str, Any]:
+    email: str, password: str, extra_data: dict[str, Any] | None
+) -> dict[str, Any]:
     """Create user document with hashed password."""
     password_hash = bcrypt.hashpw(password.encode("utf-8"), bcrypt.gensalt())
     user_doc = {
@@ -600,9 +600,7 @@ async def _create_user_document(
     return user_doc
 
 
-def _create_registration_response(
-    user_doc: Dict[str, Any], redirect_url: Optional[str]
-) -> Response:
+def _create_registration_response(user_doc: dict[str, Any], redirect_url: str | None) -> Response:
     """Create response for registration."""
     if redirect_url:
         return RedirectResponse(url=redirect_url, status_code=302)
@@ -622,10 +620,10 @@ async def register_user(
     email: str,
     password: str,
     db,
-    config: Optional[Dict[str, Any]] = None,
-    extra_data: Optional[Dict[str, Any]] = None,
-    redirect_url: Optional[str] = None,
-) -> Dict[str, Any]:
+    config: dict[str, Any] | None = None,
+    extra_data: dict[str, Any] | None = None,
+    redirect_url: str | None = None,
+) -> dict[str, Any]:
     """
     Handle user registration with automatic token generation.
 
@@ -710,7 +708,7 @@ async def register_user(
         return {"success": False, "error": "Registration failed. Please try again."}
 
 
-async def _get_user_id_from_request(request: Request, user_id: Optional[str]) -> Optional[str]:
+async def _get_user_id_from_request(request: Request, user_id: str | None) -> str | None:
     """Extract user_id from request if not provided."""
     if user_id:
         return user_id
@@ -773,9 +771,7 @@ async def _revoke_session(request: Request) -> None:
             await session_mgr.revoke_session_by_refresh_token(refresh_jti)
 
 
-async def logout_user(
-    request: Request, response: Response, user_id: Optional[str] = None
-) -> Response:
+async def logout_user(request: Request, response: Response, user_id: str | None = None) -> Response:
     """
     Handle user logout with token revocation and cookie clearing.
 

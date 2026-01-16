@@ -9,7 +9,7 @@ mem0 handles embeddings and LLM via environment variables (.env).
 import logging
 import os
 import tempfile
-from typing import Any, Dict, List, Optional, Union
+from typing import Any
 
 # Set MEM0_DIR environment variable early to avoid permission issues
 # mem0 tries to create .mem0 directory at import time, so we set this before any import
@@ -74,7 +74,7 @@ def _detect_provider_from_env() -> str:
         return "openai"
 
 
-def _detect_embedding_dimensions(model_name: str) -> Optional[int]:
+def _detect_embedding_dimensions(model_name: str) -> int | None:
     """
     Auto-detect embedding dimensions from model name.
 
@@ -123,7 +123,7 @@ class Mem0MemoryServiceError(Exception):
 
 def _build_vector_store_config(
     db_name: str, collection_name: str, mongo_uri: str, embedding_model_dims: int
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Build vector store configuration for mem0."""
     return {
         "vector_store": {
@@ -138,7 +138,7 @@ def _build_vector_store_config(
     }
 
 
-def _build_embedder_config(provider: str, embedding_model: str, app_slug: str) -> Dict[str, Any]:
+def _build_embedder_config(provider: str, embedding_model: str, app_slug: str) -> dict[str, Any]:
     """Build embedder configuration for mem0."""
     clean_embedding_model = embedding_model.replace("azure/", "").replace("openai/", "")
     if provider == "azure":
@@ -190,7 +190,7 @@ def _build_embedder_config(provider: str, embedding_model: str, app_slug: str) -
 
 def _build_llm_config(
     provider: str, chat_model: str, temperature: float, app_slug: str
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Build LLM configuration for mem0."""
     clean_chat_model = chat_model.replace("azure/", "").replace("openai/", "")
     if provider == "azure":
@@ -245,7 +245,7 @@ def _build_llm_config(
     return config
 
 
-def _initialize_memory_instance(mem0_config: Dict[str, Any], app_slug: str) -> tuple:
+def _initialize_memory_instance(mem0_config: dict[str, Any], app_slug: str) -> tuple:
     """Initialize Mem0 Memory instance and return (instance, init_method)."""
     logger.debug(
         "Initializing Mem0 Memory with config structure",
@@ -330,7 +330,7 @@ class Mem0MemoryService:
         mongo_uri: str,
         db_name: str,
         app_slug: str,
-        config: Optional[Dict[str, Any]] = None,
+        config: dict[str, Any] | None = None,
     ):
         """
         Initialize Mem0 Memory Service.
@@ -498,11 +498,11 @@ class Mem0MemoryService:
 
     def add(
         self,
-        messages: Union[str, List[Dict[str, str]]],
-        user_id: Optional[str] = None,
-        metadata: Optional[Dict[str, Any]] = None,
+        messages: str | list[dict[str, str]],
+        user_id: str | None = None,
+        metadata: dict[str, Any] | None = None,
         **kwargs,
-    ) -> List[Dict[str, Any]]:
+    ) -> list[dict[str, Any]]:
         """
         Add memories from messages or text.
 
@@ -677,13 +677,13 @@ class Mem0MemoryService:
 
     def get_all(
         self,
-        user_id: Optional[str] = None,
-        limit: Optional[int] = None,
+        user_id: str | None = None,
+        limit: int | None = None,
         retry_on_empty: bool = True,
         max_retries: int = 2,
         retry_delay: float = 0.5,
         **kwargs,
-    ) -> List[Dict[str, Any]]:
+    ) -> list[dict[str, Any]]:
         """
         Get all memories for a user.
 
@@ -755,7 +755,7 @@ class Mem0MemoryService:
                     result = self.memory.get_all(
                         user_id=str(user_id), limit=limit, **kwargs
                     )  # Ensure string
-                    result_length = len(result) if isinstance(result, (list, dict)) else "N/A"
+                    result_length = len(result) if isinstance(result, list | dict) else "N/A"
                     logger.debug(
                         f"🟢 RESULT RECEIVED: type={type(result).__name__}, "
                         f"length={result_length}",
@@ -764,7 +764,7 @@ class Mem0MemoryService:
                             "user_id": user_id,
                             "result_type": type(result).__name__,
                             "result_length": (
-                                len(result) if isinstance(result, (list, dict)) else 0
+                                len(result) if isinstance(result, list | dict) else 0
                             ),
                             "attempt": attempt + 1,
                         },
@@ -791,7 +791,7 @@ class Mem0MemoryService:
                         "result_type": str(type(result)),
                         "is_dict": isinstance(result, dict),
                         "is_list": isinstance(result, list),
-                        "result_length": (len(result) if isinstance(result, (list, dict)) else 0),
+                        "result_length": (len(result) if isinstance(result, list | dict) else 0),
                     },
                 )
 
@@ -857,12 +857,12 @@ class Mem0MemoryService:
     def search(
         self,
         query: str,
-        user_id: Optional[str] = None,
-        limit: Optional[int] = None,
-        metadata: Optional[Dict[str, Any]] = None,
-        filters: Optional[Dict[str, Any]] = None,
+        user_id: str | None = None,
+        limit: int | None = None,
+        metadata: dict[str, Any] | None = None,
+        filters: dict[str, Any] | None = None,
         **kwargs,
-    ) -> List[Dict[str, Any]]:
+    ) -> list[dict[str, Any]]:
         """
         Search for relevant memories using semantic search.
 
@@ -970,7 +970,7 @@ class Mem0MemoryService:
             )
             raise Mem0MemoryServiceError(f"Failed to search memories: {e}") from e
 
-    def get(self, memory_id: str, user_id: Optional[str] = None, **kwargs) -> Dict[str, Any]:
+    def get(self, memory_id: str, user_id: str | None = None, **kwargs) -> dict[str, Any]:
         """
         Get a single memory by ID.
 
@@ -1037,11 +1037,11 @@ class Mem0MemoryService:
     def update(
         self,
         memory_id: str,
-        data: Union[str, List[Dict[str, str]]],
-        user_id: Optional[str] = None,
-        metadata: Optional[Dict[str, Any]] = None,
+        data: str | list[dict[str, str]],
+        user_id: str | None = None,
+        metadata: dict[str, Any] | None = None,
         **kwargs,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Update a memory by ID with new data.
 
@@ -1120,7 +1120,7 @@ class Mem0MemoryService:
             )
             raise Mem0MemoryServiceError(f"Failed to update memory: {e}") from e
 
-    def delete(self, memory_id: str, user_id: Optional[str] = None, **kwargs) -> bool:
+    def delete(self, memory_id: str, user_id: str | None = None, **kwargs) -> bool:
         """
         Delete a memory by ID.
 
@@ -1169,7 +1169,7 @@ class Mem0MemoryService:
             )
             raise Mem0MemoryServiceError(f"Failed to delete memory: {e}") from e
 
-    def delete_all(self, user_id: Optional[str] = None, **kwargs) -> bool:
+    def delete_all(self, user_id: str | None = None, **kwargs) -> bool:
         """
         Delete all memories for a user.
 
@@ -1205,7 +1205,7 @@ class Mem0MemoryService:
 
 
 def get_memory_service(
-    mongo_uri: str, db_name: str, app_slug: str, config: Optional[Dict[str, Any]] = None
+    mongo_uri: str, db_name: str, app_slug: str, config: dict[str, Any] | None = None
 ) -> Mem0MemoryService:
     """
     Get or create a Mem0MemoryService instance (cached).

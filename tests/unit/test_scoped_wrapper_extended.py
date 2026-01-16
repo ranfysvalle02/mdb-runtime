@@ -150,17 +150,21 @@ class TestAsyncAtlasIndexManagerExtended:
             manager = AsyncAtlasIndexManager(mock_coll)
 
             # Mock dependencies on the class
-            with patch.object(
-                AsyncAtlasIndexManager,
-                "_ensure_collection_exists",
-                new_callable=AsyncMock,
-            ), patch.object(
-                AsyncAtlasIndexManager, "get_search_index", new_callable=AsyncMock
-            ) as mock_get, patch.object(
-                AsyncAtlasIndexManager,
-                "_wait_for_search_index_ready",
-                new_callable=AsyncMock,
-            ) as mock_wait:
+            with (
+                patch.object(
+                    AsyncAtlasIndexManager,
+                    "_ensure_collection_exists",
+                    new_callable=AsyncMock,
+                ),
+                patch.object(
+                    AsyncAtlasIndexManager, "get_search_index", new_callable=AsyncMock
+                ) as mock_get,
+                patch.object(
+                    AsyncAtlasIndexManager,
+                    "_wait_for_search_index_ready",
+                    new_callable=AsyncMock,
+                ) as mock_wait,
+            ):
                 mock_get.return_value = None
                 mock_wait.return_value = True
 
@@ -184,13 +188,16 @@ class TestAsyncAtlasIndexManagerExtended:
         with patch("mdb_engine.database.scoped_wrapper.AsyncIOMotorCollection", MagicMock):
             manager = AsyncAtlasIndexManager(mock_coll)
 
-            with patch.object(
-                AsyncAtlasIndexManager,
-                "_ensure_collection_exists",
-                new_callable=AsyncMock,
-            ) as mock_ensure, patch.object(
-                AsyncAtlasIndexManager, "get_search_index", new_callable=AsyncMock
-            ) as mock_get:
+            with (
+                patch.object(
+                    AsyncAtlasIndexManager,
+                    "_ensure_collection_exists",
+                    new_callable=AsyncMock,
+                ) as mock_ensure,
+                patch.object(
+                    AsyncAtlasIndexManager, "get_search_index", new_callable=AsyncMock
+                ) as mock_get,
+            ):
                 mock_get.return_value = None
 
                 # Connection Failure

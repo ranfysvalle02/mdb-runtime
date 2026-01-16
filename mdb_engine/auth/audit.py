@@ -35,7 +35,7 @@ Usage:
 import logging
 from datetime import datetime, timedelta
 from enum import Enum
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from motor.motor_asyncio import AsyncIOMotorDatabase
 from pymongo.errors import OperationFailure
@@ -161,12 +161,12 @@ class AuthAuditLog:
         self,
         action: AuthAction,
         success: bool,
-        user_email: Optional[str] = None,
-        user_id: Optional[str] = None,
-        app_slug: Optional[str] = None,
-        ip_address: Optional[str] = None,
-        user_agent: Optional[str] = None,
-        details: Optional[Dict[str, Any]] = None,
+        user_email: str | None = None,
+        user_id: str | None = None,
+        app_slug: str | None = None,
+        ip_address: str | None = None,
+        user_agent: str | None = None,
+        details: dict[str, Any] | None = None,
     ) -> str:
         """
         Log an authentication event.
@@ -217,9 +217,9 @@ class AuthAuditLog:
     async def log_login_success(
         self,
         email: str,
-        ip_address: Optional[str] = None,
-        user_agent: Optional[str] = None,
-        app_slug: Optional[str] = None,
+        ip_address: str | None = None,
+        user_agent: str | None = None,
+        app_slug: str | None = None,
     ) -> str:
         """Convenience method to log successful login."""
         return await self.log_event(
@@ -235,9 +235,9 @@ class AuthAuditLog:
         self,
         email: str,
         reason: str = "invalid_credentials",
-        ip_address: Optional[str] = None,
-        user_agent: Optional[str] = None,
-        app_slug: Optional[str] = None,
+        ip_address: str | None = None,
+        user_agent: str | None = None,
+        app_slug: str | None = None,
     ) -> str:
         """Convenience method to log failed login."""
         return await self.log_event(
@@ -253,8 +253,8 @@ class AuthAuditLog:
     async def log_logout(
         self,
         email: str,
-        ip_address: Optional[str] = None,
-        app_slug: Optional[str] = None,
+        ip_address: str | None = None,
+        app_slug: str | None = None,
     ) -> str:
         """Convenience method to log logout."""
         return await self.log_event(
@@ -268,9 +268,9 @@ class AuthAuditLog:
     async def log_register(
         self,
         email: str,
-        ip_address: Optional[str] = None,
-        user_agent: Optional[str] = None,
-        app_slug: Optional[str] = None,
+        ip_address: str | None = None,
+        user_agent: str | None = None,
+        app_slug: str | None = None,
     ) -> str:
         """Convenience method to log new user registration."""
         return await self.log_event(
@@ -286,10 +286,10 @@ class AuthAuditLog:
         self,
         email: str,
         app_slug: str,
-        old_roles: List[str],
-        new_roles: List[str],
-        changed_by: Optional[str] = None,
-        ip_address: Optional[str] = None,
+        old_roles: list[str],
+        new_roles: list[str],
+        changed_by: str | None = None,
+        ip_address: str | None = None,
     ) -> str:
         """Log a role change event."""
         action = (
@@ -312,8 +312,8 @@ class AuthAuditLog:
         self,
         email: str,
         reason: str = "logout",
-        ip_address: Optional[str] = None,
-        app_slug: Optional[str] = None,
+        ip_address: str | None = None,
+        app_slug: str | None = None,
     ) -> str:
         """Log token revocation."""
         return await self.log_event(
@@ -329,8 +329,8 @@ class AuthAuditLog:
         self,
         ip_address: str,
         endpoint: str,
-        email: Optional[str] = None,
-        app_slug: Optional[str] = None,
+        email: str | None = None,
+        app_slug: str | None = None,
     ) -> str:
         """Log rate limit exceeded event."""
         return await self.log_event(
@@ -349,10 +349,10 @@ class AuthAuditLog:
     async def get_recent_events(
         self,
         hours: int = 24,
-        action: Optional[AuthAction] = None,
-        success: Optional[bool] = None,
+        action: AuthAction | None = None,
+        success: bool | None = None,
         limit: int = 100,
-    ) -> List[Dict[str, Any]]:
+    ) -> list[dict[str, Any]]:
         """
         Get recent audit events.
 
@@ -367,7 +367,7 @@ class AuthAuditLog:
         """
         since = datetime.utcnow() - timedelta(hours=hours)
 
-        query: Dict[str, Any] = {"timestamp": {"$gte": since}}
+        query: dict[str, Any] = {"timestamp": {"$gte": since}}
         if action:
             query["action"] = action.value if isinstance(action, AuthAction) else action
         if success is not None:
@@ -384,11 +384,11 @@ class AuthAuditLog:
 
     async def get_failed_logins(
         self,
-        email: Optional[str] = None,
-        ip_address: Optional[str] = None,
+        email: str | None = None,
+        ip_address: str | None = None,
         hours: int = 24,
         limit: int = 100,
-    ) -> List[Dict[str, Any]]:
+    ) -> list[dict[str, Any]]:
         """
         Get failed login attempts.
 
@@ -403,7 +403,7 @@ class AuthAuditLog:
         """
         since = datetime.utcnow() - timedelta(hours=hours)
 
-        query: Dict[str, Any] = {
+        query: dict[str, Any] = {
             "action": AuthAction.LOGIN_FAILED.value,
             "timestamp": {"$gte": since},
         }
@@ -425,7 +425,7 @@ class AuthAuditLog:
         email: str,
         hours: int = 168,  # 7 days
         limit: int = 100,
-    ) -> List[Dict[str, Any]]:
+    ) -> list[dict[str, Any]]:
         """
         Get all activity for a specific user.
 
@@ -462,7 +462,7 @@ class AuthAuditLog:
         ip_address: str,
         hours: int = 24,
         limit: int = 100,
-    ) -> List[Dict[str, Any]]:
+    ) -> list[dict[str, Any]]:
         """
         Get all activity from a specific IP address.
 
@@ -498,8 +498,8 @@ class AuthAuditLog:
 
     async def count_failed_logins(
         self,
-        email: Optional[str] = None,
-        ip_address: Optional[str] = None,
+        email: str | None = None,
+        ip_address: str | None = None,
         hours: int = 1,
     ) -> int:
         """
@@ -517,7 +517,7 @@ class AuthAuditLog:
         """
         since = datetime.utcnow() - timedelta(hours=hours)
 
-        query: Dict[str, Any] = {
+        query: dict[str, Any] = {
             "action": AuthAction.LOGIN_FAILED.value,
             "timestamp": {"$gte": since},
         }
@@ -531,7 +531,7 @@ class AuthAuditLog:
     async def get_security_summary(
         self,
         hours: int = 24,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Get security summary statistics.
 

@@ -8,7 +8,7 @@ This module is part of MDB_ENGINE - MongoDB Engine.
 
 import logging
 import os
-from typing import Any, Dict, Optional
+from typing import Any
 
 from fastapi import Request
 
@@ -16,8 +16,8 @@ logger = logging.getLogger(__name__)
 
 
 def get_secure_cookie_settings(
-    request: Request, config: Optional[Dict[str, Any]] = None
-) -> Dict[str, Any]:
+    request: Request, config: dict[str, Any] | None = None
+) -> dict[str, Any]:
     """
     Get secure cookie settings based on manifest config and request environment.
 
@@ -76,11 +76,11 @@ def get_secure_cookie_settings(
 def set_auth_cookies(
     response,
     access_token: str,
-    refresh_token: Optional[str] = None,
-    request: Optional[Request] = None,
-    config: Optional[Dict[str, Any]] = None,
-    access_token_ttl: Optional[int] = None,
-    refresh_token_ttl: Optional[int] = None,
+    refresh_token: str | None = None,
+    request: Request | None = None,
+    config: dict[str, Any] | None = None,
+    access_token_ttl: int | None = None,
+    refresh_token_ttl: int | None = None,
 ):
     """
     Set authentication cookies on a response with secure settings.
@@ -130,7 +130,7 @@ def set_auth_cookies(
         )
 
 
-def clear_auth_cookies(response, request: Optional[Request] = None):
+def clear_auth_cookies(response, request: Request | None = None):
     """
     Clear authentication cookies from response.
 

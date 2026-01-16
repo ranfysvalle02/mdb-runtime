@@ -28,17 +28,12 @@ import asyncio
 import logging
 import re
 import time
+from collections.abc import Coroutine, Mapping
 from typing import (
     TYPE_CHECKING,
     Any,
     ClassVar,
-    Coroutine,
-    Dict,
-    List,
-    Mapping,
     Optional,
-    Tuple,
-    Union,
 )
 
 if TYPE_CHECKING:
@@ -98,7 +93,7 @@ GEO2DSPHERE = "2dsphere"
 
 
 # --- HELPER FUNCTION FOR MANAGED TASK CREATION ---
-def _create_managed_task(coro: Coroutine[Any, Any, Any], task_name: Optional[str] = None) -> None:
+def _create_managed_task(coro: Coroutine[Any, Any, Any], task_name: str | None = None) -> None:
     """
     Creates a background task using asyncio.create_task().
 
@@ -205,7 +200,7 @@ def _validate_collection_name(name: str, allow_prefixed: bool = False) -> None:
             )
 
 
-def _extract_app_slug_from_prefixed_name(prefixed_name: str) -> Optional[str]:
+def _extract_app_slug_from_prefixed_name(prefixed_name: str) -> str | None:
     """
     Extract app slug from a prefixed collection name.
 
@@ -335,11 +330,11 @@ class AsyncAtlasIndexManager:
 
     def _check_definition_changed(
         self,
-        definition: Dict[str, Any],
-        latest_def: Dict[str, Any],
+        definition: dict[str, Any],
+        latest_def: dict[str, Any],
         index_type: str,
         name: str,
-    ) -> Tuple[bool, str]:
+    ) -> tuple[bool, str]:
         """Check if index definition has changed."""
         definition_changed = False
         change_reason = ""
@@ -362,8 +357,8 @@ class AsyncAtlasIndexManager:
 
     async def _handle_existing_index(
         self,
-        existing_index: Dict[str, Any],
-        definition: Dict[str, Any],
+        existing_index: dict[str, Any],
+        definition: dict[str, Any],
         index_type: str,
         name: str,
     ) -> bool:
@@ -402,7 +397,7 @@ class AsyncAtlasIndexManager:
             return False  # Will wait below
 
     async def _create_new_search_index(
-        self, name: str, definition: Dict[str, Any], index_type: str
+        self, name: str, definition: dict[str, Any], index_type: str
     ) -> None:
         """Create a new search index."""
         try:
@@ -422,7 +417,7 @@ class AsyncAtlasIndexManager:
     async def create_search_index(
         self,
         name: str,
-        definition: Dict[str, Any],
+        definition: dict[str, Any],
         index_type: str = "search",
         wait_for_ready: bool = True,
         timeout: int = DEFAULT_SEARCH_TIMEOUT,
@@ -472,7 +467,7 @@ class AsyncAtlasIndexManager:
                 context={"index_name": name, "operation": "create_search_index"},
             ) from e
 
-    async def get_search_index(self, name: str) -> Optional[Dict[str, Any]]:
+    async def get_search_index(self, name: str) -> dict[str, Any] | None:
         """
         Retrieves the definition and status of a single search index by name
         using the $listSearchIndexes aggregation stage.
@@ -496,7 +491,7 @@ class AsyncAtlasIndexManager:
                 context={"index_name": name, "operation": "get_search_index"},
             ) from e
 
-    async def list_search_indexes(self) -> List[Dict[str, Any]]:
+    async def list_search_indexes(self) -> list[dict[str, Any]]:
         """Lists all Atlas Search indexes for the collection."""
         try:
             return await self._collection.list_search_indexes().to_list(None)
@@ -552,7 +547,7 @@ class AsyncAtlasIndexManager:
     async def update_search_index(
         self,
         name: str,
-        definition: Dict[str, Any],
+        definition: dict[str, Any],
         wait_for_ready: bool = True,
         timeout: int = DEFAULT_SEARCH_TIMEOUT,
     ) -> bool:
@@ -675,7 +670,7 @@ class AsyncAtlasIndexManager:
     # consistent async API with the search index methods.
 
     async def create_index(  # noqa: C901
-        self, keys: Union[str, List[Tuple[str, Union[int, str]]]], **kwargs: Any
+        self, keys: str | list[tuple[str, int | str]], **kwargs: Any
     ) -> str:
         """
         Creates a standard (non-search) database index.
@@ -784,8 +779,8 @@ class AsyncAtlasIndexManager:
 
     async def create_text_index(
         self,
-        fields: List[str],
-        weights: Optional[Dict[str, int]] = None,
+        fields: list[str],
+        weights: dict[str, int] | None = None,
         name: str = "text_index",
         **kwargs: Any,
     ) -> str:
@@ -797,7 +792,7 @@ class AsyncAtlasIndexManager:
             kwargs["name"] = name
         return await self.create_index(keys, **kwargs)
 
-    async def create_geo_index(self, field: str, name: Optional[str] = None, **kwargs: Any) -> str:
+    async def create_geo_index(self, field: str, name: str | None = None, **kwargs: Any) -> str:
         """Helper to create a standard 2dsphere index."""
         keys = [(field, GEO2DSPHERE)]
         if name:
@@ -832,7 +827,7 @@ class AsyncAtlasIndexManager:
                 context={"index_name": name, "operation": "drop_index"},
             ) from e
 
-    async def list_indexes(self) -> List[Dict[str, Any]]:
+    async def list_indexes(self) -> list[dict[str, Any]]:
         """Lists all standard (non-search) indexes on the collection."""
         try:
             return await self._collection.list_indexes().to_list(None)
@@ -844,7 +839,7 @@ class AsyncAtlasIndexManager:
             logger.debug("Skipping list_indexes: MongoDB client is closed (likely during shutdown)")
             return []
 
-    async def get_index(self, name: str) -> Optional[Dict[str, Any]]:
+    async def get_index(self, name: str) -> dict[str, Any] | None:
         """Gets a single standard index by name."""
         indexes = await self.list_indexes()
         return next((index for index in indexes if index.get("name") == name), None)
@@ -919,17 +914,17 @@ class AutoIndexManager:
         self._collection = collection
         self._index_manager = index_manager
         # Cache of index creation decisions (index_name -> bool)
-        self._creation_cache: Dict[str, bool] = {}
+        self._creation_cache: dict[str, bool] = {}
         # Async lock to prevent race conditions during index creation
         self._lock = asyncio.Lock()
         # Track query patterns to determine which indexes to create
-        self._query_counts: Dict[str, int] = {}
+        self._query_counts: dict[str, int] = {}
         # Track in-flight index creation tasks to prevent duplicates
-        self._pending_tasks: Dict[str, asyncio.Task] = {}
+        self._pending_tasks: dict[str, asyncio.Task] = {}
 
     def _extract_index_fields_from_filter(
-        self, filter: Optional[Mapping[str, Any]]
-    ) -> List[Tuple[str, int]]:
+        self, filter: Mapping[str, Any] | None
+    ) -> list[tuple[str, int]]:
         """
         Extracts potential index fields from a MongoDB query filter.
 
@@ -944,7 +939,7 @@ class AutoIndexManager:
         if not filter:
             return []
 
-        index_fields: List[Tuple[str, int]] = []
+        index_fields: list[tuple[str, int]] = []
 
         def analyze_value(value: Any, field_name: str) -> None:
             """Recursively analyze filter values to extract index candidates."""
@@ -976,8 +971,8 @@ class AutoIndexManager:
         return list(set(index_fields))  # Remove duplicates
 
     def _extract_sort_fields(
-        self, sort: Optional[Union[List[Tuple[str, int]], Dict[str, int]]]
-    ) -> List[Tuple[str, int]]:
+        self, sort: list[tuple[str, int]] | dict[str, int] | None
+    ) -> list[tuple[str, int]]:
         """
         Extracts index fields from sort specification.
 
@@ -993,7 +988,7 @@ class AutoIndexManager:
         else:
             return []
 
-    def _generate_index_name(self, fields: List[Tuple[str, int]]) -> str:
+    def _generate_index_name(self, fields: list[tuple[str, int]]) -> str:
         """Generate a human-readable index name from field list."""
         if not fields:
             return "auto_idx_empty"
@@ -1006,7 +1001,7 @@ class AutoIndexManager:
         return f"auto_{'_'.join(parts)}"
 
     async def _create_index_safely(
-        self, index_name: str, all_fields: List[Tuple[str, int]]
+        self, index_name: str, all_fields: list[tuple[str, int]]
     ) -> None:
         """
         Safely create an index, handling errors gracefully.
@@ -1052,8 +1047,8 @@ class AutoIndexManager:
 
     async def ensure_index_for_query(
         self,
-        filter: Optional[Mapping[str, Any]] = None,
-        sort: Optional[Union[List[Tuple[str, int]], Dict[str, int]]] = None,
+        filter: Mapping[str, Any] | None = None,
+        sort: list[tuple[str, int]] | dict[str, int] | None = None,
         hint_threshold: int = AUTO_INDEX_HINT_THRESHOLD,
     ) -> None:
         """
@@ -1170,11 +1165,11 @@ class ScopedCollectionWrapper:
     def __init__(
         self,
         real_collection: AsyncIOMotorCollection,
-        read_scopes: List[str],
+        read_scopes: list[str],
         write_scope: str,
         auto_index: bool = True,
-        query_validator: Optional[QueryValidator] = None,
-        resource_limiter: Optional[ResourceLimiter] = None,
+        query_validator: QueryValidator | None = None,
+        resource_limiter: ResourceLimiter | None = None,
         parent_wrapper: Optional["ScopedMongoWrapper"] = None,
     ):
         self._collection = real_collection
@@ -1182,8 +1177,8 @@ class ScopedCollectionWrapper:
         self._write_scope = write_scope
         self._auto_index_enabled = auto_index
         # Lazily instantiated and cached
-        self._index_manager: Optional[AsyncAtlasIndexManager] = None
-        self._auto_index_manager: Optional[AutoIndexManager] = None
+        self._index_manager: AsyncAtlasIndexManager | None = None
+        self._auto_index_manager: AutoIndexManager | None = None
         # Query security and resource limits
         self._query_validator = query_validator or QueryValidator()
         self._resource_limiter = resource_limiter or ResourceLimiter()
@@ -1211,7 +1206,7 @@ class ScopedCollectionWrapper:
         return self._index_manager
 
     @property
-    def auto_index_manager(self) -> Optional[AutoIndexManager]:
+    def auto_index_manager(self) -> AutoIndexManager | None:
         """
         Gets the AutoIndexManager for magical automatic index creation.
 
@@ -1267,7 +1262,7 @@ class ScopedCollectionWrapper:
             )
         super().__setattr__(name, value)
 
-    def _inject_read_filter(self, filter: Optional[Mapping[str, Any]] = None) -> Dict[str, Any]:
+    def _inject_read_filter(self, filter: Mapping[str, Any] | None = None) -> dict[str, Any]:
         """
         Combines the user's filter with our mandatory scope filter.
 
@@ -1357,7 +1352,7 @@ class ScopedCollectionWrapper:
             ) from e
 
     async def insert_many(
-        self, documents: List[Mapping[str, Any]], *args, **kwargs
+        self, documents: list[Mapping[str, Any]], *args, **kwargs
     ) -> InsertManyResult:
         """
         Injects the app_id into all documents before writing.
@@ -1378,8 +1373,8 @@ class ScopedCollectionWrapper:
         return await self._collection.insert_many(docs_to_insert, *args, **kwargs_for_insert)
 
     async def find_one(
-        self, filter: Optional[Mapping[str, Any]] = None, *args, **kwargs
-    ) -> Optional[Dict[str, Any]]:
+        self, filter: Mapping[str, Any] | None = None, *args, **kwargs
+    ) -> dict[str, Any] | None:
         """
         Applies the read scope to the filter.
         Automatically ensures appropriate indexes exist for the query.
@@ -1437,9 +1432,7 @@ class ScopedCollectionWrapper:
             )
             raise
 
-    def find(
-        self, filter: Optional[Mapping[str, Any]] = None, *args, **kwargs
-    ) -> AsyncIOMotorCursor:
+    def find(self, filter: Mapping[str, Any] | None = None, *args, **kwargs) -> AsyncIOMotorCursor:
         """
         Applies the read scope to the filter.
         Returns an async cursor, just like motor.
@@ -1550,7 +1543,7 @@ class ScopedCollectionWrapper:
         return await self._collection.delete_many(scoped_filter, *args, **kwargs_for_delete)
 
     async def count_documents(
-        self, filter: Optional[Mapping[str, Any]] = None, *args, **kwargs
+        self, filter: Mapping[str, Any] | None = None, *args, **kwargs
     ) -> int:
         """
         Applies the read scope to the filter for counting.
@@ -1571,7 +1564,7 @@ class ScopedCollectionWrapper:
         scoped_filter = self._inject_read_filter(filter)
         return await self._collection.count_documents(scoped_filter, *args, **kwargs_for_count)
 
-    def aggregate(self, pipeline: List[Dict[str, Any]], *args, **kwargs) -> AsyncIOMotorCursor:
+    def aggregate(self, pipeline: list[dict[str, Any]], *args, **kwargs) -> AsyncIOMotorCursor:
         """
         Injects a scope filter into the pipeline. For normal pipelines, we prepend
         a $match stage. However, if the first stage is $vectorSearch, we embed
@@ -1639,7 +1632,7 @@ class ScopedMongoWrapper:
 
     # Class-level cache for collections that have app_id index checked
     # Key: collection name, Value: boolean (True if index exists, False if check is pending)
-    _app_id_index_cache: ClassVar[Dict[str, bool]] = {}
+    _app_id_index_cache: ClassVar[dict[str, bool]] = {}
     # Lock to prevent race conditions when multiple requests try to create the same index
     _app_id_index_lock: ClassVar[asyncio.Lock] = asyncio.Lock()
 
@@ -1661,13 +1654,13 @@ class ScopedMongoWrapper:
     def __init__(
         self,
         real_db: AsyncIOMotorDatabase,
-        read_scopes: List[str],
+        read_scopes: list[str],
         write_scope: str,
         auto_index: bool = True,
-        query_validator: Optional[QueryValidator] = None,
-        resource_limiter: Optional[ResourceLimiter] = None,
-        app_slug: Optional[str] = None,
-        app_token: Optional[str] = None,
+        query_validator: QueryValidator | None = None,
+        resource_limiter: ResourceLimiter | None = None,
+        app_slug: str | None = None,
+        app_token: str | None = None,
         app_secrets_manager: Optional["AppSecretsManager"] = None,
     ):
         self._db = real_db
@@ -1687,7 +1680,7 @@ class ScopedMongoWrapper:
         self._token_verification_lock = asyncio.Lock()
 
         # Cache for created collection wrappers.
-        self._wrapper_cache: Dict[str, ScopedCollectionWrapper] = {}
+        self._wrapper_cache: dict[str, ScopedCollectionWrapper] = {}
 
     async def _verify_token_if_needed(self) -> None:
         """

@@ -8,7 +8,7 @@ This module is part of MDB_ENGINE - MongoDB Engine.
 
 import json
 import logging
-from typing import Any, Dict, List
+from typing import Any
 
 from motor.motor_asyncio import AsyncIOMotorDatabase
 from pymongo.errors import (
@@ -44,7 +44,7 @@ logger = logging.getLogger(__name__)
 
 async def _handle_regular_index(
     index_manager: AsyncAtlasIndexManager,
-    index_def: Dict[str, Any],
+    index_def: dict[str, Any],
     index_name: str,
     log_prefix: str,
 ) -> None:
@@ -156,7 +156,7 @@ async def _handle_regular_index(
 
 async def _handle_ttl_index(
     index_manager: AsyncAtlasIndexManager,
-    index_def: Dict[str, Any],
+    index_def: dict[str, Any],
     index_name: str,
     log_prefix: str,
 ) -> None:
@@ -203,7 +203,7 @@ async def _handle_ttl_index(
 
 async def _handle_partial_index(
     index_manager: AsyncAtlasIndexManager,
-    index_def: Dict[str, Any],
+    index_def: dict[str, Any],
     index_name: str,
     log_prefix: str,
 ) -> None:
@@ -269,7 +269,7 @@ async def _handle_partial_index(
 
 async def _handle_text_index(
     index_manager: AsyncAtlasIndexManager,
-    index_def: Dict[str, Any],
+    index_def: dict[str, Any],
     index_name: str,
     log_prefix: str,
 ) -> None:
@@ -335,7 +335,7 @@ async def _handle_text_index(
 
 async def _handle_geospatial_index(
     index_manager: AsyncAtlasIndexManager,
-    index_def: Dict[str, Any],
+    index_def: dict[str, Any],
     index_name: str,
     log_prefix: str,
 ) -> None:
@@ -400,7 +400,7 @@ async def _handle_geospatial_index(
 
 async def _handle_search_index(
     index_manager: AsyncAtlasIndexManager,
-    index_def: Dict[str, Any],
+    index_def: dict[str, Any],
     index_name: str,
     index_type: str,
     slug: str,
@@ -502,7 +502,7 @@ async def _handle_search_index(
 
 async def _handle_hybrid_index(
     index_manager: AsyncAtlasIndexManager,
-    index_def: Dict[str, Any],
+    index_def: dict[str, Any],
     index_name: str,
     slug: str,
     log_prefix: str,
@@ -692,7 +692,7 @@ async def run_index_creation_for_collection(
     db: AsyncIOMotorDatabase,
     slug: str,
     collection_name: str,
-    index_definitions: List[Dict[str, Any]],
+    index_definitions: list[dict[str, Any]],
 ):
     """Create or update indexes for a collection based on index definitions."""
     log_prefix = f"[{slug} -> {collection_name}]"

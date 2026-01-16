@@ -16,7 +16,8 @@ This module is part of MDB_ENGINE - MongoDB Engine.
 """
 
 import logging
-from typing import Any, Awaitable, Callable, Dict, Optional
+from collections.abc import Awaitable, Callable
+from typing import Any
 
 from fastapi import HTTPException, Request, status
 
@@ -27,7 +28,7 @@ from .users import get_app_user
 logger = logging.getLogger(__name__)
 
 
-def is_demo_user(user: Optional[Dict[str, Any]] = None, email: Optional[str] = None) -> bool:
+def is_demo_user(user: dict[str, Any] | None = None, email: str | None = None) -> bool:
     """
     Check if a user is a demo user.
 
@@ -55,7 +56,7 @@ def is_demo_user(user: Optional[Dict[str, Any]] = None, email: Optional[str] = N
     return False
 
 
-async def _get_platform_user(request: Request) -> Optional[Dict[str, Any]]:
+async def _get_platform_user(request: Request) -> dict[str, Any] | None:
     """Try to get user from platform authentication."""
     try:
         platform_user = await get_current_user_from_request(request)
@@ -70,9 +71,9 @@ async def _get_platform_user(request: Request) -> Optional[Dict[str, Any]]:
 async def _get_sub_auth_user(
     request: Request,
     slug_id: str,
-    get_app_config_func: Callable[[Request, str, Dict], Awaitable[Dict]],
+    get_app_config_func: Callable[[Request, str, dict], Awaitable[dict]],
     get_app_db_func: Callable[[Request], Awaitable[Any]],
-) -> Optional[Dict[str, Any]]:
+) -> dict[str, Any] | None:
     """Try to get user from sub-authentication."""
     try:
         db = await get_app_db_func(request)
@@ -104,9 +105,9 @@ async def _get_sub_auth_user(
 async def _get_authenticated_user(
     request: Request,
     slug_id: str,
-    get_app_config_func: Optional[Callable[[Request, str, Dict], Awaitable[Dict]]],
-    get_app_db_func: Optional[Callable[[Request], Awaitable[Any]]],
-) -> Optional[Dict[str, Any]]:
+    get_app_config_func: Callable[[Request, str, dict], Awaitable[dict]] | None,
+    get_app_db_func: Callable[[Request], Awaitable[Any]] | None,
+) -> dict[str, Any] | None:
     """Get authenticated user from platform or sub-auth."""
     # Try platform auth first
     user = await _get_platform_user(request)
@@ -132,8 +133,8 @@ def _validate_slug_id(request: Request) -> str:
 
 
 def _validate_dependencies(
-    get_app_config_func: Optional[Callable[[Request, str, Dict], Awaitable[Dict]]],
-    get_app_db_func: Optional[Callable[[Request], Awaitable[Any]]],
+    get_app_config_func: Callable[[Request, str, dict], Awaitable[dict]] | None,
+    get_app_db_func: Callable[[Request], Awaitable[Any]] | None,
 ) -> None:
     """Validate that required dependencies are provided."""
     if not get_app_db_func:
@@ -152,9 +153,9 @@ def _validate_dependencies(
 
 async def require_non_demo_user(
     request: Request,
-    get_app_config_func: Optional[Callable[[Request, str, Dict], Awaitable[Dict]]] = None,
-    get_app_db_func: Optional[Callable[[Request], Awaitable[Any]]] = None,
-) -> Dict[str, Any]:
+    get_app_config_func: Callable[[Request, str, dict], Awaitable[dict]] | None = None,
+    get_app_db_func: Callable[[Request], Awaitable[Any]] | None = None,
+) -> dict[str, Any]:
     """
     FastAPI dependency that blocks demo users from accessing an endpoint.
 
@@ -205,8 +206,8 @@ async def require_non_demo_user(
 
 async def block_demo_users(
     request: Request,
-    get_app_config_func: Optional[Callable[[Request, str, Dict], Awaitable[Dict]]] = None,
-    get_app_db_func: Optional[Callable[[Request], Awaitable[Any]]] = None,
+    get_app_config_func: Callable[[Request, str, dict], Awaitable[dict]] | None = None,
+    get_app_db_func: Callable[[Request], Awaitable[Any]] | None = None,
 ):
     """
     FastAPI dependency that blocks demo users and returns an error response.

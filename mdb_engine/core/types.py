@@ -8,7 +8,7 @@ throughout the codebase.
 This module is part of MDB_ENGINE - MongoDB Engine.
 """
 
-from typing import TYPE_CHECKING, Any, Dict, List, Literal, Optional, TypedDict, Union
+from typing import TYPE_CHECKING, Any, Literal, TypedDict
 
 if TYPE_CHECKING:
     from ..memory import Mem0MemoryService
@@ -41,20 +41,20 @@ class IndexDefinitionDict(TypedDict, total=False):
         "partial",
         "hybrid",
     ]
-    keys: Union[Dict[str, Union[int, str]], List[List[Union[str, int]]]]
+    keys: dict[str, int | str] | list[list[str | int]]
     unique: bool
     sparse: bool
     background: bool
     expireAfterSeconds: int
-    partialFilterExpression: Dict[str, Any]
-    weights: Dict[str, int]  # For text indexes
+    partialFilterExpression: dict[str, Any]
+    weights: dict[str, int]  # For text indexes
     default_language: str  # For text indexes
     language_override: str  # For text indexes
     textIndexVersion: int  # For text indexes
     # Vector search specific
-    fields: List[Dict[str, Any]]  # For vectorSearch indexes
+    fields: list[dict[str, Any]]  # For vectorSearch indexes
     # Search index specific
-    mappings: Dict[str, Any]  # For search indexes
+    mappings: dict[str, Any]  # For search indexes
     # Geospatial specific
     bucketSize: float  # For geoHaystack
     # TTL specific
@@ -79,12 +79,12 @@ class AuthAuthorizationDict(TypedDict, total=False):
     model: str
     policies_collection: str
     link_users_roles: bool
-    default_roles: List[str]
+    default_roles: list[str]
     # OSO-specific
-    api_key: Optional[str]
-    url: Optional[str]
-    initial_roles: List[Dict[str, str]]
-    initial_policies: List[Dict[str, str]]
+    api_key: str | None
+    url: str | None
+    initial_roles: list[dict[str, str]]
+    initial_policies: list[dict[str, str]]
 
 
 class AuthPolicyDict(TypedDict, total=False):
@@ -93,12 +93,12 @@ class AuthPolicyDict(TypedDict, total=False):
     required: bool
     provider: Literal["casbin", "oso", "custom"]
     authorization: AuthAuthorizationDict
-    allowed_roles: List[str]
-    allowed_users: List[str]
-    denied_users: List[str]
-    required_permissions: List[str]
+    allowed_roles: list[str]
+    allowed_users: list[str]
+    denied_users: list[str]
+    required_permissions: list[str]
     custom_resource: str
-    custom_actions: List[Literal["access", "read", "write", "admin"]]
+    custom_actions: list[Literal["access", "read", "write", "admin"]]
     allow_anonymous: bool
     owner_can_access: bool
 
@@ -111,7 +111,7 @@ class DemoUserDict(TypedDict, total=False):
     role: str
     auto_create: bool
     link_to_platform: bool
-    extra_data: Dict[str, Any]
+    extra_data: dict[str, Any]
 
 
 class UsersConfigDict(TypedDict, total=False):
@@ -126,7 +126,7 @@ class UsersConfigDict(TypedDict, total=False):
     link_platform_users: bool
     anonymous_user_prefix: str
     user_id_field: str
-    demo_users: List[DemoUserDict]
+    demo_users: list[DemoUserDict]
     auto_link_platform_demo: bool
     demo_user_seed_strategy: Literal["auto", "manual", "disabled"]
     enable_demo_user_access: bool
@@ -312,7 +312,7 @@ class MetricsConfigDict(TypedDict, total=False):
     enabled: bool
     collect_operation_metrics: bool
     collect_performance_metrics: bool
-    custom_metrics: List[str]
+    custom_metrics: list[str]
 
 
 class LoggingConfigDict(TypedDict, total=False):
@@ -341,11 +341,11 @@ class CORSConfigDict(TypedDict, total=False):
     """CORS configuration."""
 
     enabled: bool
-    allow_origins: List[str]
+    allow_origins: list[str]
     allow_credentials: bool
-    allow_methods: List[Literal["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS", "HEAD", "*"]]
-    allow_headers: List[str]
-    expose_headers: List[str]
+    allow_methods: list[Literal["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS", "HEAD", "*"]]
+    allow_headers: list[str]
+    expose_headers: list[str]
     max_age: int
 
 
@@ -371,22 +371,22 @@ class ManifestDict(TypedDict, total=False):
     schema_version: str
     slug: str
     name: str
-    description: Optional[str]
+    description: str | None
     status: Literal["active", "draft", "archived", "inactive"]
     auth_required: bool  # Backward compatibility
-    auth: Optional[AuthConfigDict]
-    token_management: Optional[TokenManagementDict]
-    data_scope: List[str]
-    pip_deps: List[str]
-    managed_indexes: Optional[ManagedIndexesDict]
-    collection_settings: Optional[Dict[str, Dict[str, Any]]]
-    websockets: Optional[WebSocketsDict]
-    embedding_config: Optional[EmbeddingConfigDict]
-    memory_config: Optional[MemoryConfigDict]
-    cors: Optional[CORSConfigDict]
-    observability: Optional[ObservabilityConfigDict]
-    initial_data: Optional[InitialDataDict]
-    developer_id: Optional[str]
+    auth: AuthConfigDict | None
+    token_management: TokenManagementDict | None
+    data_scope: list[str]
+    pip_deps: list[str]
+    managed_indexes: ManagedIndexesDict | None
+    collection_settings: dict[str, dict[str, Any]] | None
+    websockets: WebSocketsDict | None
+    embedding_config: EmbeddingConfigDict | None
+    memory_config: MemoryConfigDict | None
+    cors: CORSConfigDict | None
+    observability: ObservabilityConfigDict | None
+    initial_data: InitialDataDict | None
+    developer_id: str | None
 
 
 # ============================================================================
@@ -398,13 +398,13 @@ class HealthStatusDict(TypedDict, total=False):
     """Health status response."""
 
     status: Literal["healthy", "degraded", "unhealthy"]
-    checks: Dict[str, Dict[str, Any]]
+    checks: dict[str, dict[str, Any]]
     timestamp: str
 
 
 class MetricsDict(TypedDict, total=False):
     """Metrics response."""
 
-    operations: Dict[str, Dict[str, Any]]
-    summary: Dict[str, Any]
+    operations: dict[str, dict[str, Any]]
+    summary: dict[str, Any]
     timestamp: str

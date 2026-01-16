@@ -25,7 +25,8 @@ This module is part of MDB_ENGINE - MongoDB Engine.
 
 import logging
 import os
-from typing import TYPE_CHECKING, Any, Callable, Optional, TypeVar
+from collections.abc import Callable
+from typing import TYPE_CHECKING, Any, TypeVar
 
 if TYPE_CHECKING:
     pass
@@ -132,7 +133,7 @@ class AppRayActor:
             else:
                 raise
 
-    async def get_app_db(self, app_token: Optional[str] = None) -> Any:
+    async def get_app_db(self, app_token: str | None = None) -> Any:
         """
         Get scoped database for this app.
 
@@ -191,11 +192,11 @@ class AppRayActor:
 async def get_ray_actor_handle(
     app_slug: str,
     namespace: str = "modular_labs",
-    mongo_uri: Optional[str] = None,
-    db_name: Optional[str] = None,
+    mongo_uri: str | None = None,
+    db_name: str | None = None,
     create_if_missing: bool = True,
-    actor_class: Optional[type] = None,
-) -> Optional[Any]:
+    actor_class: type | None = None,
+) -> Any | None:
     """
     Get or create a Ray actor handle for an app.
 
@@ -294,7 +295,7 @@ async def get_ray_actor_handle(
 
 
 def ray_actor_decorator(
-    app_slug: Optional[str] = None,
+    app_slug: str | None = None,
     namespace: str = "modular_labs",
     isolated: bool = True,
     lifetime: str = "detached",
@@ -369,8 +370,8 @@ def ray_actor_decorator(
         def spawn(
             cls,
             *args,
-            mongo_uri: Optional[str] = None,
-            db_name: Optional[str] = None,
+            mongo_uri: str | None = None,
+            db_name: str | None = None,
             **kwargs,
         ):
             """

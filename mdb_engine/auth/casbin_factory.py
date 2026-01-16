@@ -261,7 +261,7 @@ async def initialize_casbin_from_manifest(
         if initial_policies:
             logger.info(f"Setting up {len(initial_policies)} initial policies...")
             for policy in initial_policies:
-                if isinstance(policy, (list, tuple)) and len(policy) >= 3:
+                if isinstance(policy, list | tuple) and len(policy) >= 3:
                     role, resource, action = policy[0], policy[1], policy[2]
                     try:
                         # Check if policy already exists
@@ -331,7 +331,7 @@ async def initialize_casbin_from_manifest(
         if initial_policies:
             verified = 0
             for policy in initial_policies:
-                if isinstance(policy, (list, tuple)) and len(policy) >= 3:
+                if isinstance(policy, list | tuple) and len(policy) >= 3:
                     role, resource, action = policy[0], policy[1], policy[2]
                     if await adapter.has_policy(role, resource, action):
                         verified += 1

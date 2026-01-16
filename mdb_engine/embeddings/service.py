@@ -23,7 +23,7 @@ import os
 import time
 from abc import ABC, abstractmethod
 from datetime import datetime
-from typing import Any, Dict, List, Optional, Union
+from typing import Any
 
 # Optional OpenAI SDK import
 try:
@@ -59,9 +59,7 @@ class BaseEmbeddingProvider(ABC):
     """
 
     @abstractmethod
-    async def embed(
-        self, text: Union[str, List[str]], model: Optional[str] = None
-    ) -> List[List[float]]:
+    async def embed(self, text: str | list[str], model: str | None = None) -> list[list[float]]:
         """
         Generate embeddings for text.
 
@@ -84,7 +82,7 @@ class OpenAIEmbeddingProvider(BaseEmbeddingProvider):
 
     def __init__(
         self,
-        api_key: Optional[str] = None,
+        api_key: str | None = None,
         default_model: str = "text-embedding-3-small",
     ):
         """
@@ -108,9 +106,7 @@ class OpenAIEmbeddingProvider(BaseEmbeddingProvider):
         self.client = AsyncOpenAI(api_key=api_key)
         self.default_model = default_model
 
-    async def embed(
-        self, text: Union[str, List[str]], model: Optional[str] = None
-    ) -> List[List[float]]:
+    async def embed(self, text: str | list[str], model: str | None = None) -> list[list[float]]:
         """Generate embeddings using OpenAI."""
         model = model or self.default_model
 
@@ -149,9 +145,9 @@ class AzureOpenAIEmbeddingProvider(BaseEmbeddingProvider):
 
     def __init__(
         self,
-        api_key: Optional[str] = None,
-        endpoint: Optional[str] = None,
-        api_version: Optional[str] = None,
+        api_key: str | None = None,
+        endpoint: str | None = None,
+        api_version: str | None = None,
         default_model: str = "text-embedding-3-small",
     ):
         """
@@ -191,9 +187,7 @@ class AzureOpenAIEmbeddingProvider(BaseEmbeddingProvider):
         )
         self.default_model = default_model
 
-    async def embed(
-        self, text: Union[str, List[str]], model: Optional[str] = None
-    ) -> List[List[float]]:
+    async def embed(self, text: str | list[str], model: str | None = None) -> list[list[float]]:
         """Generate embeddings using Azure OpenAI."""
         model = model or self.default_model
 
@@ -255,8 +249,8 @@ class EmbeddingProvider:
 
     def __init__(
         self,
-        embedding_provider: Optional[BaseEmbeddingProvider] = None,
-        config: Optional[Dict[str, Any]] = None,
+        embedding_provider: BaseEmbeddingProvider | None = None,
+        config: dict[str, Any] | None = None,
     ):
         """
         Initialize Embedding Provider.
@@ -293,9 +287,7 @@ class EmbeddingProvider:
         # Store config for potential future use
         self.config = config or {}
 
-    async def embed(
-        self, text: Union[str, List[str]], model: Optional[str] = None
-    ) -> List[List[float]]:
+    async def embed(self, text: str | list[str], model: str | None = None) -> list[list[float]]:
         """
         Generates vector embeddings for a string or list of strings.
 
@@ -361,10 +353,10 @@ class EmbeddingService:
 
     def __init__(
         self,
-        embedding_provider: Optional[EmbeddingProvider] = None,
+        embedding_provider: EmbeddingProvider | None = None,
         default_max_tokens: int = 1000,
         default_tokenizer_model: str = "gpt-3.5-turbo",
-        config: Optional[Dict[str, Any]] = None,
+        config: dict[str, Any] | None = None,
     ):
         """
         Initialize Embedding Service.
@@ -397,9 +389,7 @@ class EmbeddingService:
         self.default_max_tokens = default_max_tokens
         self.default_tokenizer_model = default_tokenizer_model
 
-    def _create_splitter(
-        self, max_tokens: int, tokenizer_model: Optional[str] = None
-    ) -> TextSplitter:
+    def _create_splitter(self, max_tokens: int, tokenizer_model: str | None = None) -> TextSplitter:
         """
         Create a TextSplitter instance.
 
@@ -419,9 +409,9 @@ class EmbeddingService:
     async def chunk_text(
         self,
         text_content: str,
-        max_tokens: Optional[int] = None,
-        tokenizer_model: Optional[str] = None,
-    ) -> List[str]:
+        max_tokens: int | None = None,
+        tokenizer_model: str | None = None,
+    ) -> list[str]:
         """
         Split text into semantic chunks.
 
@@ -455,9 +445,7 @@ class EmbeddingService:
             logger.error(f"Error chunking text: {e}", exc_info=True)
             raise EmbeddingServiceError(f"Chunking failed: {str(e)}") from e
 
-    async def embed_chunks(
-        self, chunks: List[str], model: Optional[str] = None
-    ) -> List[List[float]]:
+    async def embed_chunks(self, chunks: list[str], model: str | None = None) -> list[list[float]]:
         """
         Generate embeddings for text chunks.
 
@@ -498,11 +486,11 @@ class EmbeddingService:
         text_content: str,
         source_id: str,
         collection: Any,  # MongoDB collection (AppDB Collection or Motor collection)
-        max_tokens: Optional[int] = None,
-        tokenizer_model: Optional[str] = None,
-        embedding_model: Optional[str] = None,
-        metadata: Optional[Dict[str, Any]] = None,
-    ) -> Dict[str, Any]:
+        max_tokens: int | None = None,
+        tokenizer_model: str | None = None,
+        embedding_model: str | None = None,
+        metadata: dict[str, Any] | None = None,
+    ) -> dict[str, Any]:
         """
         Process text and store chunks with embeddings in MongoDB.
 
@@ -573,7 +561,7 @@ class EmbeddingService:
 
         # Step 3: Prepare documents for insertion
         documents_to_insert = []
-        for i, (chunk_text, vector) in enumerate(zip(chunks, vectors)):
+        for i, (chunk_text, vector) in enumerate(zip(chunks, vectors, strict=False)):
             doc = {
                 "source_id": source_id,
                 "chunk_index": i,
@@ -626,10 +614,10 @@ class EmbeddingService:
     async def process_text(
         self,
         text_content: str,
-        max_tokens: Optional[int] = None,
-        tokenizer_model: Optional[str] = None,
-        embedding_model: Optional[str] = None,
-    ) -> List[Dict[str, Any]]:
+        max_tokens: int | None = None,
+        tokenizer_model: str | None = None,
+        embedding_model: str | None = None,
+    ) -> list[dict[str, Any]]:
         """
         Process text and return chunks with embeddings (without storing).
 
@@ -673,7 +661,7 @@ class EmbeddingService:
 
         # Prepare results
         results = []
-        for i, (chunk_text, vector) in enumerate(zip(chunks, vectors)):
+        for i, (chunk_text, vector) in enumerate(zip(chunks, vectors, strict=False)):
             results.append(
                 {
                     "chunk_index": i,
@@ -692,8 +680,8 @@ class EmbeddingService:
 
 # Dependency injection helper
 def get_embedding_service(
-    embedding_provider: Optional[BaseEmbeddingProvider] = None,
-    config: Optional[Dict[str, Any]] = None,
+    embedding_provider: BaseEmbeddingProvider | None = None,
+    config: dict[str, Any] | None = None,
 ) -> EmbeddingService:
     """
     Create EmbeddingService instance with auto-detected or provided embedding provider.

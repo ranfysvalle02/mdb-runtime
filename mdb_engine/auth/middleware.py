@@ -15,7 +15,8 @@ Security Features:
 import logging
 import os
 import secrets
-from typing import Any, Awaitable, Callable, Dict, Optional
+from collections.abc import Awaitable, Callable
+from typing import Any
 
 from fastapi import HTTPException, Request, Response, status
 from fastapi.responses import RedirectResponse
@@ -53,7 +54,7 @@ class SecurityMiddleware(BaseHTTPMiddleware):
         require_https: bool = False,
         csrf_protection: bool = True,
         security_headers: bool = True,
-        hsts_config: Optional[Dict[str, Any]] = None,
+        hsts_config: dict[str, Any] | None = None,
     ):
         """
         Initialize security middleware.

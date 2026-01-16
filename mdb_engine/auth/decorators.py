@@ -9,8 +9,9 @@ This module is part of MDB_ENGINE - MongoDB Engine.
 import logging
 import time
 from collections import defaultdict
+from collections.abc import Awaitable, Callable
 from functools import wraps
-from typing import Any, Awaitable, Callable, Dict, Optional
+from typing import Any
 
 from fastapi import HTTPException, Request, status
 from fastapi.responses import RedirectResponse
@@ -20,7 +21,7 @@ from .dependencies import get_current_user_from_request
 logger = logging.getLogger(__name__)
 
 # Rate limiting storage (in-memory, can be replaced with Redis for distributed systems)
-_rate_limit_storage: Dict[str, Dict[str, Any]] = defaultdict(dict)
+_rate_limit_storage: dict[str, dict[str, Any]] = defaultdict(dict)
 
 
 def require_auth(redirect_to: str = "/login"):
@@ -82,7 +83,7 @@ def _validate_https(request: Request) -> None:
         )
 
 
-async def _get_csrf_token(request: Request) -> Optional[str]:
+async def _get_csrf_token(request: Request) -> str | None:
     """Extract CSRF token from request headers or form data."""
     csrf_token = request.headers.get("X-CSRF-Token")
     if csrf_token:
@@ -151,8 +152,8 @@ def token_security(enforce_https: bool = True, check_csrf: bool = True):
 
 def rate_limit_auth(
     endpoint: str = "login",
-    max_attempts: Optional[int] = None,
-    window_seconds: Optional[int] = None,
+    max_attempts: int | None = None,
+    window_seconds: int | None = None,
 ):
     """
     Rate limiting decorator for auth endpoints.
@@ -242,7 +243,7 @@ def rate_limit_auth(
     return decorator
 
 
-def auto_token_setup(func: Optional[Callable[..., Awaitable[Any]]] = None):
+def auto_token_setup(func: Callable[..., Awaitable[Any]] | None = None):
     """
     Decorator to automatically set up tokens on successful login/register.
 

@@ -19,7 +19,7 @@ Usage:
     service = get_embedding_service_for_app("my_app", engine)
 """
 
-from typing import TYPE_CHECKING, Optional
+from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from ..core.engine import MongoDBEngine
@@ -29,7 +29,7 @@ from .service import EmbeddingService, get_embedding_service
 
 def get_embedding_service_for_app(
     app_slug: str, engine: "MongoDBEngine"
-) -> Optional[EmbeddingService]:
+) -> EmbeddingService | None:
     """
     Get embedding service for a specific app using the engine instance.
 

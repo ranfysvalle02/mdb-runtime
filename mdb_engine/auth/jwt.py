@@ -10,7 +10,7 @@ This module is part of MDB_ENGINE - MongoDB Engine.
 import logging
 import uuid
 from datetime import datetime, timedelta
-from typing import Any, Dict, Optional, Tuple
+from typing import Any
 
 import jwt
 
@@ -21,7 +21,7 @@ from ..constants import CURRENT_TOKEN_VERSION
 logger = logging.getLogger(__name__)
 
 
-def decode_jwt_token(token: Any, secret_key: str) -> Dict[str, Any]:
+def decode_jwt_token(token: Any, secret_key: str) -> dict[str, Any]:
     """
     Helper function to decode JWT tokens with automatic fallback to bytes format.
 
@@ -74,7 +74,7 @@ def decode_jwt_token(token: Any, secret_key: str) -> Dict[str, Any]:
 
 
 def encode_jwt_token(
-    payload: Dict[str, Any], secret_key: str, expires_in: Optional[int] = None
+    payload: dict[str, Any], secret_key: str, expires_in: int | None = None
 ) -> str:
     """
     Encode a JWT token with enhanced claims.
@@ -123,12 +123,12 @@ def encode_jwt_token(
 
 
 def generate_token_pair(
-    user_data: Dict[str, Any],
+    user_data: dict[str, Any],
     secret_key: str,
-    device_info: Optional[Dict[str, Any]] = None,
-    access_token_ttl: Optional[int] = None,
-    refresh_token_ttl: Optional[int] = None,
-) -> Tuple[str, str, Dict[str, Any]]:
+    device_info: dict[str, Any] | None = None,
+    access_token_ttl: int | None = None,
+    refresh_token_ttl: int | None = None,
+) -> tuple[str, str, dict[str, Any]]:
     """
     Generate a pair of access and refresh tokens.
 
@@ -190,7 +190,7 @@ def generate_token_pair(
     return access_token, refresh_token, token_metadata
 
 
-def extract_token_metadata(token: str, secret_key: str) -> Optional[Dict[str, Any]]:
+def extract_token_metadata(token: str, secret_key: str) -> dict[str, Any] | None:
     """
     Extract metadata from a token without full validation.
 

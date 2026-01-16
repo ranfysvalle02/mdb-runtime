@@ -5,7 +5,7 @@ These exceptions provide more specific error types while maintaining
 backward compatibility with RuntimeError.
 """
 
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 
 class MongoDBEngineError(RuntimeError):
@@ -21,7 +21,7 @@ class MongoDBEngineError(RuntimeError):
                  collection_name, etc.)
     """
 
-    def __init__(self, message: str, context: Optional[Dict[str, Any]] = None) -> None:
+    def __init__(self, message: str, context: dict[str, Any] | None = None) -> None:
         """
         Initialize the exception.
 
@@ -58,9 +58,9 @@ class InitializationError(MongoDBEngineError):
     def __init__(
         self,
         message: str,
-        mongo_uri: Optional[str] = None,
-        db_name: Optional[str] = None,
-        context: Optional[Dict[str, Any]] = None,
+        mongo_uri: str | None = None,
+        db_name: str | None = None,
+        context: dict[str, Any] | None = None,
     ) -> None:
         """
         Initialize the initialization error.
@@ -99,10 +99,10 @@ class ManifestValidationError(MongoDBEngineError):
     def __init__(
         self,
         message: str,
-        error_paths: Optional[List[str]] = None,
-        manifest_slug: Optional[str] = None,
-        schema_version: Optional[str] = None,
-        context: Optional[Dict[str, Any]] = None,
+        error_paths: list[str] | None = None,
+        manifest_slug: str | None = None,
+        schema_version: str | None = None,
+        context: dict[str, Any] | None = None,
     ) -> None:
         """
         Initialize the manifest validation error.
@@ -144,9 +144,9 @@ class ConfigurationError(MongoDBEngineError):
     def __init__(
         self,
         message: str,
-        config_key: Optional[str] = None,
-        config_value: Optional[Any] = None,
-        context: Optional[Dict[str, Any]] = None,
+        config_key: str | None = None,
+        config_value: Any | None = None,
+        context: dict[str, Any] | None = None,
     ) -> None:
         """
         Initialize the configuration error.
@@ -185,10 +185,10 @@ class QueryValidationError(MongoDBEngineError):
     def __init__(
         self,
         message: str,
-        query_type: Optional[str] = None,
-        operator: Optional[str] = None,
-        path: Optional[str] = None,
-        context: Optional[Dict[str, Any]] = None,
+        query_type: str | None = None,
+        operator: str | None = None,
+        path: str | None = None,
+        context: dict[str, Any] | None = None,
     ) -> None:
         """
         Initialize the query validation error.
@@ -231,10 +231,10 @@ class ResourceLimitExceeded(MongoDBEngineError):
     def __init__(
         self,
         message: str,
-        limit_type: Optional[str] = None,
-        limit_value: Optional[Any] = None,
-        actual_value: Optional[Any] = None,
-        context: Optional[Dict[str, Any]] = None,
+        limit_type: str | None = None,
+        limit_value: Any | None = None,
+        actual_value: Any | None = None,
+        context: dict[str, Any] | None = None,
     ) -> None:
         """
         Initialize the resource limit exceeded error.

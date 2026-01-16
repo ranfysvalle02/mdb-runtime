@@ -32,7 +32,8 @@ For Scale:
 import asyncio
 import hashlib
 import logging
-from typing import Any, Awaitable, Callable, Dict, List, Optional, Tuple
+from collections.abc import Awaitable, Callable
+from typing import Any
 
 from jsonschema import SchemaError, ValidationError, validate
 
@@ -48,10 +49,10 @@ from ..constants import (
 logger = logging.getLogger(__name__)
 
 # Schema registry: maps version -> schema definition
-SCHEMA_REGISTRY: Dict[str, Dict[str, Any]] = {}
+SCHEMA_REGISTRY: dict[str, dict[str, Any]] = {}
 
 # Validation cache: maps (manifest_hash, version) -> validation_result
-_validation_cache: Dict[str, Tuple[bool, Optional[str], Optional[List[str]]]] = {}
+_validation_cache: dict[str, tuple[bool, str | None, list[str] | None]] = {}
 _cache_lock = asyncio.Lock()
 
 
@@ -86,7 +87,7 @@ def _convert_tuples_to_lists(obj: Any) -> Any:
         return obj
 
 
-def _get_manifest_hash(manifest_data: Dict[str, Any]) -> str:
+def _get_manifest_hash(manifest_data: dict[str, Any]) -> str:
     """Generate a hash for manifest caching."""
     import json
 
@@ -2083,7 +2084,7 @@ SCHEMA_REGISTRY["default"] = MANIFEST_SCHEMA_V2
 MANIFEST_SCHEMA = MANIFEST_SCHEMA_V2  # Backward compatibility
 
 
-def get_schema_version(manifest_data: Dict[str, Any]) -> str:
+def get_schema_version(manifest_data: dict[str, Any]) -> str:
     """
     Detect schema version from manifest.
 
@@ -2096,7 +2097,7 @@ def get_schema_version(manifest_data: Dict[str, Any]) -> str:
     Raises:
         ValueError: If schema version format is invalid
     """
-    version: Optional[str] = manifest_data.get("schema_version")
+    version: str | None = manifest_data.get("schema_version")
     if version:
         # Validate version format
         if not isinstance(version, str) or not version.replace(".", "").isdigit():
@@ -2118,8 +2119,8 @@ def get_schema_version(manifest_data: Dict[str, Any]) -> str:
 
 
 def migrate_manifest(
-    manifest_data: Dict[str, Any], target_version: str = CURRENT_SCHEMA_VERSION
-) -> Dict[str, Any]:
+    manifest_data: dict[str, Any], target_version: str = CURRENT_SCHEMA_VERSION
+) -> dict[str, Any]:
     """
     Migrate manifest from one schema version to another.
 
@@ -2168,7 +2169,7 @@ def migrate_manifest(
     return migrated
 
 
-def get_schema_for_version(version: str) -> Dict[str, Any]:
+def get_schema_for_version(version: str) -> dict[str, Any]:
     """
     Get schema definition for a specific version.
 
@@ -2201,8 +2202,8 @@ def get_schema_for_version(version: str) -> Dict[str, Any]:
 
 
 async def _validate_manifest_async(
-    manifest_data: Dict[str, Any], use_cache: bool = True
-) -> Tuple[bool, Optional[str], Optional[List[str]]]:
+    manifest_data: dict[str, Any], use_cache: bool = True
+) -> tuple[bool, str | None, list[str] | None]:
     """
     Validate a manifest against the JSON Schema with versioning and caching support.
 
@@ -2329,8 +2330,8 @@ def clear_validation_cache():
 
 
 async def validate_manifests_parallel(
-    manifests: List[Dict[str, Any]], use_cache: bool = True
-) -> List[Tuple[bool, Optional[str], Optional[List[str]], Optional[str]]]:
+    manifests: list[dict[str, Any]], use_cache: bool = True
+) -> list[tuple[bool, str | None, list[str] | None, str | None]]:
     """
     Validate multiple manifests in parallel for scale.
 
@@ -2344,8 +2345,8 @@ async def validate_manifests_parallel(
     """
 
     async def validate_one(
-        manifest: Dict[str, Any],
-    ) -> Tuple[bool, Optional[str], Optional[List[str]], Optional[str]]:
+        manifest: dict[str, Any],
+    ) -> tuple[bool, str | None, list[str] | None, str | None]:
         slug = manifest.get("slug", "unknown")
         is_valid, error, paths = await _validate_manifest_async(manifest, use_cache=use_cache)
         return (is_valid, error, paths, slug)
@@ -2366,8 +2367,8 @@ async def validate_manifests_parallel(
 
 
 async def validate_developer_id(
-    developer_id: str, db_validator: Optional[Callable[[str], Awaitable[bool]]] = None
-) -> Tuple[bool, Optional[str]]:
+    developer_id: str, db_validator: Callable[[str], Awaitable[bool]] | None = None
+) -> tuple[bool, str | None]:
     """
     Validate that a developer_id exists in the system and has developer role.
 
@@ -2411,10 +2412,10 @@ async def validate_developer_id(
 
 
 async def validate_manifest_with_db(
-    manifest_data: Dict[str, Any],
+    manifest_data: dict[str, Any],
     db_validator: Callable[[str], Awaitable[bool]],
     use_cache: bool = True,
-) -> Tuple[bool, Optional[str], Optional[List[str]]]:
+) -> tuple[bool, str | None, list[str] | None]:
     """
     Validate a manifest against the JSON Schema (with versioning) and check
     developer_id exists in system.
@@ -2455,8 +2456,8 @@ async def validate_manifest_with_db(
 # Public API: Synchronous wrapper for backward compatibility
 # Most callers use this synchronously, so we provide a sync wrapper
 def validate_manifest(
-    manifest_data: Dict[str, Any], use_cache: bool = True
-) -> Tuple[bool, Optional[str], Optional[List[str]]]:
+    manifest_data: dict[str, Any], use_cache: bool = True
+) -> tuple[bool, str | None, list[str] | None]:
     """
     Validate a manifest against the JSON Schema with versioning and caching
     support (synchronous wrapper).
@@ -2495,8 +2496,8 @@ def validate_manifest(
 
 
 def _validate_regular_index(
-    index_def: Dict[str, Any], collection_name: str, index_name: str
-) -> Tuple[bool, Optional[str]]:
+    index_def: dict[str, Any], collection_name: str, index_name: str
+) -> tuple[bool, str | None]:
     """Validate a regular index definition."""
     if "keys" not in index_def:
         return (
@@ -2533,8 +2534,8 @@ def _validate_regular_index(
 
 
 def _validate_ttl_index(
-    index_def: Dict[str, Any], collection_name: str, index_name: str
-) -> Tuple[bool, Optional[str]]:
+    index_def: dict[str, Any], collection_name: str, index_name: str
+) -> tuple[bool, str | None]:
     """Validate a TTL index definition."""
     if "keys" not in index_def:
         return (
@@ -2567,8 +2568,8 @@ def _validate_ttl_index(
 
 
 def _validate_partial_index(
-    index_def: Dict[str, Any], collection_name: str, index_name: str
-) -> Tuple[bool, Optional[str]]:
+    index_def: dict[str, Any], collection_name: str, index_name: str
+) -> tuple[bool, str | None]:
     """Validate a partial index definition."""
     if "keys" not in index_def:
         return (
@@ -2588,8 +2589,8 @@ def _validate_partial_index(
 
 
 def _validate_text_index(
-    index_def: Dict[str, Any], collection_name: str, index_name: str
-) -> Tuple[bool, Optional[str]]:
+    index_def: dict[str, Any], collection_name: str, index_name: str
+) -> tuple[bool, str | None]:
     """Validate a text index definition."""
     if "keys" not in index_def:
         return (
@@ -2614,8 +2615,8 @@ def _validate_text_index(
 
 
 def _validate_geospatial_index(
-    index_def: Dict[str, Any], collection_name: str, index_name: str
-) -> Tuple[bool, Optional[str]]:
+    index_def: dict[str, Any], collection_name: str, index_name: str
+) -> tuple[bool, str | None]:
     """Validate a geospatial index definition."""
     if "keys" not in index_def:
         return (
@@ -2641,8 +2642,8 @@ def _validate_geospatial_index(
 
 
 def _validate_vector_search_index(
-    index_def: Dict[str, Any], collection_name: str, index_name: str, index_type: str
-) -> Tuple[bool, Optional[str]]:
+    index_def: dict[str, Any], collection_name: str, index_name: str, index_type: str
+) -> tuple[bool, str | None]:
     """Validate a vectorSearch or search index definition."""
     if "definition" not in index_def:
         return (
@@ -2689,8 +2690,8 @@ def _validate_vector_search_index(
 
 
 def _validate_hybrid_index(
-    index_def: Dict[str, Any], collection_name: str, index_name: str
-) -> Tuple[bool, Optional[str]]:
+    index_def: dict[str, Any], collection_name: str, index_name: str
+) -> tuple[bool, str | None]:
     """Validate a hybrid index definition."""
     if "hybrid" not in index_def:
         return (
@@ -2753,8 +2754,8 @@ def _validate_hybrid_index(
 
 
 def validate_index_definition(
-    index_def: Dict[str, Any], collection_name: str, index_name: str
-) -> Tuple[bool, Optional[str]]:
+    index_def: dict[str, Any], collection_name: str, index_name: str
+) -> tuple[bool, str | None]:
     """
     Validate a single index definition with context-specific checks.
 
@@ -2797,8 +2798,8 @@ def validate_index_definition(
 
 
 def validate_managed_indexes(
-    managed_indexes: Dict[str, List[Dict[str, Any]]],
-) -> Tuple[bool, Optional[str]]:
+    managed_indexes: dict[str, list[dict[str, Any]]],
+) -> tuple[bool, str | None]:
     """
     Validate all managed indexes with collection and index context.
 
@@ -2866,8 +2867,8 @@ class ManifestValidator:
 
     @staticmethod
     def validate(
-        manifest: Dict[str, Any], use_cache: bool = True
-    ) -> Tuple[bool, Optional[str], Optional[List[str]]]:
+        manifest: dict[str, Any], use_cache: bool = True
+    ) -> tuple[bool, str | None, list[str] | None]:
         """
         Validate manifest against schema.
 
@@ -2882,8 +2883,8 @@ class ManifestValidator:
 
     @staticmethod
     async def validate_async(
-        manifest: Dict[str, Any], use_cache: bool = True
-    ) -> Tuple[bool, Optional[str], Optional[List[str]]]:
+        manifest: dict[str, Any], use_cache: bool = True
+    ) -> tuple[bool, str | None, list[str] | None]:
         """
         Validate manifest asynchronously.
 
@@ -2902,10 +2903,10 @@ class ManifestValidator:
 
     @staticmethod
     async def validate_with_db(
-        manifest: Dict[str, Any],
+        manifest: dict[str, Any],
         db_validator: Callable[[str], Awaitable[bool]],
         use_cache: bool = True,
-    ) -> Tuple[bool, Optional[str], Optional[List[str]]]:
+    ) -> tuple[bool, str | None, list[str] | None]:
         """
         Validate manifest and check developer_id exists in database.
 
@@ -2921,8 +2922,8 @@ class ManifestValidator:
 
     @staticmethod
     def validate_managed_indexes(
-        managed_indexes: Dict[str, List[Dict[str, Any]]],
-    ) -> Tuple[bool, Optional[str]]:
+        managed_indexes: dict[str, list[dict[str, Any]]],
+    ) -> tuple[bool, str | None]:
         """
         Validate managed indexes configuration.
 
@@ -2936,8 +2937,8 @@ class ManifestValidator:
 
     @staticmethod
     def validate_index_definition(
-        index_def: Dict[str, Any], collection_name: str, index_name: str
-    ) -> Tuple[bool, Optional[str]]:
+        index_def: dict[str, Any], collection_name: str, index_name: str
+    ) -> tuple[bool, str | None]:
         """
         Validate a single index definition.
 
@@ -2952,7 +2953,7 @@ class ManifestValidator:
         return validate_index_definition(index_def, collection_name, index_name)
 
     @staticmethod
-    def get_schema_version(manifest: Dict[str, Any]) -> str:
+    def get_schema_version(manifest: dict[str, Any]) -> str:
         """
             Get schema version from manifest.
 
@@ -2966,8 +2967,8 @@ class ManifestValidator:
 
     @staticmethod
     def migrate(
-        manifest: Dict[str, Any], target_version: str = CURRENT_SCHEMA_VERSION
-    ) -> Dict[str, Any]:
+        manifest: dict[str, Any], target_version: str = CURRENT_SCHEMA_VERSION
+    ) -> dict[str, Any]:
         """
         Migrate manifest to target schema version.
 
@@ -2994,7 +2995,7 @@ class ManifestParser:
     with automatic validation and migration.
     """
 
-    def __init__(self, validator: Optional[ManifestValidator] = None):
+    def __init__(self, validator: ManifestValidator | None = None):
         """
         Initialize parser.
 
@@ -3004,7 +3005,7 @@ class ManifestParser:
         self.validator = validator or ManifestValidator()
 
     @staticmethod
-    async def load_from_file(path: Any, validate: bool = True) -> Dict[str, Any]:
+    async def load_from_file(path: Any, validate: bool = True) -> dict[str, Any]:
         """
         Load and validate manifest from file.
 
@@ -3041,7 +3042,7 @@ class ManifestParser:
         return manifest_data
 
     @staticmethod
-    async def load_from_dict(data: Dict[str, Any], validate: bool = True) -> Dict[str, Any]:
+    async def load_from_dict(data: dict[str, Any], validate: bool = True) -> dict[str, Any]:
         """
         Load and validate manifest from dictionary.
 
@@ -3065,7 +3066,7 @@ class ManifestParser:
         return data.copy()
 
     @staticmethod
-    async def load_from_string(content: str, validate: bool = True) -> Dict[str, Any]:
+    async def load_from_string(content: str, validate: bool = True) -> dict[str, Any]:
         """
         Load and validate manifest from JSON string.
 
@@ -3087,8 +3088,8 @@ class ManifestParser:
 
     @staticmethod
     async def load_and_migrate(
-        manifest: Dict[str, Any], target_version: str = CURRENT_SCHEMA_VERSION
-    ) -> Dict[str, Any]:
+        manifest: dict[str, Any], target_version: str = CURRENT_SCHEMA_VERSION
+    ) -> dict[str, Any]:
         """
         Load manifest and migrate to target version.
 

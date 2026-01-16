@@ -8,12 +8,12 @@ This module is part of MDB_ENGINE - MongoDB Engine.
 
 import json
 from pathlib import Path
-from typing import Any, Dict
+from typing import Any
 
 import click
 
 
-def load_manifest_file(file_path: Path) -> Dict[str, Any]:
+def load_manifest_file(file_path: Path) -> dict[str, Any]:
     """
     Load a manifest JSON file.
 
@@ -36,7 +36,7 @@ def load_manifest_file(file_path: Path) -> Dict[str, Any]:
         raise click.ClickException(f"Invalid JSON in manifest file: {e}") from e
 
 
-def save_manifest_file(file_path: Path, manifest: Dict[str, Any]) -> None:
+def save_manifest_file(file_path: Path, manifest: dict[str, Any]) -> None:
     """
     Save a manifest dictionary to a JSON file.
 
@@ -54,7 +54,7 @@ def save_manifest_file(file_path: Path, manifest: Dict[str, Any]) -> None:
         raise click.ClickException(f"Failed to write manifest file: {e}") from e
 
 
-def format_manifest_output(manifest: Dict[str, Any], format_type: str) -> str:
+def format_manifest_output(manifest: dict[str, Any], format_type: str) -> str:
     """
     Format manifest for output.
 

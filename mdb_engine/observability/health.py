@@ -6,10 +6,11 @@ Provides health check functions for monitoring system status.
 
 import asyncio
 import logging
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum
-from typing import Any, Callable, Dict, List, Optional
+from typing import Any
 
 from pymongo.errors import (
     ConnectionFailure,
@@ -36,10 +37,10 @@ class HealthCheckResult:
     name: str
     status: HealthStatus
     message: str
-    details: Optional[Dict[str, Any]] = None
+    details: dict[str, Any] | None = None
     timestamp: datetime = field(default_factory=datetime.now)
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary."""
         return {
             "name": self.name,
@@ -57,7 +58,7 @@ class HealthChecker:
 
     def __init__(self):
         """Initialize the health checker."""
-        self._checks: List[callable] = []
+        self._checks: list[callable] = []
 
     def register_check(self, check_func: Callable) -> None:
         """
@@ -68,14 +69,14 @@ class HealthChecker:
         """
         self._checks.append(check_func)
 
-    async def check_all(self) -> Dict[str, Any]:
+    async def check_all(self) -> dict[str, Any]:
         """
         Run all registered health checks.
 
         Returns:
             Dictionary with overall status and individual check results
         """
-        results: List[HealthCheckResult] = []
+        results: list[HealthCheckResult] = []
 
         for check_func in self._checks:
             try:
@@ -117,7 +118,7 @@ class HealthChecker:
 
 
 async def check_mongodb_health(
-    mongo_client: Optional[Any], timeout_seconds: float = 5.0
+    mongo_client: Any | None, timeout_seconds: float = 5.0
 ) -> HealthCheckResult:
     """
     Check MongoDB connection health.
@@ -166,7 +167,7 @@ async def check_mongodb_health(
         )
 
 
-async def check_engine_health(engine: Optional[Any]) -> HealthCheckResult:
+async def check_engine_health(engine: Any | None) -> HealthCheckResult:
     """
     Check MongoDB Engine health.
 
@@ -205,7 +206,7 @@ async def check_engine_health(engine: Optional[Any]) -> HealthCheckResult:
 
 
 async def check_pool_health(
-    get_pool_metrics_func: Optional[Callable[[], Any]] = None,
+    get_pool_metrics_func: Callable[[], Any] | None = None,
 ) -> HealthCheckResult:
     """
     Check connection pool health.

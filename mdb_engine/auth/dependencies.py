@@ -9,8 +9,9 @@ This module is part of MDB_ENGINE - MongoDB Engine.
 import logging
 import os
 import uuid
+from collections.abc import Mapping
 from datetime import datetime, timedelta
-from typing import Any, Dict, Mapping, Optional, Tuple
+from typing import Any
 
 import jwt
 from fastapi import Cookie, Depends, HTTPException, Request, status
@@ -26,7 +27,7 @@ from .token_store import TokenBlacklist
 
 logger = logging.getLogger(__name__)
 
-_SECRET_KEY_CACHE: Optional[str] = None
+_SECRET_KEY_CACHE: str | None = None
 
 
 def _get_secret_key() -> str:
@@ -94,7 +95,7 @@ def _get_secret_key_value() -> str:
 SECRET_KEY = _SecretKey()
 
 
-def _validate_next_url(next_url: Optional[str]) -> str:
+def _validate_next_url(next_url: str | None) -> str:
     """
     Sanitizes a 'next' URL parameter to prevent Open Redirect vulnerabilities.
     """
@@ -127,7 +128,7 @@ async def get_authz_provider(request: Request) -> AuthorizationProvider:
     return provider
 
 
-async def get_token_blacklist(request: Request) -> Optional[TokenBlacklist]:
+async def get_token_blacklist(request: Request) -> TokenBlacklist | None:
     """
     FastAPI Dependency: Retrieves token blacklist from app.state.
 
@@ -137,7 +138,7 @@ async def get_token_blacklist(request: Request) -> Optional[TokenBlacklist]:
     return blacklist
 
 
-async def get_session_manager(request: Request) -> Optional[SessionManager]:
+async def get_session_manager(request: Request) -> SessionManager | None:
     """
     FastAPI Dependency: Retrieves session manager from app.state.
 
@@ -149,8 +150,8 @@ async def get_session_manager(request: Request) -> Optional[SessionManager]:
 
 async def get_current_user(
     request: Request,
-    token: Optional[str] = Cookie(default=None),
-) -> Optional[Dict[str, Any]]:
+    token: str | None = Cookie(default=None),
+) -> dict[str, Any] | None:
     """
     FastAPI Dependency: Decodes and validates the JWT stored in the 'token' cookie.
 
@@ -212,7 +213,7 @@ async def get_current_user(
         return None
 
 
-async def get_current_user_from_request(request: Request) -> Optional[Dict[str, Any]]:
+async def get_current_user_from_request(request: Request) -> dict[str, Any] | None:
     """
     Helper function to get current user from a Request object.
     This is useful when you need to call get_current_user outside of FastAPI dependency injection.
@@ -289,8 +290,8 @@ async def get_current_user_from_request(request: Request) -> Optional[Dict[str, 
 
 async def get_refresh_token(
     request: Request,
-    refresh_token: Optional[str] = Cookie(default=None),
-) -> Optional[Dict[str, Any]]:
+    refresh_token: str | None = Cookie(default=None),
+) -> dict[str, Any] | None:
     """
     FastAPI Dependency: Validates refresh token from cookie.
 
@@ -385,9 +386,9 @@ async def get_refresh_token(
 
 
 async def require_admin(
-    user: Optional[Mapping[str, Any]] = Depends(get_current_user),
+    user: Mapping[str, Any] | None = Depends(get_current_user),
     authz: AuthorizationProvider = Depends(get_authz_provider),
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """
     FastAPI Dependency: Enforces admin privileges via the pluggable AuthZ provider.
     """
@@ -421,9 +422,9 @@ async def require_admin(
 
 
 async def require_admin_or_developer(
-    user: Optional[Mapping[str, Any]] = Depends(get_current_user),
+    user: Mapping[str, Any] | None = Depends(get_current_user),
     authz: AuthorizationProvider = Depends(get_authz_provider),
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """
     FastAPI Dependency: Enforces admin OR developer privileges.
     Developers can upload apps, admins can upload any app.
@@ -482,8 +483,8 @@ async def require_admin_or_developer(
 
 
 async def get_current_user_or_redirect(
-    request: Request, user: Optional[Mapping[str, Any]] = Depends(get_current_user)
-) -> Dict[str, Any]:
+    request: Request, user: Mapping[str, Any] | None = Depends(get_current_user)
+) -> dict[str, Any]:
     """
     FastAPI Dependency: Enforces user authentication. Redirects to login if not authenticated.
     """
@@ -534,10 +535,10 @@ def require_permission(obj: str, act: str, force_login: bool = True):
 
     async def _check_permission(
         # 2. The type hint MUST be Optional now
-        user: Optional[Dict[str, Any]] = Depends(user_dependency),
+        user: dict[str, Any] | None = Depends(user_dependency),
         # 3. Ask for the generic INTERFACE
         authz: AuthorizationProvider = Depends(get_authz_provider),
-    ) -> Optional[Dict[str, Any]]:  # 4. Return type is also Optional
+    ) -> dict[str, Any] | None:  # 4. Return type is also Optional
         """Internal dependency function performing the AuthZ check."""
 
         # 5. Check for 'anonymous' if user is None
@@ -595,9 +596,9 @@ def require_permission(obj: str, act: str, force_login: bool = True):
 
 async def refresh_access_token(
     request: Request,
-    refresh_token_payload: Dict[str, Any],
-    device_info: Optional[Dict[str, Any]] = None,
-) -> Optional[Tuple[str, str, Dict[str, Any]]]:
+    refresh_token_payload: dict[str, Any],
+    device_info: dict[str, Any] | None = None,
+) -> tuple[str, str, dict[str, Any]] | None:
     """
     Refresh an access token using a valid refresh token.
 

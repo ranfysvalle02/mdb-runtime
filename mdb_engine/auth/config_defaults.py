@@ -7,9 +7,9 @@ This module provides a single source of truth for all config defaults.
 This module is part of MDB_ENGINE - MongoDB Engine.
 """
 
-from typing import Any, Dict
+from typing import Any
 
-SECURITY_CONFIG_DEFAULTS: Dict[str, Any] = {
+SECURITY_CONFIG_DEFAULTS: dict[str, Any] = {
     "password_policy": {
         "allow_plain_text": False,
         "min_length": 8,
@@ -35,7 +35,7 @@ SECURITY_CONFIG_DEFAULTS: Dict[str, Any] = {
     "token_fingerprinting": {"enabled": True, "bind_to_device": True},
 }
 
-TOKEN_MANAGEMENT_DEFAULTS: Dict[str, Any] = {
+TOKEN_MANAGEMENT_DEFAULTS: dict[str, Any] = {
     "enabled": True,
     "access_token_ttl": 900,
     "refresh_token_ttl": 604800,
@@ -45,7 +45,7 @@ TOKEN_MANAGEMENT_DEFAULTS: Dict[str, Any] = {
     "auto_setup": True,
 }
 
-CORS_DEFAULTS: Dict[str, Any] = {
+CORS_DEFAULTS: dict[str, Any] = {
     "enabled": False,
     "allow_origins": ["*"],
     "allow_credentials": False,
@@ -54,7 +54,7 @@ CORS_DEFAULTS: Dict[str, Any] = {
     "max_age": 3600,
 }
 
-OBSERVABILITY_DEFAULTS: Dict[str, Any] = {
+OBSERVABILITY_DEFAULTS: dict[str, Any] = {
     "health_checks": {"enabled": True, "endpoint": "/health", "interval_seconds": 30},
     "metrics": {
         "enabled": True,

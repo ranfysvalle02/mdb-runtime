@@ -8,7 +8,7 @@ This module is part of MDB_ENGINE - MongoDB Engine.
 
 import logging
 from datetime import datetime, timedelta
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from bson.objectid import ObjectId
 
@@ -96,10 +96,10 @@ class SessionManager:
         user_id: str,
         device_id: str,
         refresh_jti: str,
-        device_info: Optional[Dict[str, Any]] = None,
-        ip_address: Optional[str] = None,
-        session_fingerprint: Optional[str] = None,
-    ) -> Optional[Dict[str, Any]]:
+        device_info: dict[str, Any] | None = None,
+        ip_address: str | None = None,
+        session_fingerprint: str | None = None,
+    ) -> dict[str, Any] | None:
         """
         Create a new user session.
 
@@ -173,7 +173,7 @@ class SessionManager:
             return None
 
     async def update_session_activity(
-        self, refresh_jti: str, ip_address: Optional[str] = None
+        self, refresh_jti: str, ip_address: str | None = None
     ) -> bool:
         """
         Update session last_seen timestamp (activity tracking).
@@ -207,7 +207,7 @@ class SessionManager:
             logger.error(f"Error updating session activity for {refresh_jti}: {e}", exc_info=True)
             return False
 
-    async def get_session_by_refresh_token(self, refresh_jti: str) -> Optional[Dict[str, Any]]:
+    async def get_session_by_refresh_token(self, refresh_jti: str) -> dict[str, Any] | None:
         """
         Get session by refresh token JWT ID.
 
@@ -234,7 +234,7 @@ class SessionManager:
             return None
 
     async def validate_session_fingerprint(
-        self, refresh_jti: str, current_fingerprint: str, strict: Optional[bool] = None
+        self, refresh_jti: str, current_fingerprint: str, strict: bool | None = None
     ) -> bool:
         """
         Validate session fingerprint matches stored fingerprint.
@@ -288,7 +288,7 @@ class SessionManager:
 
     async def get_user_sessions(
         self, user_id: str, active_only: bool = True
-    ) -> List[Dict[str, Any]]:
+    ) -> list[dict[str, Any]]:
         """
         Get all sessions for a user.
 
@@ -354,9 +354,7 @@ class SessionManager:
             logger.error(f"Error revoking session {session_id}: {e}", exc_info=True)
             return False
 
-    async def revoke_user_sessions(
-        self, user_id: str, exclude_device_id: Optional[str] = None
-    ) -> int:
+    async def revoke_user_sessions(self, user_id: str, exclude_device_id: str | None = None) -> int:
         """
         Revoke all sessions for a user.
 
@@ -390,7 +388,7 @@ class SessionManager:
             logger.error(f"Error revoking sessions for user {user_id}: {e}", exc_info=True)
             return 0
 
-    async def cleanup_inactive_sessions(self, user_id: Optional[str] = None) -> int:
+    async def cleanup_inactive_sessions(self, user_id: str | None = None) -> int:
         """
         Clean up inactive sessions (beyond inactivity timeout).
 

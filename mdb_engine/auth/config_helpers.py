@@ -8,7 +8,7 @@ This module is part of MDB_ENGINE - MongoDB Engine.
 """
 
 import logging
-from typing import Any, Dict
+from typing import Any
 
 from fastapi import Request
 
@@ -23,8 +23,8 @@ logger = logging.getLogger(__name__)
 
 
 def merge_config_with_defaults(
-    user_config: Dict[str, Any], defaults: Dict[str, Any]
-) -> Dict[str, Any]:
+    user_config: dict[str, Any], defaults: dict[str, Any]
+) -> dict[str, Any]:
     """
     Deep merge user config with defaults.
 
@@ -55,7 +55,7 @@ def merge_config_with_defaults(
     return merged
 
 
-def get_security_config(request: Request) -> Dict[str, Any]:
+def get_security_config(request: Request) -> dict[str, Any]:
     """
     Get security configuration from app.state with defaults merged.
 
@@ -75,7 +75,7 @@ def get_security_config(request: Request) -> Dict[str, Any]:
         return SECURITY_CONFIG_DEFAULTS.copy()
 
 
-def get_password_policy(request: Request) -> Dict[str, Any]:
+def get_password_policy(request: Request) -> dict[str, Any]:
     """
     Get password policy configuration with defaults merged.
 
@@ -91,7 +91,7 @@ def get_password_policy(request: Request) -> Dict[str, Any]:
     )
 
 
-def get_session_fingerprinting_config(request: Request) -> Dict[str, Any]:
+def get_session_fingerprinting_config(request: Request) -> dict[str, Any]:
     """
     Get session fingerprinting configuration with defaults merged.
 
@@ -108,7 +108,7 @@ def get_session_fingerprinting_config(request: Request) -> Dict[str, Any]:
     )
 
 
-def get_account_lockout_config(request: Request) -> Dict[str, Any]:
+def get_account_lockout_config(request: Request) -> dict[str, Any]:
     """
     Get account lockout configuration with defaults merged.
 
@@ -124,7 +124,7 @@ def get_account_lockout_config(request: Request) -> Dict[str, Any]:
     )
 
 
-def get_ip_validation_config(request: Request) -> Dict[str, Any]:
+def get_ip_validation_config(request: Request) -> dict[str, Any]:
     """
     Get IP validation configuration with defaults merged.
 
@@ -138,7 +138,7 @@ def get_ip_validation_config(request: Request) -> Dict[str, Any]:
     return security_config.get("ip_validation", SECURITY_CONFIG_DEFAULTS["ip_validation"].copy())
 
 
-def get_token_fingerprinting_config(request: Request) -> Dict[str, Any]:
+def get_token_fingerprinting_config(request: Request) -> dict[str, Any]:
     """
     Get token fingerprinting configuration with defaults merged.
 
@@ -154,7 +154,7 @@ def get_token_fingerprinting_config(request: Request) -> Dict[str, Any]:
     )
 
 
-def get_token_management_config(request: Request) -> Dict[str, Any]:
+def get_token_management_config(request: Request) -> dict[str, Any]:
     """
     Get token management configuration from app.state with defaults merged.
 
@@ -174,7 +174,7 @@ def get_token_management_config(request: Request) -> Dict[str, Any]:
         return TOKEN_MANAGEMENT_DEFAULTS.copy()
 
 
-def get_cors_config(request: Request) -> Dict[str, Any]:
+def get_cors_config(request: Request) -> dict[str, Any]:
     """
     Get CORS configuration from app.state with defaults merged.
 
@@ -194,7 +194,7 @@ def get_cors_config(request: Request) -> Dict[str, Any]:
         return CORS_DEFAULTS.copy()
 
 
-def get_observability_config(request: Request) -> Dict[str, Any]:
+def get_observability_config(request: Request) -> dict[str, Any]:
     """
     Get observability configuration from app.state with defaults merged.
 

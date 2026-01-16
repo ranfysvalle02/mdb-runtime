@@ -45,7 +45,7 @@ import logging
 import os
 import secrets
 from datetime import datetime, timedelta
-from typing import TYPE_CHECKING, Any, Dict, List, Optional
+from typing import TYPE_CHECKING, Any
 
 import bcrypt
 import jwt
@@ -114,8 +114,8 @@ class SharedUserPool:
     def __init__(
         self,
         mongo_db: AsyncIOMotorDatabase,
-        jwt_secret: Optional[str] = None,
-        jwt_public_key: Optional[str] = None,
+        jwt_secret: str | None = None,
+        jwt_public_key: str | None = None,
         jwt_algorithm: str = DEFAULT_JWT_ALGORITHM,
         token_expiry_hours: int = DEFAULT_TOKEN_EXPIRY_HOURS,
         allow_insecure_dev: bool = False,
@@ -285,9 +285,9 @@ class SharedUserPool:
         self,
         email: str,
         password: str,
-        app_roles: Optional[Dict[str, List[str]]] = None,
+        app_roles: dict[str, list[str]] | None = None,
         is_active: bool = True,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Create a new shared user.
 
@@ -332,10 +332,10 @@ class SharedUserPool:
         self,
         email: str,
         password: str,
-        ip_address: Optional[str] = None,
-        fingerprint: Optional[str] = None,
-        session_binding: Optional[Dict[str, Any]] = None,
-    ) -> Optional[str]:
+        ip_address: str | None = None,
+        fingerprint: str | None = None,
+        session_binding: dict[str, Any] | None = None,
+    ) -> str | None:
         """
         Authenticate user and return JWT token.
 
@@ -390,7 +390,7 @@ class SharedUserPool:
         logger.info(f"User '{email}' authenticated successfully")
         return token
 
-    async def validate_token(self, token: str) -> Optional[Dict[str, Any]]:
+    async def validate_token(self, token: str) -> dict[str, Any] | None:
         """
         Validate JWT token and return user data.
 
@@ -547,7 +547,7 @@ class SharedUserPool:
         )
         logger.info(f"All tokens revoked for user {user_id}: {reason}")
 
-    async def get_user_by_email(self, email: str) -> Optional[Dict[str, Any]]:
+    async def get_user_by_email(self, email: str) -> dict[str, Any] | None:
         """Get user by email."""
         user = await self._collection.find_one({"email": email})
         if user:
@@ -558,7 +558,7 @@ class SharedUserPool:
         self,
         email: str,
         app_slug: str,
-        roles: List[str],
+        roles: list[str],
     ) -> bool:
         """
         Update a user's roles for a specific app.
@@ -638,10 +638,10 @@ class SharedUserPool:
 
     @staticmethod
     def user_has_role(
-        user: Dict[str, Any],
+        user: dict[str, Any],
         app_slug: str,
         required_role: str,
-        role_hierarchy: Optional[Dict[str, List[str]]] = None,
+        role_hierarchy: dict[str, list[str]] | None = None,
     ) -> bool:
         """
         Check if user has a required role for an app.
@@ -673,16 +673,16 @@ class SharedUserPool:
 
     @staticmethod
     def get_user_roles_for_app(
-        user: Dict[str, Any],
+        user: dict[str, Any],
         app_slug: str,
-    ) -> List[str]:
+    ) -> list[str]:
         """Get user's roles for a specific app."""
         return user.get("app_roles", {}).get(app_slug, [])
 
     def _generate_token(
         self,
-        user: Dict[str, Any],
-        extra_claims: Optional[Dict[str, Any]] = None,
+        user: dict[str, Any],
+        extra_claims: dict[str, Any] | None = None,
     ) -> str:
         """
         Generate JWT token for user with unique JTI for revocation support.
@@ -718,7 +718,7 @@ class SharedUserPool:
         return jwt.encode(payload, self._signing_key, algorithm=self._jwt_algorithm)
 
     @staticmethod
-    def _sanitize_user(user: Dict[str, Any]) -> Dict[str, Any]:
+    def _sanitize_user(user: dict[str, Any]) -> dict[str, Any]:
         """Remove sensitive fields from user document."""
         sanitized = dict(user)
         sanitized.pop("password_hash", None)
@@ -727,7 +727,7 @@ class SharedUserPool:
             sanitized["_id"] = str(sanitized["_id"])
         return sanitized
 
-    def get_secure_cookie_config(self, request: "Request") -> Dict[str, Any]:
+    def get_secure_cookie_config(self, request: "Request") -> dict[str, Any]:
         """
         Get secure cookie settings for auth tokens.
 

@@ -13,7 +13,6 @@ import base64
 import logging
 import secrets
 from datetime import datetime
-from typing import Optional
 
 from motor.motor_asyncio import AsyncIOMotorDatabase
 from pymongo.errors import OperationFailure, PyMongoError
@@ -188,7 +187,7 @@ class AppSecretsManager:
             logger.warning(f"Secret verification failed for app '{app_slug}'")
         return result
 
-    async def get_app_secret(self, app_slug: str) -> Optional[str]:
+    async def get_app_secret(self, app_slug: str) -> str | None:
         """
         Get decrypted app secret (for rotation purposes only).
 

@@ -18,7 +18,8 @@ Usage:
 
 import logging
 import os
-from typing import TYPE_CHECKING, Any, Callable, Dict, List, Optional, Type, TypeVar, Union
+from collections.abc import Callable
+from typing import TYPE_CHECKING, Any, Optional, TypeVar, Union
 
 from fastapi import HTTPException, Request
 
@@ -62,7 +63,7 @@ async def get_app_slug(request: Request) -> str:
     return slug
 
 
-async def get_app_config(request: Request) -> Dict[str, Any]:
+async def get_app_config(request: Request) -> dict[str, Any]:
     """Get the app's manifest configuration."""
     manifest = getattr(request.app.state, "manifest", None)
     if manifest is None:
@@ -169,12 +170,12 @@ async def get_authz_provider(request: Request) -> Optional["AuthorizationProvide
     return getattr(request.app.state, "authz_provider", None)
 
 
-async def get_current_user(request: Request) -> Optional[Dict[str, Any]]:
+async def get_current_user(request: Request) -> dict[str, Any] | None:
     """Get the current authenticated user."""
     return getattr(request.state, "user", None)
 
 
-async def get_user_roles(request: Request) -> List[str]:
+async def get_user_roles(request: Request) -> list[str]:
     """Get the current user's roles."""
     return getattr(request.state, "user_roles", [])
 
@@ -182,7 +183,7 @@ async def get_user_roles(request: Request) -> List[str]:
 def require_user():
     """Dependency that requires authentication."""
 
-    async def _require_user(request: Request) -> Dict[str, Any]:
+    async def _require_user(request: Request) -> dict[str, Any]:
         user = await get_current_user(request)
         if not user:
             raise HTTPException(401, "Authentication required")
@@ -194,7 +195,7 @@ def require_user():
 def require_role(*roles: str):
     """Dependency that requires specific roles."""
 
-    async def _require_role(request: Request) -> Dict[str, Any]:
+    async def _require_role(request: Request) -> dict[str, Any]:
         user = await get_current_user(request)
         if not user:
             raise HTTPException(401, "Authentication required")
@@ -272,7 +273,7 @@ class RequestContext:
         return self._uow
 
     @property
-    def config(self) -> Dict[str, Any]:
+    def config(self) -> dict[str, Any]:
         """Get the app's manifest configuration."""
         if self._config is None:
             self._config = getattr(self.request.app.state, "manifest", None)
@@ -331,14 +332,14 @@ class RequestContext:
         return get_llm_model_name()
 
     @property
-    def user(self) -> Optional[Dict[str, Any]]:
+    def user(self) -> dict[str, Any] | None:
         """Get the current authenticated user."""
         if self._user is None:
             self._user = getattr(self.request.state, "user", None)
         return self._user
 
     @property
-    def user_roles(self) -> List[str]:
+    def user_roles(self) -> list[str]:
         """Get the current user's roles."""
         return getattr(self.request.state, "user_roles", [])
 
@@ -349,13 +350,13 @@ class RequestContext:
             self._authz = getattr(self.request.app.state, "authz_provider", None)
         return self._authz
 
-    def require_user(self) -> Dict[str, Any]:
+    def require_user(self) -> dict[str, Any]:
         """Require authentication, raising 401 if not authenticated."""
         if not self.user:
             raise HTTPException(401, "Authentication required")
         return self.user
 
-    def require_role(self, *roles: str) -> Dict[str, Any]:
+    def require_role(self, *roles: str) -> dict[str, Any]:
         """Require specific roles, raising 403 if not authorized."""
         user = self.require_user()
         user_roles = set(self.user_roles)
@@ -365,7 +366,7 @@ class RequestContext:
         return user
 
     async def check_permission(
-        self, resource: str, action: str, subject: Optional[str] = None
+        self, resource: str, action: str, subject: str | None = None
     ) -> bool:
         """Check if current user has permission for an action."""
         if not self.authz:
@@ -390,7 +391,7 @@ RequestContext.__call__ = staticmethod(_get_request_context)
 # =============================================================================
 
 
-def inject(service_type: Type[T]) -> Callable[..., T]:
+def inject(service_type: type[T]) -> Callable[..., T]:
     """Create a dependency that resolves a service from the DI container."""
 
     async def _resolve(request: Request) -> T:

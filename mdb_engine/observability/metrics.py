@@ -9,9 +9,10 @@ import logging
 import threading
 import time
 from collections import OrderedDict
+from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Any, Callable, Dict, Optional
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -26,7 +27,7 @@ class OperationMetrics:
     min_duration_ms: float = float("inf")
     max_duration_ms: float = 0.0
     error_count: int = 0
-    last_execution: Optional[datetime] = None
+    last_execution: datetime | None = None
 
     @property
     def avg_duration_ms(self) -> float:
@@ -48,7 +49,7 @@ class OperationMetrics:
             self.error_count += 1
         self.last_execution = datetime.now()
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert metrics to dictionary."""
         return {
             "operation": self.operation_name,
@@ -121,7 +122,7 @@ class MetricsCollector:
 
             self._metrics[key].record(duration_ms, success)
 
-    def get_metrics(self, operation_name: Optional[str] = None) -> Dict[str, Any]:
+    def get_metrics(self, operation_name: str | None = None) -> dict[str, Any]:
         """
         Get metrics for operations.
 
@@ -154,7 +155,7 @@ class MetricsCollector:
             "total_operations": total_operations,
         }
 
-    def get_summary(self) -> Dict[str, Any]:
+    def get_summary(self) -> dict[str, Any]:
         """
         Get a summary of all metrics.
 
@@ -170,7 +171,7 @@ class MetricsCollector:
                 }
 
             # Aggregate by base operation name (without tags)
-            aggregated: Dict[str, OperationMetrics] = {}
+            aggregated: dict[str, OperationMetrics] = {}
 
             for _key, metric in self._metrics.items():
                 base_name = metric.operation_name
@@ -217,7 +218,7 @@ class MetricsCollector:
 
 
 # Global metrics collector instance
-_metrics_collector: Optional[MetricsCollector] = None
+_metrics_collector: MetricsCollector | None = None
 
 
 def get_metrics_collector() -> MetricsCollector:

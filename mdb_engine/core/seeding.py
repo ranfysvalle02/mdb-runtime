@@ -8,7 +8,7 @@ This module is part of MDB_ENGINE - MongoDB Engine.
 
 import logging
 from datetime import datetime
-from typing import Any, Dict, List
+from typing import Any
 
 from pymongo.errors import (
     ConnectionFailure,
@@ -20,8 +20,8 @@ logger = logging.getLogger(__name__)
 
 
 async def seed_initial_data(
-    db, app_slug: str, initial_data: Dict[str, List[Dict[str, Any]]]
-) -> Dict[str, int]:
+    db, app_slug: str, initial_data: dict[str, list[dict[str, Any]]]
+) -> dict[str, int]:
     """
     Seed initial data into collections.
 

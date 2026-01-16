@@ -33,10 +33,11 @@ Usage:
 import logging
 import time
 from collections import defaultdict
+from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 from functools import wraps
-from typing import Any, Callable, Dict, List, Optional, Tuple
+from typing import Any
 
 from pymongo.errors import OperationFailure
 from starlette.middleware.base import BaseHTTPMiddleware
@@ -53,7 +54,7 @@ class RateLimit:
     max_attempts: int = 5
     window_seconds: int = 300  # 5 minutes
 
-    def to_dict(self) -> Dict[str, int]:
+    def to_dict(self) -> dict[str, int]:
         return {
             "max_attempts": self.max_attempts,
             "window_seconds": self.window_seconds,
@@ -61,7 +62,7 @@ class RateLimit:
 
 
 # Default rate limits for auth endpoints
-DEFAULT_AUTH_RATE_LIMITS: Dict[str, RateLimit] = {
+DEFAULT_AUTH_RATE_LIMITS: dict[str, RateLimit] = {
     "/login": RateLimit(max_attempts=5, window_seconds=300),
     "/register": RateLimit(max_attempts=3, window_seconds=3600),
     "/logout": RateLimit(max_attempts=10, window_seconds=60),
@@ -78,7 +79,7 @@ class InMemoryRateLimitStore:
 
     def __init__(self):
         # Structure: {identifier: [(timestamp, count), ...]}
-        self._storage: Dict[str, List[Tuple[float, int]]] = defaultdict(list)
+        self._storage: dict[str, list[tuple[float, int]]] = defaultdict(list)
 
     async def record_attempt(
         self,
@@ -282,8 +283,8 @@ class AuthRateLimitMiddleware(BaseHTTPMiddleware):
     def __init__(
         self,
         app: Callable,
-        limits: Optional[Dict[str, RateLimit]] = None,
-        store: Optional[InMemoryRateLimitStore] = None,
+        limits: dict[str, RateLimit] | None = None,
+        store: InMemoryRateLimitStore | None = None,
         include_email_in_key: bool = True,
     ):
         """
@@ -377,7 +378,7 @@ class AuthRateLimitMiddleware(BaseHTTPMiddleware):
 
         return "unknown"
 
-    async def _extract_email(self, request: Request) -> Optional[str]:
+    async def _extract_email(self, request: Request) -> str | None:
         """Try to extract email from request body."""
         try:
             # Only try to read body for JSON requests
@@ -410,8 +411,8 @@ class AuthRateLimitMiddleware(BaseHTTPMiddleware):
 
 
 def create_rate_limit_middleware(
-    manifest_auth: Dict[str, Any],
-    store: Optional[InMemoryRateLimitStore] = None,
+    manifest_auth: dict[str, Any],
+    store: InMemoryRateLimitStore | None = None,
 ) -> type:
     """
     Factory function to create rate limit middleware from manifest config.
@@ -435,7 +436,7 @@ def create_rate_limit_middleware(
     """
     rate_limits_config = manifest_auth.get("rate_limits", {})
 
-    limits: Dict[str, RateLimit] = {}
+    limits: dict[str, RateLimit] = {}
     for path, config in rate_limits_config.items():
         limits[path] = RateLimit(
             max_attempts=config.get("max_attempts", 5),
@@ -456,7 +457,7 @@ def create_rate_limit_middleware(
 def rate_limit(
     max_attempts: int = 5,
     window_seconds: int = 300,
-    key_func: Optional[Callable[[Request], str]] = None,
+    key_func: Callable[[Request], str] | None = None,
 ):
     """
     Decorator for rate limiting individual endpoints.

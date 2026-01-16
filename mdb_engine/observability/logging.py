@@ -8,25 +8,25 @@ import contextvars
 import logging
 import uuid
 from datetime import datetime
-from typing import Any, Dict, Optional
+from typing import Any
 
 # Context variable for correlation ID
-_correlation_id: contextvars.ContextVar[Optional[str]] = contextvars.ContextVar(
+_correlation_id: contextvars.ContextVar[str | None] = contextvars.ContextVar(
     "correlation_id", default=None
 )
 
 # Context variable for app context
-_app_context: contextvars.ContextVar[Optional[Dict[str, Any]]] = contextvars.ContextVar(
+_app_context: contextvars.ContextVar[dict[str, Any] | None] = contextvars.ContextVar(
     "app_context", default=None
 )
 
 
-def get_correlation_id() -> Optional[str]:
+def get_correlation_id() -> str | None:
     """Get the current correlation ID from context."""
     return _correlation_id.get()
 
 
-def set_correlation_id(correlation_id: Optional[str] = None) -> str:
+def set_correlation_id(correlation_id: str | None = None) -> str:
     """
     Set a correlation ID in the current context.
 
@@ -47,7 +47,7 @@ def clear_correlation_id() -> None:
     _correlation_id.set(None)
 
 
-def set_app_context(app_slug: Optional[str] = None, **kwargs: Any) -> None:
+def set_app_context(app_slug: str | None = None, **kwargs: Any) -> None:
     """
     Set app context for logging.
 
@@ -64,14 +64,14 @@ def clear_app_context() -> None:
     _app_context.set(None)
 
 
-def get_logging_context() -> Dict[str, Any]:
+def get_logging_context() -> dict[str, Any]:
     """
     Get current logging context (correlation ID and app context).
 
     Returns:
         Dictionary with context information
     """
-    context: Dict[str, Any] = {
+    context: dict[str, Any] = {
         "timestamp": datetime.now().isoformat(),
     }
 
@@ -91,7 +91,7 @@ class ContextualLoggerAdapter(logging.LoggerAdapter):
     Logger adapter that automatically adds context to log records.
     """
 
-    def process(self, msg: str, kwargs: Dict[str, Any]) -> tuple[str, Dict[str, Any]]:
+    def process(self, msg: str, kwargs: dict[str, Any]) -> tuple[str, dict[str, Any]]:
         """Add context to log records."""
         # Get base context
         context = get_logging_context()
@@ -124,7 +124,7 @@ def log_operation(
     operation: str,
     level: int = logging.INFO,
     success: bool = True,
-    duration_ms: Optional[float] = None,
+    duration_ms: float | None = None,
     **context: Any,
 ) -> None:
     """

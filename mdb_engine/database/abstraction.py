@@ -24,7 +24,8 @@ Usage:
 """
 
 import logging
-from typing import Any, Callable, Dict, List, Optional
+from collections.abc import Callable
+from typing import Any
 
 from ..exceptions import MongoDBEngineError
 from .scoped_wrapper import ScopedMongoWrapper
@@ -88,8 +89,8 @@ class Collection:
         self._collection = scoped_collection
 
     async def find_one(
-        self, filter: Optional[Dict[str, Any]] = None, *args, **kwargs
-    ) -> Optional[Dict[str, Any]]:
+        self, filter: dict[str, Any] | None = None, *args, **kwargs
+    ) -> dict[str, Any] | None:
         """
         Find a single document matching the filter.
 
@@ -120,7 +121,7 @@ class Collection:
                 context={"operation": "find_one"},
             ) from e
 
-    def find(self, filter: Optional[Dict[str, Any]] = None, *args, **kwargs) -> AsyncIOMotorCursor:
+    def find(self, filter: dict[str, Any] | None = None, *args, **kwargs) -> AsyncIOMotorCursor:
         """
         Find documents matching the filter.
 
@@ -146,7 +147,7 @@ class Collection:
         """
         return self._collection.find(filter or {}, *args, **kwargs)
 
-    async def insert_one(self, document: Dict[str, Any], *args, **kwargs) -> InsertOneResult:
+    async def insert_one(self, document: dict[str, Any], *args, **kwargs) -> InsertOneResult:
         """
         Insert a single document.
 
@@ -178,7 +179,7 @@ class Collection:
             ) from e
 
     async def insert_many(
-        self, documents: List[Dict[str, Any]], *args, **kwargs
+        self, documents: list[dict[str, Any]], *args, **kwargs
     ) -> InsertManyResult:
         """
         Insert multiple documents at once.
@@ -213,7 +214,7 @@ class Collection:
             ) from e
 
     async def update_one(
-        self, filter: Dict[str, Any], update: Dict[str, Any], *args, **kwargs
+        self, filter: dict[str, Any], update: dict[str, Any], *args, **kwargs
     ) -> UpdateResult:
         """
         Update a single document matching the filter.
@@ -251,7 +252,7 @@ class Collection:
             ) from e
 
     async def update_many(
-        self, filter: Dict[str, Any], update: Dict[str, Any], *args, **kwargs
+        self, filter: dict[str, Any], update: dict[str, Any], *args, **kwargs
     ) -> UpdateResult:
         """
         Update multiple documents matching the filter.
@@ -288,7 +289,7 @@ class Collection:
             ) from e
 
     async def replace_one(
-        self, filter: Dict[str, Any], replacement: Dict[str, Any], *args, **kwargs
+        self, filter: dict[str, Any], replacement: dict[str, Any], *args, **kwargs
     ) -> UpdateResult:
         """
         Replace a single document matching the filter.
@@ -367,7 +368,7 @@ class Collection:
                 context={"operation": "replace_one"},
             ) from e
 
-    async def delete_one(self, filter: Dict[str, Any], *args, **kwargs) -> DeleteResult:
+    async def delete_one(self, filter: dict[str, Any], *args, **kwargs) -> DeleteResult:
         """
         Delete a single document matching the filter.
 
@@ -400,7 +401,7 @@ class Collection:
             ) from e
 
     async def delete_many(
-        self, filter: Optional[Dict[str, Any]] = None, *args, **kwargs
+        self, filter: dict[str, Any] | None = None, *args, **kwargs
     ) -> DeleteResult:
         """
         Delete multiple documents matching the filter.
@@ -432,9 +433,7 @@ class Collection:
                 context={"operation": "delete_many"},
             ) from e
 
-    async def count_documents(
-        self, filter: Optional[Dict[str, Any]] = None, *args, **kwargs
-    ) -> int:
+    async def count_documents(self, filter: dict[str, Any] | None = None, *args, **kwargs) -> int:
         """
         Count documents matching the filter.
 
@@ -464,7 +463,7 @@ class Collection:
                 context={"operation": "count_documents"},
             ) from e
 
-    def aggregate(self, pipeline: List[Dict[str, Any]], *args, **kwargs) -> AsyncIOMotorCursor:
+    def aggregate(self, pipeline: list[dict[str, Any]], *args, **kwargs) -> AsyncIOMotorCursor:
         """
         Perform aggregation pipeline.
 
@@ -520,7 +519,7 @@ class AppDB:
             raise RuntimeError("ScopedMongoWrapper is not available. Check imports.")
 
         self._wrapper = scoped_wrapper
-        self._collection_cache: Dict[str, Collection] = {}
+        self._collection_cache: dict[str, Collection] = {}
 
     def collection(self, name: str) -> Collection:
         """

@@ -8,7 +8,8 @@ according to their configured scope.
 import inspect
 import logging
 from abc import ABC, abstractmethod
-from typing import TYPE_CHECKING, Any, Callable, Dict, Generic, Optional, Type, TypeVar
+from collections.abc import Callable
+from typing import TYPE_CHECKING, Any, Generic, TypeVar
 
 from .scopes import Scope, ScopeManager
 
@@ -30,9 +31,9 @@ class Provider(ABC, Generic[T]):
 
     def __init__(
         self,
-        service_type: Type[T],
+        service_type: type[T],
         scope: Scope,
-        factory: Optional[Callable[..., T]] = None,
+        factory: Callable[..., T] | None = None,
     ):
         self.service_type = service_type
         self.scope = scope
@@ -60,7 +61,7 @@ class Provider(ABC, Generic[T]):
         """
         # Get constructor signature
         sig = inspect.signature(self._factory)
-        kwargs: Dict[str, Any] = {}
+        kwargs: dict[str, Any] = {}
 
         for param_name, param in sig.parameters.items():
             if param_name == "self":
@@ -101,11 +102,11 @@ class SingletonProvider(Provider[T]):
 
     def __init__(
         self,
-        service_type: Type[T],
-        factory: Optional[Callable[..., T]] = None,
+        service_type: type[T],
+        factory: Callable[..., T] | None = None,
     ):
         super().__init__(service_type, Scope.SINGLETON, factory)
-        self._instance: Optional[T] = None
+        self._instance: T | None = None
 
     def get(self, container: "Container") -> T:
         if self._instance is None:
@@ -127,8 +128,8 @@ class RequestProvider(Provider[T]):
 
     def __init__(
         self,
-        service_type: Type[T],
-        factory: Optional[Callable[..., T]] = None,
+        service_type: type[T],
+        factory: Callable[..., T] | None = None,
     ):
         super().__init__(service_type, Scope.REQUEST, factory)
 
@@ -145,8 +146,8 @@ class TransientProvider(Provider[T]):
 
     def __init__(
         self,
-        service_type: Type[T],
-        factory: Optional[Callable[..., T]] = None,
+        service_type: type[T],
+        factory: Callable[..., T] | None = None,
     ):
         super().__init__(service_type, Scope.TRANSIENT, factory)
 
@@ -173,13 +174,13 @@ class FactoryProvider(Provider[T]):
 
     def __init__(
         self,
-        service_type: Type[T],
+        service_type: type[T],
         factory: Callable[["Container"], T],
         scope: Scope,
     ):
         super().__init__(service_type, scope, None)
         self._custom_factory = factory
-        self._singleton_instance: Optional[T] = None
+        self._singleton_instance: T | None = None
 
     def get(self, container: "Container") -> T:
         if self.scope == Scope.SINGLETON:

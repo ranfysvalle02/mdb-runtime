@@ -12,7 +12,7 @@ Features:
 """
 
 import logging
-from typing import Any, Dict, Optional
+from typing import Any
 
 from bson import encode as bson_encode
 from bson.errors import InvalidDocument
@@ -65,8 +65,8 @@ class ResourceLimiter:
         self.max_document_size = max_document_size
 
     def enforce_query_timeout(
-        self, kwargs: Dict[str, Any], default_timeout: Optional[int] = None
-    ) -> Dict[str, Any]:
+        self, kwargs: dict[str, Any], default_timeout: int | None = None
+    ) -> dict[str, Any]:
         """
         Enforce query timeout by adding maxTimeMS if not present.
 
@@ -97,7 +97,7 @@ class ResourceLimiter:
 
         return kwargs
 
-    def enforce_result_limit(self, limit: Optional[int], max_limit: Optional[int] = None) -> int:
+    def enforce_result_limit(self, limit: int | None, max_limit: int | None = None) -> int:
         """
         Enforce maximum result limit.
 
@@ -122,7 +122,7 @@ class ResourceLimiter:
 
         return limit
 
-    def enforce_batch_size(self, batch_size: Optional[int], max_batch: Optional[int] = None) -> int:
+    def enforce_batch_size(self, batch_size: int | None, max_batch: int | None = None) -> int:
         """
         Enforce maximum batch size for cursor operations.
 
@@ -147,7 +147,7 @@ class ResourceLimiter:
 
         return batch_size
 
-    def validate_document_size(self, document: Dict[str, Any]) -> None:
+    def validate_document_size(self, document: dict[str, Any]) -> None:
         """
         Validate that a document doesn't exceed size limits.
 
@@ -180,7 +180,7 @@ class ResourceLimiter:
             # MongoDB will catch this anyway during actual insert
             logger.warning(f"Could not encode document as BSON for size validation: {e}")
 
-    def validate_documents_size(self, documents: list[Dict[str, Any]]) -> None:
+    def validate_documents_size(self, documents: list[dict[str, Any]]) -> None:
         """
         Validate that multiple documents don't exceed size limits.
 

@@ -13,8 +13,9 @@ This module is part of MDB_ENGINE - MongoDB Engine.
 import logging
 import os
 import uuid
+from collections.abc import Awaitable, Callable
 from datetime import datetime, timedelta
-from typing import Any, Awaitable, Callable, Dict, List, Optional, Tuple
+from typing import Any
 
 import bcrypt
 import jwt
@@ -49,9 +50,9 @@ def _is_auth_route(request_path: str) -> bool:
 async def _get_app_user_config(
     request: Request,
     slug_id: str,
-    config: Optional[Dict[str, Any]],
-    get_app_config_func: Optional[Callable[[Request, str, Dict], Awaitable[Dict]]],
-) -> Optional[Dict[str, Any]]:
+    config: dict[str, Any] | None,
+    get_app_config_func: Callable[[Request, str, dict], Awaitable[dict]] | None,
+) -> dict[str, Any] | None:
     """Fetch and validate app user config."""
     if config is None:
         if not get_app_config_func:
@@ -72,7 +73,7 @@ async def _get_app_user_config(
     return config
 
 
-def _convert_user_id_to_objectid(user_id: Any) -> Tuple[Any, Optional[str]]:
+def _convert_user_id_to_objectid(user_id: Any) -> tuple[Any, str | None]:
     """
     Convert user_id to ObjectId if valid, otherwise keep as string.
 
@@ -104,7 +105,7 @@ def _convert_user_id_to_objectid(user_id: Any) -> Tuple[Any, Optional[str]]:
 
 async def _validate_and_decode_session_token(
     session_token: str, slug_id: str
-) -> Tuple[Optional[Dict[str, Any]], Optional[Exception]]:
+) -> tuple[dict[str, Any] | None, Exception | None]:
     """Validate and decode session token."""
     try:
         from .jwt import decode_jwt_token
@@ -135,9 +136,7 @@ async def _validate_and_decode_session_token(
         return None, e
 
 
-async def _fetch_app_user_from_db(
-    db, collection_name: str, user_id: Any
-) -> Optional[Dict[str, Any]]:
+async def _fetch_app_user_from_db(db, collection_name: str, user_id: Any) -> dict[str, Any] | None:
     """Fetch user from database."""
     # Use getattr for attribute access (works with both AppDB and ScopedMongoWrapper)
     collection = getattr(db, collection_name)
@@ -155,10 +154,10 @@ async def get_app_user(
     request: Request,
     slug_id: str,
     db,
-    config: Optional[Dict[str, Any]] = None,
+    config: dict[str, Any] | None = None,
     allow_demo_fallback: bool = False,
-    get_app_config_func: Optional[Callable[[Request, str, Dict], Awaitable[Dict]]] = None,
-) -> Optional[Dict[str, Any]]:
+    get_app_config_func: Callable[[Request, str, dict], Awaitable[dict]] | None = None,
+) -> dict[str, Any] | None:
     """
     Get app-level user from session cookie.
 
@@ -234,8 +233,8 @@ async def get_app_user(
 
 
 async def _try_demo_mode(
-    request: Request, slug_id: str, db, config: Dict[str, Any]
-) -> Optional[Dict[str, Any]]:
+    request: Request, slug_id: str, db, config: dict[str, Any]
+) -> dict[str, Any] | None:
     """
     Internal helper: Try to authenticate as demo user if demo mode is enabled.
 
@@ -318,9 +317,9 @@ async def create_app_session(
     request: Request,
     slug_id: str,
     user_id: str,
-    config: Optional[Dict[str, Any]] = None,
-    response: Optional[Response] = None,
-    get_app_config_func: Optional[Callable[[Request, str, Dict], Awaitable[Dict]]] = None,
+    config: dict[str, Any] | None = None,
+    response: Response | None = None,
+    get_app_config_func: Callable[[Request, str, dict], Awaitable[dict]] | None = None,
 ) -> str:
     """
     Create a app-specific session token and set cookie.
@@ -402,9 +401,9 @@ async def authenticate_app_user(
     db,
     email: str,
     password: str,
-    store_id: Optional[str] = None,
+    store_id: str | None = None,
     collection_name: str = "users",
-) -> Optional[Dict[str, Any]]:
+) -> dict[str, Any] | None:
     """
     Authenticate a user against app-specific users collection.
 
@@ -484,9 +483,9 @@ async def create_app_user(
     email: str,
     password: str,
     role: str = "user",
-    store_id: Optional[str] = None,
+    store_id: str | None = None,
     collection_name: str = "users",
-) -> Optional[Dict[str, Any]]:
+) -> dict[str, Any] | None:
     """
     Create a new user in app-specific users collection.
 
@@ -573,9 +572,9 @@ async def get_or_create_anonymous_user(
     request: Request,
     slug_id: str,
     db,
-    config: Optional[Dict[str, Any]] = None,
-    get_app_config_func: Optional[Callable[[Request, str, Dict], Awaitable[Dict]]] = None,
-) -> Optional[Dict[str, Any]]:
+    config: dict[str, Any] | None = None,
+    get_app_config_func: Callable[[Request, str, dict], Awaitable[dict]] | None = None,
+) -> dict[str, Any] | None:
     """
     Get or create an anonymous user for anonymous_session strategy.
 
@@ -640,7 +639,7 @@ async def get_or_create_anonymous_user(
     return user
 
 
-async def get_platform_demo_user(mongo_uri: str, db_name: str) -> Optional[Dict[str, Any]]:
+async def get_platform_demo_user(mongo_uri: str, db_name: str) -> dict[str, Any] | None:
     """
     Get platform demo user information from top-level database.
 
@@ -693,7 +692,7 @@ async def get_platform_demo_user(mongo_uri: str, db_name: str) -> Optional[Dict[
 
 async def _link_platform_demo_user(
     db, slug_id: str, collection_name: str, mongo_uri: str, db_name: str
-) -> Optional[Dict[str, Any]]:
+) -> dict[str, Any] | None:
     """Link platform demo user to app demo user."""
     import datetime
 
@@ -761,7 +760,7 @@ async def _link_platform_demo_user(
 
 def _validate_demo_user_config(
     demo_user_config: Any, slug_id: str
-) -> Tuple[Optional[Dict[str, Any]], Optional[str]]:
+) -> tuple[dict[str, Any] | None, str | None]:
     """Validate demo user configuration."""
     if not isinstance(demo_user_config, dict):
         return None, f"Invalid demo_user_config entry (not a dict): {demo_user_config}"
@@ -782,12 +781,12 @@ def _validate_demo_user_config(
 
 
 async def _resolve_demo_user_email_password(
-    email: Optional[str],
-    password: Optional[str],
-    mongo_uri: Optional[str],
-    db_name: Optional[str],
+    email: str | None,
+    password: str | None,
+    mongo_uri: str | None,
+    db_name: str | None,
     slug_id: str,
-) -> Tuple[Optional[str], Optional[str]]:
+) -> tuple[str | None, str | None]:
     """Resolve email and password from config or platform demo."""
     # If email not specified, try platform demo
     if not email:
@@ -834,11 +833,11 @@ async def _create_demo_user_from_config(
     email: str,
     password: str,
     role: str,
-    extra_data: Dict[str, Any],
+    extra_data: dict[str, Any],
     link_to_platform: bool,
-    mongo_uri: Optional[str],
-    db_name: Optional[str],
-) -> Optional[Dict[str, Any]]:
+    mongo_uri: str | None,
+    db_name: str | None,
+) -> dict[str, Any] | None:
     """Create a demo user from configuration."""
     import datetime
 
@@ -933,10 +932,10 @@ async def _create_demo_user_from_config(
 async def ensure_demo_users_exist(
     db,
     slug_id: str,
-    config: Optional[Dict[str, Any]] = None,
-    mongo_uri: Optional[str] = None,
-    db_name: Optional[str] = None,
-) -> List[Dict[str, Any]]:
+    config: dict[str, Any] | None = None,
+    mongo_uri: str | None = None,
+    db_name: str | None = None,
+) -> list[dict[str, Any]]:
     """
     Intelligently ensure demo users exist for a app based on manifest configuration.
 
@@ -1058,9 +1057,9 @@ async def get_or_create_demo_user_for_request(
     request: Request,
     slug_id: str,
     db,
-    config: Optional[Dict[str, Any]] = None,
-    get_app_config_func: Optional[Callable[[Request, str, Dict], Awaitable[Dict]]] = None,
-) -> Optional[Dict[str, Any]]:
+    config: dict[str, Any] | None = None,
+    get_app_config_func: Callable[[Request, str, dict], Awaitable[dict]] | None = None,
+) -> dict[str, Any] | None:
     """
     Get or create a demo user for the current request context.
 
@@ -1150,10 +1149,10 @@ async def get_or_create_demo_user_for_request(
 async def get_or_create_demo_user(
     db,
     slug_id: str,
-    config: Dict[str, Any],
-    mongo_uri: Optional[str] = None,
-    db_name: Optional[str] = None,
-) -> Optional[Dict[str, Any]]:
+    config: dict[str, Any],
+    mongo_uri: str | None = None,
+    db_name: str | None = None,
+) -> dict[str, Any] | None:
     """
     Get or create a demo user for an app.
 
@@ -1252,7 +1251,7 @@ async def get_or_create_demo_user(
 
 async def ensure_demo_users_for_actor(
     db, slug_id: str, mongo_uri: str, db_name: str
-) -> List[Dict[str, Any]]:
+) -> list[dict[str, Any]]:
     """
     Convenience function for actors to ensure demo users exist.
 
@@ -1351,10 +1350,10 @@ async def ensure_demo_users_for_actor(
 
 
 async def sync_app_user_to_casbin(
-    user: Dict[str, Any],
+    user: dict[str, Any],
     authz_provider,
-    role: Optional[str] = None,
-    app_slug: Optional[str] = None,
+    role: str | None = None,
+    app_slug: str | None = None,
 ) -> bool:
     """
     Sync app-level user to Casbin by assigning a role.
@@ -1428,7 +1427,7 @@ async def sync_app_user_to_casbin(
         return False
 
 
-def get_app_user_role(user: Dict[str, Any], config: Optional[Dict[str, Any]] = None) -> str:
+def get_app_user_role(user: dict[str, Any], config: dict[str, Any] | None = None) -> str:
     """
     Determine Casbin role for app-level user.
 

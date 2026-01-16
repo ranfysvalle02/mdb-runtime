@@ -28,9 +28,10 @@ Usage:
 import logging
 import os
 import secrets
+from collections.abc import Awaitable, Callable
 from contextlib import asynccontextmanager
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Awaitable, Callable, Dict, List, Optional, Tuple
+from typing import TYPE_CHECKING, Any, Optional
 
 from motor.motor_asyncio import AsyncIOMotorClient
 from pymongo.errors import PyMongoError
@@ -94,7 +95,7 @@ class MongoDBEngine:
         self,
         mongo_uri: str,
         db_name: str,
-        manifests_dir: Optional[Path] = None,
+        manifests_dir: Path | None = None,
         authz_provider: Optional["AuthorizationProvider"] = None,
         max_pool_size: int = DEFAULT_MAX_POOL_SIZE,
         min_pool_size: int = DEFAULT_MIN_POOL_SIZE,
@@ -142,17 +143,17 @@ class MongoDBEngine:
         self.manifest_parser = ManifestParser()
 
         # Initialize managers (will be set up after connection is established)
-        self._app_registration_manager: Optional[AppRegistrationManager] = None
-        self._index_manager: Optional[IndexManager] = None
-        self._service_initializer: Optional[ServiceInitializer] = None
-        self._encryption_service: Optional[EnvelopeEncryptionService] = None
-        self._app_secrets_manager: Optional[AppSecretsManager] = None
+        self._app_registration_manager: AppRegistrationManager | None = None
+        self._index_manager: IndexManager | None = None
+        self._service_initializer: ServiceInitializer | None = None
+        self._encryption_service: EnvelopeEncryptionService | None = None
+        self._app_secrets_manager: AppSecretsManager | None = None
 
         # Store app read_scopes mapping for validation
-        self._app_read_scopes: Dict[str, List[str]] = {}
+        self._app_read_scopes: dict[str, list[str]] = {}
 
         # Store app token cache for auto-retrieval
-        self._app_token_cache: Dict[str, str] = {}
+        self._app_token_cache: dict[str, str] = {}
 
     async def initialize(self) -> None:
         """
@@ -300,9 +301,9 @@ class MongoDBEngine:
     def get_scoped_db(
         self,
         app_slug: str,
-        app_token: Optional[str] = None,
-        read_scopes: Optional[List[str]] = None,
-        write_scope: Optional[str] = None,
+        app_token: str | None = None,
+        read_scopes: list[str] | None = None,
+        write_scope: str | None = None,
         auto_index: bool = True,
     ) -> ScopedMongoWrapper:
         """
@@ -435,9 +436,9 @@ class MongoDBEngine:
     async def get_scoped_db_async(
         self,
         app_slug: str,
-        app_token: Optional[str] = None,
-        read_scopes: Optional[List[str]] = None,
-        write_scope: Optional[str] = None,
+        app_token: str | None = None,
+        read_scopes: list[str] | None = None,
+        write_scope: str | None = None,
         auto_index: bool = True,
     ) -> ScopedMongoWrapper:
         """
@@ -540,7 +541,7 @@ class MongoDBEngine:
 
     async def validate_manifest(
         self, manifest: "ManifestDict"
-    ) -> Tuple[bool, Optional[str], Optional[List[str]]]:
+    ) -> tuple[bool, str | None, list[str] | None]:
         """
         Validate a manifest against the schema.
 
@@ -604,16 +605,16 @@ class MongoDBEngine:
             if self._index_manager and create_indexes:
                 await self._index_manager.create_app_indexes(slug, manifest)
 
-        async def seed_data_callback(slug: str, initial_data: Dict[str, Any]) -> None:
+        async def seed_data_callback(slug: str, initial_data: dict[str, Any]) -> None:
             if self._service_initializer:
                 await self._service_initializer.seed_initial_data(slug, initial_data)
 
-        async def initialize_memory_callback(slug: str, memory_config: Dict[str, Any]) -> None:
+        async def initialize_memory_callback(slug: str, memory_config: dict[str, Any]) -> None:
             if self._service_initializer:
                 await self._service_initializer.initialize_memory_service(slug, memory_config)
 
         async def register_websockets_callback(
-            slug: str, websockets_config: Dict[str, Any]
+            slug: str, websockets_config: dict[str, Any]
         ) -> None:
             if self._service_initializer:
                 await self._service_initializer.register_websockets(slug, websockets_config)
@@ -621,7 +622,7 @@ class MongoDBEngine:
         async def setup_observability_callback(
             slug: str,
             manifest: "ManifestDict",
-            observability_config: Dict[str, Any],
+            observability_config: dict[str, Any],
         ) -> None:
             if self._service_initializer:
                 await self._service_initializer.setup_observability(
@@ -665,7 +666,7 @@ class MongoDBEngine:
 
         return result
 
-    def get_websocket_config(self, slug: str) -> Optional[Dict[str, Any]]:
+    def get_websocket_config(self, slug: str) -> dict[str, Any] | None:
         """
         Get WebSocket configuration for an app.
 
@@ -851,7 +852,7 @@ class MongoDBEngine:
             raise RuntimeError("MongoDBEngine not initialized. Call initialize() first.")
         return await self._app_registration_manager.get_manifest(slug)
 
-    def get_memory_service(self, slug: str) -> Optional[Any]:
+    def get_memory_service(self, slug: str) -> Any | None:
         """
         Get Mem0 memory service for an app.
 
@@ -875,7 +876,7 @@ class MongoDBEngine:
             return self._service_initializer.get_memory_service(slug)
         return None
 
-    def get_embedding_service(self, slug: str) -> Optional[Any]:
+    def get_embedding_service(self, slug: str) -> Any | None:
         """
         Get EmbeddingService for an app.
 
@@ -900,7 +901,7 @@ class MongoDBEngine:
         return get_embedding_service_for_app(slug, self)
 
     @property
-    def _apps(self) -> Dict[str, Any]:
+    def _apps(self) -> dict[str, Any]:
         """
         Get the apps dictionary (for backward compatibility with tests).
 
@@ -914,7 +915,7 @@ class MongoDBEngine:
             raise RuntimeError("MongoDBEngine not initialized. Call initialize() first.")
         return self._app_registration_manager._apps
 
-    def list_apps(self) -> List[str]:
+    def list_apps(self) -> list[str]:
         """
         List all registered app slugs.
 
@@ -958,9 +959,9 @@ class MongoDBEngine:
 
     def __exit__(
         self,
-        exc_type: Optional[type[BaseException]],
-        exc_val: Optional[BaseException],
-        exc_tb: Optional[Any],
+        exc_type: type[BaseException] | None,
+        exc_val: BaseException | None,
+        exc_tb: Any | None,
     ) -> None:
         """
         Context manager exit (synchronous).
@@ -991,9 +992,9 @@ class MongoDBEngine:
 
     async def __aexit__(
         self,
-        exc_type: Optional[type[BaseException]],
-        exc_val: Optional[BaseException],
-        exc_tb: Optional[Any],
+        exc_type: type[BaseException] | None,
+        exc_val: BaseException | None,
+        exc_tb: Any | None,
     ) -> None:
         """
         Async context manager exit.
@@ -1007,7 +1008,7 @@ class MongoDBEngine:
         """
         await self.shutdown()
 
-    async def get_health_status(self) -> Dict[str, Any]:
+    async def get_health_status(self) -> dict[str, Any]:
         """
         Get health status of the MongoDB Engine.
 
@@ -1069,7 +1070,7 @@ class MongoDBEngine:
 
         return await health_checker.check_all()
 
-    def get_metrics(self) -> Dict[str, Any]:
+    def get_metrics(self) -> dict[str, Any]:
         """
         Get metrics for the MongoDB Engine.
 
@@ -1089,13 +1090,11 @@ class MongoDBEngine:
         self,
         slug: str,
         manifest: Path,
-        title: Optional[str] = None,
-        on_startup: Optional[
-            Callable[["FastAPI", "MongoDBEngine", Dict[str, Any]], Awaitable[None]]
-        ] = None,
-        on_shutdown: Optional[
-            Callable[["FastAPI", "MongoDBEngine", Dict[str, Any]], Awaitable[None]]
-        ] = None,
+        title: str | None = None,
+        on_startup: Callable[["FastAPI", "MongoDBEngine", dict[str, Any]], Awaitable[None]]
+        | None = None,
+        on_shutdown: Callable[["FastAPI", "MongoDBEngine", dict[str, Any]], Awaitable[None]]
+        | None = None,
         **fastapi_kwargs: Any,
     ) -> "FastAPI":
         """
@@ -1170,7 +1169,7 @@ class MongoDBEngine:
         app_title = title or pre_manifest.get("name", slug)
 
         # State that will be populated during initialization
-        app_manifest: Dict[str, Any] = {}
+        app_manifest: dict[str, Any] = {}
         is_multi_site = False
 
         @asynccontextmanager
@@ -1506,7 +1505,7 @@ class MongoDBEngine:
     async def _initialize_shared_user_pool(
         self,
         app: "FastAPI",
-        manifest: Optional[Dict[str, Any]] = None,
+        manifest: dict[str, Any] | None = None,
     ) -> None:
         """
         Initialize shared user pool, audit log, and set them on app.state.
@@ -1644,7 +1643,7 @@ class MongoDBEngine:
 
         return _lifespan
 
-    async def auto_retrieve_app_token(self, slug: str) -> Optional[str]:
+    async def auto_retrieve_app_token(self, slug: str) -> str | None:
         """
         Auto-retrieve app token from environment or database.
 
@@ -1697,7 +1696,7 @@ class MongoDBEngine:
         )
         return None
 
-    def get_app_token(self, slug: str) -> Optional[str]:
+    def get_app_token(self, slug: str) -> str | None:
         """
         Get cached app token for a slug.
 

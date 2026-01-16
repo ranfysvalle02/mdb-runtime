@@ -36,7 +36,8 @@ import logging
 import os
 import secrets
 import time
-from typing import Any, Awaitable, Callable, Dict, List, Optional, Set
+from collections.abc import Awaitable, Callable
+from typing import Any
 
 from fastapi import Request, Response, status
 from fastapi.responses import JSONResponse
@@ -55,7 +56,7 @@ DEFAULT_TOKEN_TTL = 3600  # 1 hour
 UNSAFE_METHODS = {"POST", "PUT", "DELETE", "PATCH"}
 
 
-def generate_csrf_token(secret: Optional[str] = None) -> str:
+def generate_csrf_token(secret: str | None = None) -> str:
     """
     Generate a cryptographically secure CSRF token.
 
@@ -79,7 +80,7 @@ def generate_csrf_token(secret: Optional[str] = None) -> str:
 
 def validate_csrf_token(
     token: str,
-    secret: Optional[str] = None,
+    secret: str | None = None,
     max_age: int = DEFAULT_TOKEN_TTL,
 ) -> bool:
     """
@@ -146,9 +147,9 @@ class CSRFMiddleware(BaseHTTPMiddleware):
     def __init__(
         self,
         app,
-        secret: Optional[str] = None,
-        exempt_routes: Optional[List[str]] = None,
-        exempt_methods: Optional[Set[str]] = None,
+        secret: str | None = None,
+        exempt_routes: list[str] | None = None,
+        exempt_methods: set[str] | None = None,
         cookie_name: str = CSRF_COOKIE_NAME,
         header_name: str = CSRF_HEADER_NAME,
         form_field: str = CSRF_FORM_FIELD,
@@ -300,8 +301,8 @@ class CSRFMiddleware(BaseHTTPMiddleware):
 
 
 def create_csrf_middleware(
-    manifest_auth: Dict[str, Any],
-    secret: Optional[str] = None,
+    manifest_auth: dict[str, Any],
+    secret: str | None = None,
 ) -> type:
     """
     Create CSRF middleware from manifest configuration.

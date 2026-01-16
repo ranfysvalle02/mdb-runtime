@@ -11,7 +11,8 @@ This module is part of MDB_ENGINE - MongoDB Engine.
 """
 
 import logging
-from typing import Any, Callable, Dict, List, Optional
+from collections.abc import Callable
+from typing import Any
 
 from pymongo.errors import (
     ConnectionFailure,
@@ -50,10 +51,10 @@ class ServiceInitializer:
         self.mongo_uri = mongo_uri
         self.db_name = db_name
         self.get_scoped_db_fn = get_scoped_db_fn
-        self._memory_services: Dict[str, Any] = {}
-        self._websocket_configs: Dict[str, Dict[str, Any]] = {}
+        self._memory_services: dict[str, Any] = {}
+        self._websocket_configs: dict[str, dict[str, Any]] = {}
 
-    async def initialize_memory_service(self, slug: str, memory_config: Dict[str, Any]) -> None:
+    async def initialize_memory_service(self, slug: str, memory_config: dict[str, Any]) -> None:
         """
         Initialize Mem0 memory service for an app.
 
@@ -151,7 +152,7 @@ class ServiceInitializer:
                 exc_info=True,
             )
 
-    async def register_websockets(self, slug: str, websockets_config: Dict[str, Any]) -> None:
+    async def register_websockets(self, slug: str, websockets_config: dict[str, Any]) -> None:
         """
         Register WebSocket endpoints for an app.
 
@@ -195,7 +196,7 @@ class ServiceInitializer:
             )
 
     async def seed_initial_data(
-        self, slug: str, initial_data: Dict[str, List[Dict[str, Any]]]
+        self, slug: str, initial_data: dict[str, list[dict[str, Any]]]
     ) -> None:
         """
         Seed initial data into collections for an app.
@@ -240,7 +241,7 @@ class ServiceInitializer:
             )
 
     async def setup_observability(
-        self, slug: str, manifest: Dict[str, Any], observability_config: Dict[str, Any]
+        self, slug: str, manifest: dict[str, Any], observability_config: dict[str, Any]
     ) -> None:
         """
         Set up observability features (health checks, metrics, logging) from manifest.
@@ -296,7 +297,7 @@ class ServiceInitializer:
                 f"Could not set up observability for {slug}: {e}", exc_info=True
             )
 
-    def get_websocket_config(self, slug: str) -> Optional[Dict[str, Any]]:
+    def get_websocket_config(self, slug: str) -> dict[str, Any] | None:
         """
         Get WebSocket configuration for an app.
 
@@ -308,7 +309,7 @@ class ServiceInitializer:
         """
         return self._websocket_configs.get(slug)
 
-    def get_memory_service(self, slug: str) -> Optional[Any]:
+    def get_memory_service(self, slug: str) -> Any | None:
         """
         Get Mem0 memory service for an app.
 

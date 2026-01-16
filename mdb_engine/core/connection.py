@@ -9,7 +9,6 @@ This module is part of MDB_ENGINE - MongoDB Engine.
 
 import logging
 import time
-from typing import Optional
 
 from motor.motor_asyncio import AsyncIOMotorClient, AsyncIOMotorDatabase
 from pymongo.errors import ConnectionFailure, ServerSelectionTimeoutError
@@ -57,8 +56,8 @@ class ConnectionManager:
         self.min_pool_size = min_pool_size
 
         # Connection state
-        self._mongo_client: Optional[AsyncIOMotorClient] = None
-        self._mongo_db: Optional[AsyncIOMotorDatabase] = None
+        self._mongo_client: AsyncIOMotorClient | None = None
+        self._mongo_db: AsyncIOMotorDatabase | None = None
         self._initialized: bool = False
 
     async def initialize(self) -> None:
@@ -242,7 +241,7 @@ class ConnectionManager:
         self._mongo_db = None
 
     @mongo_db.setter
-    def mongo_db(self, value: Optional[AsyncIOMotorDatabase]) -> None:
+    def mongo_db(self, value: AsyncIOMotorDatabase | None) -> None:
         """Allow setting mongo_db property for testing purposes."""
         self._mongo_db = value
 

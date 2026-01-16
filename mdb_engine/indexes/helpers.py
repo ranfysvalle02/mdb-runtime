@@ -6,14 +6,14 @@ in index creation and management.
 """
 
 import logging
-from typing import Any, Dict, List, Optional, Tuple, Union
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
 
 def normalize_keys(
-    keys: Union[Dict[str, Any], List[Tuple[str, Any]]],
-) -> List[Tuple[str, Any]]:
+    keys: dict[str, Any] | list[tuple[str, Any]],
+) -> list[tuple[str, Any]]:
     """
     Normalize index keys to a consistent format.
 
@@ -28,7 +28,7 @@ def normalize_keys(
     return keys
 
 
-def keys_to_dict(keys: Union[Dict[str, Any], List[Tuple[str, Any]]]) -> Dict[str, Any]:
+def keys_to_dict(keys: dict[str, Any] | list[tuple[str, Any]]) -> dict[str, Any]:
     """
     Convert index keys to dictionary format for comparison.
 
@@ -43,7 +43,7 @@ def keys_to_dict(keys: Union[Dict[str, Any], List[Tuple[str, Any]]]) -> Dict[str
     return {k: v for k, v in keys}
 
 
-def is_id_index(keys: Union[Dict[str, Any], List[Tuple[str, Any]]]) -> bool:
+def is_id_index(keys: dict[str, Any] | list[tuple[str, Any]]) -> bool:
     """
     Check if index keys target the _id field (which MongoDB creates automatically).
 
@@ -63,10 +63,10 @@ def is_id_index(keys: Union[Dict[str, Any], List[Tuple[str, Any]]]) -> bool:
 async def check_and_update_index(
     index_manager: Any,
     index_name: str,
-    expected_keys: Union[Dict[str, Any], List[Tuple[str, Any]]],
-    expected_options: Optional[Dict[str, Any]] = None,
+    expected_keys: dict[str, Any] | list[tuple[str, Any]],
+    expected_options: dict[str, Any] | None = None,
     log_prefix: str = "",
-) -> Tuple[bool, Optional[Dict[str, Any]]]:
+) -> tuple[bool, dict[str, Any] | None]:
     """
     Check if an index exists and matches the expected definition.
 
@@ -118,11 +118,11 @@ async def check_and_update_index(
 
 
 def validate_index_definition_basic(
-    index_def: Dict[str, Any],
+    index_def: dict[str, Any],
     index_name: str,
-    required_fields: List[str],
+    required_fields: list[str],
     log_prefix: str = "",
-) -> Tuple[bool, Optional[str]]:
+) -> tuple[bool, str | None]:
     """
     Basic validation for index definitions.
 

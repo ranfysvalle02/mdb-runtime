@@ -8,7 +8,7 @@ This module is part of MDB_ENGINE - MongoDB Engine.
 
 import logging
 import os
-from typing import Any, Dict, Optional
+from typing import Any
 
 from fastapi import FastAPI
 
@@ -24,7 +24,7 @@ from .helpers import initialize_token_management
 logger = logging.getLogger(__name__)
 
 # Cache for auth configs
-_auth_config_cache: Dict[str, Dict[str, Any]] = {}
+_auth_config_cache: dict[str, dict[str, Any]] = {}
 
 
 def _has_cors_middleware(app: FastAPI) -> bool:
@@ -57,7 +57,7 @@ def _has_cors_middleware(app: FastAPI) -> bool:
         return False
 
 
-def invalidate_auth_config_cache(slug_id: Optional[str] = None) -> None:
+def invalidate_auth_config_cache(slug_id: str | None = None) -> None:
     """
     Invalidate auth config cache for a specific app or all apps.
 
@@ -72,7 +72,7 @@ def invalidate_auth_config_cache(slug_id: Optional[str] = None) -> None:
         logger.debug("Invalidated entire auth config cache")
 
 
-async def get_auth_config(slug_id: str, engine) -> Dict[str, Any]:
+async def get_auth_config(slug_id: str, engine) -> dict[str, Any]:
     """
     Retrieve authentication configuration from manifest.
 
@@ -121,7 +121,7 @@ async def get_auth_config(slug_id: str, engine) -> Dict[str, Any]:
 
 
 async def _setup_authorization_provider(
-    app: FastAPI, engine, slug_id: str, config: Dict[str, Any]
+    app: FastAPI, engine, slug_id: str, config: dict[str, Any]
 ) -> None:
     """Set up authorization provider (Casbin/OSO/custom) from manifest."""
     auth = config.get("auth", {})
@@ -181,7 +181,7 @@ async def _setup_authorization_provider(
         logger.info(f"Custom provider specified for {slug_id} - manual setup required")
 
 
-async def _setup_demo_users(app: FastAPI, engine, slug_id: str, config: Dict[str, Any]) -> list:
+async def _setup_demo_users(app: FastAPI, engine, slug_id: str, config: dict[str, Any]) -> list:
     """Set up demo users and link with OSO roles if applicable."""
     auth = config.get("auth", {})
     users_config = auth.get("users", {})
@@ -325,7 +325,7 @@ async def _setup_demo_users(app: FastAPI, engine, slug_id: str, config: Dict[str
 
 
 async def _setup_token_management(
-    app: FastAPI, engine, slug_id: str, token_management: Dict[str, Any]
+    app: FastAPI, engine, slug_id: str, token_management: dict[str, Any]
 ) -> None:
     """Initialize token management (blacklist and session manager)."""
     if token_management.get("auto_setup", True):
@@ -356,7 +356,7 @@ async def _setup_token_management(
 
 
 async def _setup_security_middleware(
-    app: FastAPI, slug_id: str, security_config: Dict[str, Any]
+    app: FastAPI, slug_id: str, security_config: dict[str, Any]
 ) -> None:
     """Set up security middleware (if not already added)."""
     if security_config.get("csrf_protection", True) or security_config.get("require_https", False):
@@ -392,7 +392,7 @@ async def _setup_security_middleware(
 
 
 async def _setup_cors_and_observability(
-    app: FastAPI, engine, slug_id: str, config: Dict[str, Any]
+    app: FastAPI, engine, slug_id: str, config: dict[str, Any]
 ) -> None:
     """Set up CORS and observability configs and middleware."""
     # Get manifest data first if available

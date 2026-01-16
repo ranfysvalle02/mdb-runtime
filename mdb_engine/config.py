@@ -7,7 +7,6 @@ with direct parameters as before.
 """
 
 import os
-from typing import Optional
 
 try:
     from pydantic import BaseSettings, Field
@@ -46,12 +45,12 @@ class EngineConfig:
 
     def __init__(
         self,
-        mongo_uri: Optional[str] = None,
-        db_name: Optional[str] = None,
-        max_pool_size: Optional[int] = None,
-        min_pool_size: Optional[int] = None,
-        server_selection_timeout_ms: Optional[int] = None,
-        authz_cache_ttl: Optional[int] = None,
+        mongo_uri: str | None = None,
+        db_name: str | None = None,
+        max_pool_size: int | None = None,
+        min_pool_size: int | None = None,
+        server_selection_timeout_ms: int | None = None,
+        authz_cache_ttl: int | None = None,
     ):
         """
         Initialize configuration.

@@ -8,7 +8,7 @@ This module is part of MDB_ENGINE - MongoDB Engine.
 
 import logging
 from datetime import datetime
-from typing import Any, Dict, Optional
+from typing import Any
 
 from ..config import ACCESS_TOKEN_TTL as CONFIG_ACCESS_TTL
 from .jwt import extract_token_metadata
@@ -16,7 +16,7 @@ from .jwt import extract_token_metadata
 logger = logging.getLogger(__name__)
 
 
-def get_token_expiry_time(token: str, secret_key: str) -> Optional[datetime]:
+def get_token_expiry_time(token: str, secret_key: str) -> datetime | None:
     """
     Get the expiration time of a token.
 
@@ -31,7 +31,7 @@ def get_token_expiry_time(token: str, secret_key: str) -> Optional[datetime]:
         metadata = extract_token_metadata(token, secret_key)
         if metadata and metadata.get("exp"):
             exp_timestamp = metadata["exp"]
-            if isinstance(exp_timestamp, (int, float)):
+            if isinstance(exp_timestamp, int | float):
                 return datetime.utcfromtimestamp(exp_timestamp)
         return None
     except (ValueError, TypeError, AttributeError, KeyError) as e:
@@ -40,7 +40,7 @@ def get_token_expiry_time(token: str, secret_key: str) -> Optional[datetime]:
 
 
 def is_token_expiring_soon(
-    token: str, secret_key: str, threshold_seconds: Optional[int] = None
+    token: str, secret_key: str, threshold_seconds: int | None = None
 ) -> bool:
     """
     Check if a token is expiring soon.
@@ -68,9 +68,7 @@ def is_token_expiring_soon(
         return False
 
 
-def should_refresh_token(
-    token: str, secret_key: str, refresh_threshold: Optional[int] = None
-) -> bool:
+def should_refresh_token(token: str, secret_key: str, refresh_threshold: int | None = None) -> bool:
     """
     Determine if a token should be refreshed.
 
@@ -97,7 +95,7 @@ def should_refresh_token(
         return False
 
 
-def get_token_age(token: str, secret_key: str) -> Optional[float]:
+def get_token_age(token: str, secret_key: str) -> float | None:
     """
     Get the age of a token in seconds.
 
@@ -112,7 +110,7 @@ def get_token_age(token: str, secret_key: str) -> Optional[float]:
         metadata = extract_token_metadata(token, secret_key)
         if metadata and metadata.get("iat"):
             iat_timestamp = metadata["iat"]
-            if isinstance(iat_timestamp, (int, float)):
+            if isinstance(iat_timestamp, int | float):
                 issued_at = datetime.utcfromtimestamp(iat_timestamp)
                 age = (datetime.utcnow() - issued_at).total_seconds()
                 return age
@@ -122,7 +120,7 @@ def get_token_age(token: str, secret_key: str) -> Optional[float]:
         return None
 
 
-def get_time_until_expiry(token: str, secret_key: str) -> Optional[float]:
+def get_time_until_expiry(token: str, secret_key: str) -> float | None:
     """
     Get time until token expiry in seconds.
 
@@ -146,7 +144,7 @@ def get_time_until_expiry(token: str, secret_key: str) -> Optional[float]:
 
 
 def validate_token_version(
-    token: str, secret_key: str, required_version: Optional[str] = None
+    token: str, secret_key: str, required_version: str | None = None
 ) -> bool:
     """
     Validate token version compatibility.
@@ -177,7 +175,7 @@ def validate_token_version(
         return False
 
 
-def get_token_info(token: str, secret_key: str) -> Optional[Dict[str, Any]]:
+def get_token_info(token: str, secret_key: str) -> dict[str, Any] | None:
     """
     Get comprehensive token information.
 
