@@ -299,10 +299,32 @@ async def _get_client_pool_metrics(client: AsyncIOMotorClient) -> dict[str, Any]
 
         try:
             server_status = await client.admin.command("serverStatus")
-            connections = server_status.get("connections", {})
-            current_connections = connections.get("current", 0)
-            available_connections = connections.get("available", 0)
-            total_created = connections.get("totalCreated", 0)
+            if not isinstance(server_status, dict):
+                # Mock or invalid response - skip connection metrics
+                current_connections = None
+                available_connections = None
+                total_created = None
+            else:
+                connections = server_status.get("connections", {})
+                if not isinstance(connections, dict):
+                    # Mock or invalid response - skip connection metrics
+                    current_connections = None
+                    available_connections = None
+                    total_created = None
+                else:
+                    # Get values, ensuring they're numeric (not MagicMocks)
+                    current_raw = connections.get("current", 0)
+                    available_raw = connections.get("available", 0)
+                    total_raw = connections.get("totalCreated", 0)
+
+                    # Only use if actually numeric
+                    current_connections = (
+                        int(current_raw) if isinstance(current_raw, int | float) else None
+                    )
+                    available_connections = (
+                        int(available_raw) if isinstance(available_raw, int | float) else None
+                    )
+                    total_created = int(total_raw) if isinstance(total_raw, int | float) else None
         except (
             OperationFailure,
             ConnectionFailure,
@@ -330,7 +352,13 @@ async def _get_client_pool_metrics(client: AsyncIOMotorClient) -> dict[str, Any]
             metrics["total_connections_created"] = total_created
 
         # Calculate pool usage if we have max_pool_size and current connections
-        if max_pool_size and current_connections is not None:
+        # Ensure both are numeric (not MagicMock or other types)
+        if (
+            max_pool_size
+            and current_connections is not None
+            and isinstance(max_pool_size, int | float)
+            and isinstance(current_connections, int | float)
+        ):
             usage_percent = (current_connections / max_pool_size) * 100
             metrics["pool_usage_percent"] = round(usage_percent, 2)
             metrics["active_connections"] = current_connections  # Alias for compatibility
