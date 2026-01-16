@@ -8,7 +8,6 @@ Tests the optional Ray support functionality:
 - Decorator functionality
 """
 
-
 import pytest
 
 

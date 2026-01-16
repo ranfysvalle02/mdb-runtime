@@ -526,9 +526,9 @@ class TestMongoDBEngineWebSocket:
         websocket_config_nested = {
             "endpoint1": {"path": "/ws/endpoint1", "auth": {"required": False}}
         }
-        mongodb_engine._service_initializer._websocket_configs[
-            "test_experiment"
-        ] = websocket_config_nested
+        mongodb_engine._service_initializer._websocket_configs["test_experiment"] = (
+            websocket_config_nested
+        )
 
         mock_app = MagicMock()
         mock_app.routes = []
@@ -547,9 +547,9 @@ class TestMongoDBEngineWebSocket:
 
         # Test top-level require_auth (backward compatibility)
         websocket_config_top_level = {"endpoint2": {"path": "/ws/endpoint2", "require_auth": False}}
-        mongodb_engine._service_initializer._websocket_configs[
-            "test_experiment"
-        ] = websocket_config_top_level
+        mongodb_engine._service_initializer._websocket_configs["test_experiment"] = (
+            websocket_config_top_level
+        )
 
         with patch(
             "mdb_engine.routing.websockets.create_websocket_endpoint",
