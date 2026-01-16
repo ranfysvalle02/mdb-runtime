@@ -11,7 +11,7 @@ from __future__ import annotations  # MUST be first import for string type hints
 import asyncio
 import logging
 import time
-from typing import TYPE_CHECKING, Any, Protocol
+from typing import TYPE_CHECKING, Any, Dict, Optional, Protocol, Tuple
 
 from ..constants import AUTHZ_CACHE_TTL, MAX_CACHE_SIZE
 
@@ -38,7 +38,7 @@ class AuthorizationProvider(Protocol):
         subject: str,
         resource: str,
         action: str,
-        user_object: dict[str, Any] | None = None,
+        user_object: Optional[Dict[str, Any]] = None,
     ) -> bool:
         """
         Checks if a subject is allowed to perform an action on a resource.
@@ -82,7 +82,7 @@ class CasbinAdapter(BaseAuthorizationProvider):
         super().__init__(engine_name="Casbin")
         self._enforcer = enforcer
         # Cache for authorization results: {(subject, resource, action): (result, timestamp)}
-        self._cache: dict[tuple[str, str, str], tuple[bool, float]] = {}
+        self._cache: Dict[Tuple[str, str, str], Tuple[bool, float]] = {}
         self._cache_lock = asyncio.Lock()
         self._mark_initialized()
 
@@ -91,7 +91,7 @@ class CasbinAdapter(BaseAuthorizationProvider):
         subject: str,
         resource: str,
         action: str,
-        user_object: dict[str, Any] | None = None,
+        user_object: Optional[Dict[str, Any]] = None,
     ) -> bool:
         """
         Check authorization using Casbin's enforce method.
@@ -312,7 +312,7 @@ class OsoAdapter(BaseAuthorizationProvider):
         super().__init__(engine_name="OSO Cloud")
         self._oso = oso_client
         # Cache for authorization results: {(subject, resource, action): (result, timestamp)}
-        self._cache: dict[tuple[str, str, str], tuple[bool, float]] = {}
+        self._cache: Dict[Tuple[str, str, str], Tuple[bool, float]] = {}
         self._cache_lock = asyncio.Lock()
         self._mark_initialized()
 
@@ -321,7 +321,7 @@ class OsoAdapter(BaseAuthorizationProvider):
         subject: str,
         resource: str,
         action: str,
-        user_object: dict[str, Any] | None = None,
+        user_object: Optional[Dict[str, Any]] = None,
     ) -> bool:
         """
         Check authorization using OSO's authorize method.

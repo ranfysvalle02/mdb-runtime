@@ -5,7 +5,7 @@ This module contains all shared constants used across the codebase to avoid
 magic numbers and improve maintainability.
 """
 
-from typing import Final
+from typing import Final, Tuple
 
 # ============================================================================
 # INDEX MANAGEMENT CONSTANTS
@@ -61,7 +61,7 @@ MIN_COLLECTION_NAME_LENGTH: Final[int] = 1
 """Minimum length for MongoDB collection names."""
 
 # Reserved collection name prefixes (MongoDB system collections)
-RESERVED_COLLECTION_PREFIXES: Final[tuple[str, ...]] = (
+RESERVED_COLLECTION_PREFIXES: Final[Tuple[str, ...]] = (
     "system",
     "admin",
     "config",
@@ -70,7 +70,7 @@ RESERVED_COLLECTION_PREFIXES: Final[tuple[str, ...]] = (
 """Reserved MongoDB collection name prefixes that cannot be used."""
 
 # Reserved collection names (engine-internal)
-RESERVED_COLLECTION_NAMES: Final[tuple[str, ...]] = (
+RESERVED_COLLECTION_NAMES: Final[Tuple[str, ...]] = (
     "apps_config",  # Engine internal - app registration
     "_mdb_engine_app_secrets",  # Engine internal - encrypted app secrets
 )
@@ -150,7 +150,7 @@ INDEX_TYPE_PARTIAL: Final[str] = "partial"
 INDEX_TYPE_HYBRID: Final[str] = "hybrid"
 
 # Supported index types
-SUPPORTED_INDEX_TYPES: Final[tuple[str, ...]] = (
+SUPPORTED_INDEX_TYPES: Final[Tuple[str, ...]] = (
     INDEX_TYPE_REGULAR,
     INDEX_TYPE_VECTOR_SEARCH,
     INDEX_TYPE_SEARCH,
@@ -171,7 +171,7 @@ APP_STATUS_ARCHIVED: Final[str] = "archived"
 APP_STATUS_INACTIVE: Final[str] = "inactive"
 
 # Supported app statuses
-SUPPORTED_APP_STATUSES: Final[tuple[str, ...]] = (
+SUPPORTED_APP_STATUSES: Final[Tuple[str, ...]] = (
     APP_STATUS_ACTIVE,
     APP_STATUS_DRAFT,
     APP_STATUS_ARCHIVED,
@@ -216,7 +216,7 @@ MAX_REGEX_COMPLEXITY: Final[int] = 50
 """Maximum complexity score for regex patterns (prevents ReDoS)."""
 
 # Dangerous MongoDB operators that should be blocked
-DANGEROUS_OPERATORS: Final[tuple[str, ...]] = (
+DANGEROUS_OPERATORS: Final[Tuple[str, ...]] = (
     "$where",  # JavaScript execution (security risk)
     "$eval",  # JavaScript evaluation (deprecated, security risk)
     "$function",  # JavaScript functions (security risk)

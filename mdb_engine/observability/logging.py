@@ -8,7 +8,7 @@ import contextvars
 import logging
 import uuid
 from datetime import datetime
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Optional, Tuple
 
 # Context variable for correlation ID
 _correlation_id: contextvars.ContextVar[Optional[str]] = contextvars.ContextVar(
@@ -91,7 +91,7 @@ class ContextualLoggerAdapter(logging.LoggerAdapter):
     Logger adapter that automatically adds context to log records.
     """
 
-    def process(self, msg: str, kwargs: Dict[str, Any]) -> tuple[str, Dict[str, Any]]:
+    def process(self, msg: str, kwargs: Dict[str, Any]) -> Tuple[str, Dict[str, Any]]:
         """Add context to log records."""
         # Get base context
         context = get_logging_context()

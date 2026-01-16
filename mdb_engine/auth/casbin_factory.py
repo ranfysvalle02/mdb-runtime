@@ -188,7 +188,7 @@ async def create_casbin_enforcer(
 
 
 async def initialize_casbin_from_manifest(
-    engine, app_slug: str, auth_config: dict[str, Any]
+    engine, app_slug: str, auth_config: Dict[str, Any]
 ) -> CasbinAdapter | None:
     """
     Initialize Casbin provider from manifest configuration.

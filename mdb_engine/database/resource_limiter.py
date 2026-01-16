@@ -12,7 +12,7 @@ Features:
 """
 
 import logging
-from typing import Any, Dict, Optional
+from typing import Any, Dict, List, Optional
 
 from bson import encode as bson_encode
 from bson.errors import InvalidDocument
@@ -180,7 +180,7 @@ class ResourceLimiter:
             # MongoDB will catch this anyway during actual insert
             logger.warning(f"Could not encode document as BSON for size validation: {e}")
 
-    def validate_documents_size(self, documents: list[Dict[str, Any]]) -> None:
+    def validate_documents_size(self, documents: List[Dict[str, Any]]) -> None:
         """
         Validate that multiple documents don't exceed size limits.
 
