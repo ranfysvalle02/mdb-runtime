@@ -535,8 +535,7 @@ class OsoAdapter(BaseAuthorizationProvider):
             if result:
                 await self.clear_cache()
                 logger.debug(
-                    f"OSO role assigned: has_role({user}, {role}, "
-                    f"{resource or 'documents'})"
+                    f"OSO role assigned: has_role({user}, {role}, " f"{resource or 'documents'})"
                 )
             return result
         except (RuntimeError, ValueError, AttributeError, TypeError, ConnectionError) as e:

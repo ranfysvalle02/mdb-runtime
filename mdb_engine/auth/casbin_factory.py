@@ -113,14 +113,11 @@ async def create_casbin_enforcer(
         except TypeError:
             # Fallback: adapter doesn't support collection parameter, use default
             logger.warning(
-                "Adapter doesn't support custom collection name, "
-                "using default collection"
+                "Adapter doesn't support custom collection name, " "using default collection"
             )
             adapter = Adapter(mongo_uri, db_name)
-            logger.debug(
-                "Casbin MotorAdapter created successfully (using default collection)"
-            )
-    except (RuntimeError, ValueError, AttributeError, TypeError, ConnectionError) as e:
+            logger.debug("Casbin MotorAdapter created successfully (using default collection)")
+    except (RuntimeError, ValueError, AttributeError, TypeError, ConnectionError):
         logger.exception("Failed to create Casbin MotorAdapter")
         raise
 
@@ -151,7 +148,7 @@ async def create_casbin_enforcer(
             logger.debug("Policies loaded successfully")
         else:
             logger.debug("Policies auto-loaded by AsyncEnforcer constructor")
-    except (RuntimeError, ValueError, AttributeError, TypeError, OSError) as e:
+    except (RuntimeError, ValueError, AttributeError, TypeError, OSError):
         logger.exception("Failed to create or configure Casbin enforcer")
         # Try alternative: use temp file approach
         logger.info("Attempting alternative: using temporary model file...")
@@ -248,7 +245,7 @@ async def initialize_casbin_from_manifest(
             TypeError,
             ConnectionError,
             ImportError,
-        ) as e:
+        ):
             logger.exception(f"Failed to create Casbin enforcer for '{app_slug}'")
             return None
 
@@ -256,7 +253,7 @@ async def initialize_casbin_from_manifest(
         try:
             adapter = CasbinAdapter(enforcer)
             logger.info("✅ CasbinAdapter created successfully")
-        except (RuntimeError, ValueError, AttributeError, TypeError) as e:
+        except (RuntimeError, ValueError, AttributeError, TypeError):
             logger.exception(f"Failed to create CasbinAdapter for '{app_slug}'")
             return None
 
@@ -277,8 +274,7 @@ async def initialize_casbin_from_manifest(
                                 logger.debug(f"  Added policy: {role} -> {resource}:{action}")
                             else:
                                 logger.warning(
-                                    f"  Failed to add policy: {role} -> "
-                                    f"{resource}:{action}"
+                                    f"  Failed to add policy: {role} -> " f"{resource}:{action}"
                                 )
                     except (ValueError, TypeError, RuntimeError, AttributeError) as e:
                         logger.warning(f"  Failed to add policy {policy}: {e}", exc_info=True)
@@ -305,8 +301,7 @@ async def initialize_casbin_from_manifest(
                             # Check if role assignment already exists
                             exists = await adapter.has_role_for_user(user, role)
                             logger.debug(
-                                f"  Checking role assignment: {user} -> {role}, "
-                                f"exists={exists}"
+                                f"  Checking role assignment: {user} -> {role}, " f"exists={exists}"
                             )
                             if exists:
                                 logger.info(f"  ✓ Role assignment already exists: {user} -> {role}")
@@ -325,9 +320,7 @@ async def initialize_casbin_from_manifest(
                                         f"user '{user}' - add_grouping_policy returned False"
                                     )
                         except (ValueError, TypeError, RuntimeError, AttributeError):
-                            logger.exception(
-                                f"  ✗ Exception assigning role {role_assignment}"
-                            )
+                            logger.exception(f"  ✗ Exception assigning role {role_assignment}")
 
             # Restore auto_save setting
             if hasattr(enforcer, "auto_save"):
@@ -353,8 +346,7 @@ async def initialize_casbin_from_manifest(
                     if user and role and await adapter.has_role_for_user(user, role):
                         verified += 1
             logger.info(
-                f"Verified {verified}/{len(initial_roles)} role assignments "
-                f"exist in memory"
+                f"Verified {verified}/{len(initial_roles)} role assignments " f"exist in memory"
             )
 
         # Save policies to persist them to database
@@ -365,8 +357,7 @@ async def initialize_casbin_from_manifest(
                 logger.debug("Policies saved to database successfully")
             else:
                 logger.warning(
-                    "Failed to save policies to database - they may not "
-                    "persist across restarts"
+                    "Failed to save policies to database - they may not " "persist across restarts"
                 )
         else:
             logger.debug(
@@ -394,9 +385,7 @@ async def initialize_casbin_from_manifest(
         RuntimeError,
         KeyError,
     ) as e:
-        logger.exception(
-            f"❌ Error initializing Casbin provider for app '{app_slug}': {e}"
-        )
+        logger.exception(f"❌ Error initializing Casbin provider for app '{app_slug}': {e}")
         # Informational message, not exception logging
         logger.error(  # noqa: TRY400
             f"❌ Casbin provider initialization FAILED for '{app_slug}' - "

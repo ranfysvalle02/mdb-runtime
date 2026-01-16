@@ -1294,9 +1294,7 @@ class MongoDBEngine:
                         "Install with: pip install mdb-engine[casbin]"
                     )
                 except (ValueError, TypeError, RuntimeError, AttributeError, KeyError) as e:
-                    logger.exception(
-                        f"❌ Failed to initialize Casbin provider for '{slug}': {e}"
-                    )
+                    logger.exception(f"❌ Failed to initialize Casbin provider for '{slug}': {e}")
                     # Informational message, not exception logging
                     logger.error(  # noqa: TRY400
                         f"❌ This means authorization will NOT work for '{slug}' - "
