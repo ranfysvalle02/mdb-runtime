@@ -30,6 +30,19 @@ jobs:
           python -m pip install --upgrade pip
           pip install -e ".[test,dev]"
 
+      - name: Format code (check only)
+        run: |
+          echo "Formatting code to check for formatting issues..."
+          ruff format mdb_engine tests scripts
+          if [ -n "$(git diff --name-only)" ]; then
+            echo "❌ The following files need formatting:"
+            git diff --name-only
+            echo ""
+            echo "Run 'make format' locally and commit the changes."
+            exit 1
+          fi
+          echo "✅ All files are properly formatted!"
+
       - name: Run linting
         run: |
           make lint
