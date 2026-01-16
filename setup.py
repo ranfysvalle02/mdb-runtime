@@ -31,7 +31,7 @@ setup(
         "pyjwt>=2.8.0",
         "jsonschema>=4.0.0",
         "bcrypt>=4.0.0",
-        "mem0ai>=1.0.0",
+        "mem0ai>=0.1.7",
         "semantic-text-splitter>=0.9.0",
         "numpy>=1.0.0,<2.0.0",
         "openai>=1.0.0",  # Required for embedding providers
