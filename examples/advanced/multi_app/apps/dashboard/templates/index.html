@@ -214,6 +214,21 @@
             animation: spin 1s linear infinite;
         }
         @keyframes spin { to { transform: rotate(360deg); } }
+        
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        
+        .click-item {
+            animation: fadeIn 0.3s ease-out;
+        }
     </style>
 </head>
 <body>
@@ -224,7 +239,7 @@
     <div class="container">
         <header>
             <h1>📊 Analytics Dashboard</h1>
-            <p>Cross-app data access - reading clicks from Click Tracker</p>
+            <p>View clicks tracked by the Click Tracker app</p>
             <div id="authStatus" class="status-badge">
                 <i class="fas fa-circle-notch fa-spin"></i> Checking auth...
             </div>
@@ -303,7 +318,12 @@
                 
                 <div class="card">
                     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem;">
-                        <h3><i class="fas fa-history"></i> Recent Clicks (from Click Tracker)</h3>
+                        <div>
+                            <h3 style="margin-bottom:0.25rem;"><i class="fas fa-history"></i> Recent Clicks</h3>
+                            <p style="color:var(--muted);font-size:0.875rem;">
+                                <i class="fas fa-info-circle"></i> Reading from Click Tracker app via cross-app data access
+                            </p>
+                        </div>
                         <button class="btn btn-secondary" onclick="loadAnalytics()">
                             <i class="fas fa-sync"></i> Refresh
                         </button>
@@ -439,13 +459,20 @@
                     
                     const clicks = data.recent_clicks || [];
                     if (clicks.length === 0) {
-                        list.innerHTML = '<p style="color:var(--muted);text-align:center;">No clicks in the last 24 hours. Go to <a href="http://localhost:8000">Click Tracker</a> to create some!</p>';
+                        list.innerHTML = '<p style="color:var(--muted);text-align:center;padding:2rem;">No clicks tracked yet. <br><a href="http://localhost:8000" style="color:var(--primary);text-decoration:none;font-weight:600;">Go to Click Tracker</a> to start tracking clicks!</p>';
                     } else {
-                        list.innerHTML = clicks.map(c => `
-                            <div class="click-item">
-                                <div><strong>${c.element || 'click'}</strong> on <code>${c.url || '/'}</code></div>
+                        list.innerHTML = clicks.map((c, idx) => `
+                            <div class="click-item" style="animation: fadeIn 0.3s ease-out ${idx * 0.05}s both;">
+                                <div style="display:flex;justify-content:space-between;align-items:start;margin-bottom:0.5rem;">
+                                    <div>
+                                        <strong style="color:var(--secondary);font-size:1.125rem;">${c.element || 'click'}</strong>
+                                        <code style="background:var(--bg);padding:0.25rem 0.5rem;border-radius:0.25rem;font-size:0.875rem;margin-left:0.5rem;">${c.url || '/'}</code>
+                                    </div>
+                                </div>
                                 <div class="click-meta">
-                                    User: ${c.user_id || 'anonymous'} • ${new Date(c.timestamp).toLocaleString()}
+                                    <i class="fas fa-user"></i> ${c.tracked_by || c.user_id || 'anonymous'}
+                                    <i class="fas fa-circle" style="font-size:0.25rem;margin:0 0.5rem;"></i>
+                                    <i class="fas fa-clock"></i> ${formatDate(c.timestamp)}
                                 </div>
                             </div>
                         `).join('');
@@ -489,19 +516,36 @@
             document.getElementById('loader').classList.toggle('hidden', !show);
         }
         
+        function formatDate(timestamp) {
+            if (!timestamp) return 'Unknown';
+            const date = new Date(timestamp);
+            const now = new Date();
+            const diffMs = now - date;
+            const diffMins = Math.floor(diffMs / 60000);
+            const diffHours = Math.floor(diffMs / 3600000);
+            const diffDays = Math.floor(diffMs / 86400000);
+            
+            if (diffMins < 1) return 'Just now';
+            if (diffMins < 60) return `${diffMins}m ago`;
+            if (diffHours < 24) return `${diffHours}h ago`;
+            if (diffDays < 7) return `${diffDays}d ago`;
+            return date.toLocaleDateString() + ' ' + date.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+        }
+        
         function showToast(msg, type = 'success') {
             const el = document.getElementById('toast');
-            el.textContent = msg;
+            const icon = type === 'success' ? 'fa-check-circle' : 'fa-exclamation-circle';
+            el.innerHTML = `<i class="fas ${icon}"></i> <span>${msg}</span>`;
             el.className = `toast ${type} show`;
             setTimeout(() => el.classList.remove('show'), 3000);
         }
         
-        // Auto-refresh every 5 seconds
+        // Auto-refresh every 10 seconds
         setInterval(() => {
             if (state.user && state.user.permissions.includes('read')) {
                 loadAnalytics();
             }
-        }, 5000);
+        }, 10000);
     </script>
 </body>
 </html>

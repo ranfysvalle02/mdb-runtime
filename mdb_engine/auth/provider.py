@@ -11,9 +11,12 @@ from __future__ import annotations  # MUST be first import for string type hints
 import asyncio
 import logging
 import time
-from typing import TYPE_CHECKING, Any, Optional, Protocol
+from typing import TYPE_CHECKING, Any, Optional, Protocol, Union
 
 from ..constants import AUTHZ_CACHE_TTL, MAX_CACHE_SIZE
+
+# Import base class
+from .base import AuthorizationError, BaseAuthorizationProvider
 
 if TYPE_CHECKING:
     import casbin
@@ -21,9 +24,13 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 
+# Keep Protocol for backward compatibility and type checking
 class AuthorizationProvider(Protocol):
     """
-    Defines the "contract" for any pluggable authorization provider.
+    Protocol defining the "contract" for any pluggable authorization provider.
+    
+    This Protocol is kept for backward compatibility and type checking.
+    All concrete implementations should extend BaseAuthorizationProvider instead.
     """
 
     async def check(
@@ -39,22 +46,45 @@ class AuthorizationProvider(Protocol):
         ...
 
 
-class CasbinAdapter:
+class CasbinAdapter(BaseAuthorizationProvider):
     """
-    Implements the AuthorizationProvider interface using the Casbin AsyncEnforcer.
-    Uses thread pool execution and caching to prevent blocking the event loop.
+    Adapter for Casbin authorization engine.
+    
+    Implements the BaseAuthorizationProvider interface using Casbin AsyncEnforcer.
+    Uses the Adapter Pattern to wrap Casbin without modifying its source code.
+    
+    Design Principles:
+    - Fail-Closed Security: Errors deny access
+    - Thread Pool Execution: Prevents blocking the event loop
+    - Caching: Improves performance for repeated checks
+    - Type Safety: Proper marshalling of Casbin's (sub, obj, act) format
     """
 
-    # Use a string literal for the type hint to prevent module-level import
-    def __init__(self, enforcer: casbin.AsyncEnforcer):
+    def __init__(self, enforcer: "casbin.AsyncEnforcer"):
         """
-        Initializes the adapter with a pre-configured Casbin AsyncEnforcer.
+        Initialize the Casbin adapter.
+        
+        Args:
+            enforcer: Pre-configured Casbin AsyncEnforcer instance
+            
+        Raises:
+            AuthorizationError: If Casbin is not available
         """
+        # Lazy import to allow code to exist without Casbin installed
+        try:
+            import casbin
+        except ImportError as e:
+            raise AuthorizationError(
+                "Casbin library is not installed. "
+                "Install with: pip install mdb-engine[casbin]"
+            ) from e
+        
+        super().__init__(engine_name="Casbin")
         self._enforcer = enforcer
         # Cache for authorization results: {(subject, resource, action): (result, timestamp)}
         self._cache: dict[tuple[str, str, str], tuple[bool, float]] = {}
         self._cache_lock = asyncio.Lock()
-        logger.info("✔️  CasbinAdapter initialized with async thread pool execution and caching.")
+        self._mark_initialized()
 
     async def check(
         self,
@@ -64,9 +94,20 @@ class CasbinAdapter:
         user_object: Optional[dict[str, Any]] = None,
     ) -> bool:
         """
-        Performs the authorization check using the wrapped enforcer.
-        Uses thread pool execution to prevent blocking the event loop and caches results.
+        Check authorization using Casbin's enforce method.
+        
+        Implements fail-closed security: if evaluation fails, access is denied.
+        Uses thread pool execution to prevent blocking the event loop.
+        
+        Casbin Format: enforce(subject, object, action)
+        - subject: Who is making the request (email or user ID)
+        - object: What resource they're accessing
+        - action: What action they want to perform
         """
+        if not self._initialized:
+            logger.error("CasbinAdapter not initialized - denying access")
+            return False
+        
         cache_key = (subject, resource, action)
         current_time = time.time()
 
@@ -76,15 +117,21 @@ class CasbinAdapter:
                 cached_result, cached_time = self._cache[cache_key]
                 # Check if cache entry is still valid
                 if current_time - cached_time < AUTHZ_CACHE_TTL:
-                    logger.debug(f"Authorization cache HIT for ({subject}, {resource}, {action})")
+                    logger.debug(f"Casbin cache HIT for ({subject}, {resource}, {action})")
                     return cached_result
                 # Cache expired, remove it
                 del self._cache[cache_key]
 
         try:
-            # The .enforce() method on AsyncEnforcer is synchronous and blocks the event loop.
+            # Casbin's enforce() is synchronous and blocks the event loop.
             # Run it in a thread pool to prevent blocking.
-            result = await asyncio.to_thread(self._enforcer.enforce, subject, resource, action)
+            # Casbin order: (subject, object, action)
+            result = await asyncio.to_thread(
+                self._enforcer.enforce,
+                subject,  # Casbin subject
+                resource,  # Casbin object
+                action,    # Casbin action
+            )
 
             # Cache the result
             async with self._cache_lock:
@@ -98,115 +145,164 @@ class CasbinAdapter:
                     )[0]
                     del self._cache[oldest_key]
 
-            return result
-        except (AttributeError, TypeError, ValueError, RuntimeError) as e:
-            logger.error(
-                f"Casbin 'enforce' check failed for ({subject}, {resource}, {action}): {e}",
-                exc_info=True,
+            logger.debug(
+                f"Casbin authorization check: {subject} -> {resource}:{action} = {result}"
             )
-            return False
+            return result
+            
+        except Exception as e:
+            # Fail-Closed Security: Any exception denies access
+            return self._handle_evaluation_error(subject, resource, action, e, "enforce")
 
-    async def clear_cache(self):
+    async def clear_cache(self) -> None:
         """
-        Clears the authorization cache. Useful when policies are updated.
+        Clear the authorization cache.
+        
+        Should be called when policies or roles are modified to ensure
+        fresh authorization decisions.
         """
         async with self._cache_lock:
             self._cache.clear()
-            logger.info("Authorization cache cleared.")
+            logger.info(f"{self._engine_name} authorization cache cleared")
 
-    async def add_policy(self, *params) -> bool:
-        """Helper to pass-through policy additions for seeding."""
+    async def add_policy(self, *params: Any) -> bool:
+        """
+        Add a policy rule to Casbin.
+        
+        Casbin format: add_policy(role, resource, action)
+        Example: add_policy("admin", "documents", "read")
+        """
         try:
             result = await self._enforcer.add_policy(*params)
             # Clear cache when policies are modified
             if result:
                 await self.clear_cache()
+                logger.debug(f"Casbin policy added: {params}")
             return result
-        except (ValueError, RuntimeError, AttributeError, TypeError) as e:
-            # Type 2: Recoverable - return False for Casbin operation errors
-            logger.warning(f"Failed to add policy: {e}", exc_info=True)
-            return False
+        except Exception as e:
+            return self._handle_operation_error("add_policy", e, *params)
 
-    async def add_role_for_user(self, *params) -> bool:
-        """Helper to pass-through role additions for seeding."""
+    async def add_role_for_user(self, *params: Any) -> bool:
+        """
+        Assign a role to a user in Casbin.
+        
+        Casbin format: add_role_for_user(user, role)
+        This creates a grouping policy: g(user, role)
+        """
         try:
             result = await self._enforcer.add_role_for_user(*params)
             # Clear cache when roles are modified
             if result:
                 await self.clear_cache()
+                logger.debug(f"Casbin role assigned: {params}")
             return result
-        except (ValueError, RuntimeError, AttributeError) as e:
-            # Type 2: Recoverable - return False for Casbin operation errors
-            logger.warning(f"Failed to add role for user: {e}", exc_info=True)
-            return False
+        except Exception as e:
+            return self._handle_operation_error("add_role_for_user", e, *params)
 
     async def save_policy(self) -> bool:
-        """Helper to pass-through policy saving for seeding."""
+        """
+        Persist Casbin policies to storage (MongoDB via MotorAdapter).
+        
+        Returns:
+            True if saved successfully, False otherwise
+        """
         try:
             result = await self._enforcer.save_policy()
             # Clear cache when policies are saved
             if result:
                 await self.clear_cache()
+                logger.debug("Casbin policies saved to storage")
             return result
-        except (ValueError, RuntimeError, AttributeError) as e:
-            # Type 2: Recoverable - return False for Casbin operation errors
-            logger.warning(f"Failed to save policy: {e}", exc_info=True)
-            return False
+        except Exception as e:
+            return self._handle_operation_error("save_policy", e)
 
-    async def has_policy(self, *params) -> bool:
-        """Check if a policy exists."""
+    async def has_policy(self, *params: Any) -> bool:
+        """
+        Check if a policy exists in Casbin.
+        
+        Casbin format: has_policy(role, resource, action)
+        """
         try:
             # Run in thread pool to prevent blocking
             result = await asyncio.to_thread(self._enforcer.has_policy, *params)
             return result
-        except (ValueError, RuntimeError, AttributeError) as e:
-            # Type 2: Recoverable - return False for Casbin operation errors
-            logger.warning(f"Failed to check policy: {e}", exc_info=True)
+        except Exception as e:
+            self._handle_operation_error("has_policy", e, *params)
             return False
 
-    async def has_role_for_user(self, *params) -> bool:
-        """Check if a user has a role."""
+    async def has_role_for_user(self, *params: Any) -> bool:
+        """
+        Check if a user has a specific role in Casbin.
+        
+        Casbin format: has_role_for_user(user, role)
+        """
         try:
-            # Run in thread pool to prevent blocking
-            result = await asyncio.to_thread(self._enforcer.has_role_for_user, *params)
+            # AsyncEnforcer.has_role_for_user is async, await it directly
+            result = await self._enforcer.has_role_for_user(*params)
             return result
-        except (ValueError, RuntimeError, AttributeError) as e:
-            # Type 2: Recoverable - return False for Casbin operation errors
-            logger.warning(f"Failed to check role for user: {e}", exc_info=True)
+        except Exception as e:
+            self._handle_operation_error("has_role_for_user", e, *params)
             return False
 
-    async def remove_role_for_user(self, *params) -> bool:
-        """Helper to pass-through role removal."""
+    async def remove_role_for_user(self, *params: Any) -> bool:
+        """
+        Remove a role assignment from a user in Casbin.
+        
+        Casbin format: remove_role_for_user(user, role)
+        """
         try:
             result = await self._enforcer.remove_role_for_user(*params)
             # Clear cache when roles are modified
             if result:
                 await self.clear_cache()
+                logger.debug(f"Casbin role removed: {params}")
             return result
-        except (ValueError, RuntimeError, AttributeError) as e:
-            # Type 2: Recoverable - return False for Casbin operation errors
-            logger.warning(f"Failed to remove role for user: {e}", exc_info=True)
-            return False
+        except Exception as e:
+            return self._handle_operation_error("remove_role_for_user", e, *params)
 
 
-class OsoAdapter:
+class OsoAdapter(BaseAuthorizationProvider):
     """
-    Implements the AuthorizationProvider interface using OSO/Polar.
-    Uses caching to improve performance and thread pool execution for blocking operations.
+    Adapter for OSO Cloud authorization engine.
+    
+    Implements the BaseAuthorizationProvider interface using OSO Cloud or OSO library.
+    Uses the Adapter Pattern to wrap OSO without modifying its source code.
+    
+    Design Principles:
+    - Fail-Closed Security: Errors deny access
+    - Thread Pool Execution: Prevents blocking the event loop
+    - Caching: Improves performance for repeated checks
+    - Type Marshalling: Converts strings to OSO's TypedObject format
     """
 
-    # Use a string literal for the type hint to prevent module-level import
-    # Can accept either OSO Cloud client or OSO library client
     def __init__(self, oso_client: Any):
         """
-        Initializes the adapter with a pre-configured OSO client.
-        Can be either an OSO Cloud client or OSO library client.
+        Initialize the OSO adapter.
+        
+        Args:
+            oso_client: Pre-configured OSO Cloud client or OSO library instance
+            
+        Raises:
+            AuthorizationError: If OSO is not available
         """
+        # Lazy import to allow code to exist without OSO installed
+        try:
+            import oso_cloud
+        except ImportError:
+            try:
+                import oso
+            except ImportError as e:
+                raise AuthorizationError(
+                    "OSO library is not installed. "
+                    "Install with: pip install oso-cloud or pip install oso"
+                ) from e
+        
+        super().__init__(engine_name="OSO Cloud")
         self._oso = oso_client
         # Cache for authorization results: {(subject, resource, action): (result, timestamp)}
         self._cache: dict[tuple[str, str, str], tuple[bool, float]] = {}
         self._cache_lock = asyncio.Lock()
-        logger.info("✔️  OsoAdapter initialized with async thread pool execution and caching.")
+        self._mark_initialized()
 
     async def check(
         self,
@@ -216,11 +312,19 @@ class OsoAdapter:
         user_object: Optional[dict[str, Any]] = None,
     ) -> bool:
         """
-        Performs the authorization check using OSO.
-        Note: OSO's authorize method signature is: authorize(user, permission, resource)
-        So we map: subject -> user, action -> permission, resource -> resource
-        Uses thread pool execution to prevent blocking the event loop and caches results.
+        Check authorization using OSO's authorize method.
+        
+        Implements fail-closed security: if evaluation fails, access is denied.
+        Uses thread pool execution to prevent blocking the event loop.
+        
+        OSO Format: authorize(actor, action, resource)
+        - OSO expects objects with .type and .id attributes
+        - We marshal strings to TypedObject instances
         """
+        if not self._initialized:
+            logger.error("OsoAdapter not initialized - denying access")
+            return False
+        
         cache_key = (subject, resource, action)
         current_time = time.time()
 
@@ -230,21 +334,21 @@ class OsoAdapter:
                 cached_result, cached_time = self._cache[cache_key]
                 # Check if cache entry is still valid
                 if current_time - cached_time < AUTHZ_CACHE_TTL:
-                    logger.debug(f"Authorization cache HIT for ({subject}, {resource}, {action})")
+                    logger.debug(f"OSO cache HIT for ({subject}, {resource}, {action})")
                     return cached_result
                 # Cache expired, remove it
                 del self._cache[cache_key]
 
         try:
-            # OSO Cloud's authorize method signature is: authorize(actor, action, resource)
-            # OSO Cloud expects objects with .type and .id attributes, not dicts
-            # Create simple objects with type and id attributes
+            # OSO Cloud expects objects with .type and .id attributes
+            # Create typed objects for OSO Cloud
             class TypedObject:
-                def __init__(self, type_name, id_value):
+                """Helper class to create OSO-compatible typed objects."""
+                def __init__(self, type_name: str, id_value: str):
                     self.type = type_name
                     self.id = id_value
 
-            # Create typed objects for OSO Cloud
+            # Marshal strings to OSO TypedObject format
             if isinstance(subject, str):
                 actor = TypedObject("User", subject)
             else:
@@ -256,7 +360,13 @@ class OsoAdapter:
                 resource_obj = resource
 
             # Run in thread pool to prevent blocking the event loop
-            result = await asyncio.to_thread(self._oso.authorize, actor, action, resource_obj)
+            # OSO signature: authorize(actor, action, resource)
+            result = await asyncio.to_thread(
+                self._oso.authorize,
+                actor,
+                action,
+                resource_obj,
+            )
 
             # Cache the result
             async with self._cache_lock:
@@ -270,38 +380,37 @@ class OsoAdapter:
                     )[0]
                     del self._cache[oldest_key]
 
-            return result
-        except (
-            AttributeError,
-            TypeError,
-            ValueError,
-            RuntimeError,
-            ConnectionError,
-        ) as e:
-            logger.error(
-                f"OSO 'authorize' check failed for ({subject}, {resource}, {action}): {e}",
-                exc_info=True,
+            logger.debug(
+                f"OSO authorization check: {subject} -> {resource}:{action} = {result}"
             )
-            return False
+            return result
+            
+        except Exception as e:
+            # Fail-Closed Security: Any exception denies access
+            return self._handle_evaluation_error(subject, resource, action, e, "authorize")
 
-    async def clear_cache(self):
+    async def clear_cache(self) -> None:
         """
-        Clears the authorization cache. Useful when policies are updated.
+        Clear the authorization cache.
+        
+        Should be called when policies or roles are modified to ensure
+        fresh authorization decisions.
         """
         async with self._cache_lock:
             self._cache.clear()
-            logger.info("Authorization cache cleared.")
+            logger.info(f"{self._engine_name} authorization cache cleared")
 
-    async def add_policy(self, *params) -> bool:
+    async def add_policy(self, *params: Any) -> bool:
         """
-        Adds a grants_permission fact in OSO.
-        Maps Casbin policy (role, object, action) to OSO fact:
-        grants_permission(role, action, object)
+        Add a policy rule to OSO.
+        
+        OSO format: grants_permission(role, action, object)
+        Maps from Casbin format: (role, object, action)
         """
         try:
             if len(params) != 3:
                 logger.warning(
-                    f"add_policy expects 3 params (role, object, action), got {len(params)}"
+                    f"OSO add_policy expects 3 params (role, object, action), got {len(params)}"
                 )
                 return False
 
@@ -329,22 +438,22 @@ class OsoAdapter:
             # Clear cache when policies are modified
             if result:
                 await self.clear_cache()
+                logger.debug(f"OSO policy added: grants_permission({role}, {act}, {obj})")
             return result
-        except (AttributeError, TypeError, ValueError, RuntimeError) as e:
-            logger.warning(f"Failed to add policy: {e}", exc_info=True)
-            return False
+        except Exception as e:
+            return self._handle_operation_error("add_policy", e, *params)
 
-    async def add_role_for_user(self, *params) -> bool:
+    async def add_role_for_user(self, *params: Any) -> bool:
         """
-        Adds a has_role fact in OSO.
-        Supports both global roles (2 params: user, role) and resource-based
-        roles (3 params: user, role, resource).
-        Maps to OSO fact: has_role(user, role) or has_role(user, role, resource)
+        Assign a role to a user in OSO.
+        
+        OSO format: has_role(user, role) or has_role(user, role, resource)
+        Supports both global roles (2 params) and resource-based roles (3 params)
         """
         try:
             if len(params) < 2 or len(params) > 3:
                 logger.warning(
-                    f"add_role_for_user expects 2-3 params "
+                    f"OSO add_role_for_user expects 2-3 params "
                     f"(user, role, [resource]), got {len(params)}"
                 )
                 return False
@@ -405,19 +514,15 @@ class OsoAdapter:
             # Clear cache when roles are modified
             if result:
                 await self.clear_cache()
+                logger.debug(f"OSO role assigned: has_role({user}, {role}, {resource or 'documents'})")
             return result
-        except (
-            AttributeError,
-            TypeError,
-            ValueError,
-            RuntimeError,
-            ConnectionError,
-        ) as e:
-            logger.warning(f"Failed to add role for user: {e}", exc_info=True)
-            return False
+        except Exception as e:
+            return self._handle_operation_error("add_role_for_user", e, *params)
 
     async def save_policy(self) -> bool:
         """
+        Persist OSO policies/facts to storage.
+        
         For OSO Cloud, facts are saved automatically.
         For OSO library, this would save to a file or database.
         """
@@ -433,14 +538,16 @@ class OsoAdapter:
             # Clear cache when policies are saved
             if result:
                 await self.clear_cache()
+                logger.debug("OSO policies/facts saved to storage")
             return result
-        except (AttributeError, TypeError, ValueError, RuntimeError) as e:
-            logger.warning(f"Failed to save policy: {e}", exc_info=True)
-            return False
+        except Exception as e:
+            return self._handle_operation_error("save_policy", e)
 
-    async def has_policy(self, *params) -> bool:
+    async def has_policy(self, *params: Any) -> bool:
         """
-        Check if a grants_permission fact exists in OSO.
+        Check if a policy exists in OSO.
+        
+        OSO format: grants_permission(role, action, object)
         """
         try:
             if len(params) != 3:
@@ -466,19 +573,15 @@ class OsoAdapter:
                 # For now, return True as a placeholder
                 logger.debug("OSO Cloud: has_policy check not fully implemented")
                 return True
-        except (
-            AttributeError,
-            TypeError,
-            ValueError,
-            RuntimeError,
-            ConnectionError,
-        ) as e:
-            logger.warning(f"Failed to check policy: {e}", exc_info=True)
+        except Exception as e:
+            self._handle_operation_error("has_policy", e, *params)
             return False
 
-    async def has_role_for_user(self, *params) -> bool:
+    async def has_role_for_user(self, *params: Any) -> bool:
         """
-        Check if a has_role fact exists in OSO.
+        Check if a user has a specific role in OSO.
+        
+        OSO format: has_role(user, role)
         """
         try:
             if len(params) != 2:
@@ -505,24 +608,20 @@ class OsoAdapter:
                 # For now, return True as a placeholder
                 logger.debug("OSO Cloud: has_role_for_user check not fully implemented")
                 return True
-        except (
-            AttributeError,
-            TypeError,
-            ValueError,
-            RuntimeError,
-            ConnectionError,
-        ) as e:
-            logger.warning(f"Failed to check role for user: {e}", exc_info=True)
+        except Exception as e:
+            self._handle_operation_error("has_role_for_user", e, *params)
             return False
 
-    async def remove_role_for_user(self, *params) -> bool:
+    async def remove_role_for_user(self, *params: Any) -> bool:
         """
-        Removes a has_role fact in OSO.
+        Remove a role assignment from a user in OSO.
+        
+        OSO format: remove has_role(user, role)
         """
         try:
             if len(params) != 2:
                 logger.warning(
-                    f"remove_role_for_user expects 2 params (user, role), got {len(params)}"
+                    f"OSO remove_role_for_user expects 2 params (user, role), got {len(params)}"
                 )
                 return False
 
@@ -537,13 +636,7 @@ class OsoAdapter:
             # Clear cache when roles are modified
             if result:
                 await self.clear_cache()
+                logger.debug(f"OSO role removed: has_role({user}, {role})")
             return result
-        except (
-            AttributeError,
-            TypeError,
-            ValueError,
-            RuntimeError,
-            ConnectionError,
-        ) as e:
-            logger.warning(f"Failed to remove role for user: {e}", exc_info=True)
-            return False
+        except Exception as e:
+            return self._handle_operation_error("remove_role_for_user", e, *params)

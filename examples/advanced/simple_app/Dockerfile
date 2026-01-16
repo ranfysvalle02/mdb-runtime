@@ -27,13 +27,17 @@ RUN pip install --no-cache-dir --upgrade pip setuptools wheel
 # Copy source code
 COPY mdb_engine ./mdb_engine
 
-# Install mdb_engine and web dependencies
-RUN echo "=== Installing mdb-engine ===" && \
-    pip install --no-cache-dir . && \
+# Install mdb_engine with Casbin support (required for authorization)
+RUN echo "=== Installing mdb-engine with Casbin support ===" && \
+    pip install --no-cache-dir ".[casbin]" && \
     echo "=== Installing web dependencies ===" && \
     pip install --no-cache-dir uvicorn[standard] fastapi jinja2 && \
     echo "=== Installation complete ===" && \
-    pip show mdb-engine
+    pip show mdb-engine && \
+    echo "=== Verifying Casbin installation ===" && \
+    python -c "import casbin; print('✓ Casbin imported successfully')" && \
+    python -c "from casbin_motor_adapter import Adapter; print('✓ Casbin Adapter imported successfully')" || \
+    (echo "ERROR: Casbin dependencies not installed!" && exit 1)
 
 # Verify installation worked in builder stage
 RUN echo "=== Verifying installation in builder ===" && \
@@ -60,7 +64,7 @@ WORKDIR /app
 COPY --from=builder --chown=${APP_USER}:${APP_USER} /opt/venv /opt/venv
 
 # Copy example app with proper ownership
-COPY --chown=${APP_USER}:${APP_USER} examples/simple_app/ ./
+COPY --chown=${APP_USER}:${APP_USER} examples/advanced/simple_app/ ./
 
 # Set environment variables
 ENV PATH="/opt/venv/bin:$PATH" \
@@ -74,6 +78,9 @@ RUN echo "=== Verifying installation ===" && \
     pip show mdb-engine || (echo "ERROR: mdb-engine package not found" && exit 1) && \
     python -c "import mdb_engine; print(f'✓ mdb_engine imported successfully')" && \
     python -c "from mdb_engine import MongoDBEngine; print('✓ MongoDBEngine imported successfully')" && \
+    echo "=== Verifying Casbin dependencies ===" && \
+    python -c "import casbin; print('✓ Casbin imported successfully')" && \
+    python -c "from casbin_motor_adapter import Adapter; print('✓ Casbin Adapter imported successfully')" && \
     echo "=== Verification complete ==="
 
 # Switch to non-root user

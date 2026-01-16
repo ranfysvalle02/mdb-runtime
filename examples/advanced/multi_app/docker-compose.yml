@@ -21,12 +21,13 @@ services:
     networks:
       - mdb_engine_network
     healthcheck:
-      # Wait for replica set primary to be elected (not just ping)
-      test: mongosh "mongodb://localhost:27017/?directConnection=true" --quiet --eval "rs.status().ok && rs.status().myState === 1"
-      interval: 5s
-      timeout: 10s
-      retries: 20
-      start_period: 15s
+      # Simple ping-based healthcheck (works even with auth enabled)
+      # Same approach as interactive_rag example which works reliably
+      test: echo 'db.runCommand("ping").ok' | mongosh "mongodb://localhost:27017/?directConnection=true" --quiet
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
     deploy:
       resources:
         limits:
@@ -39,22 +40,32 @@ services:
   # ClickTracker Application
   click-tracker:
     build:
-      context: ../..
-      dockerfile: examples/multi_app/Dockerfile
+      context: ../../..
+      dockerfile: examples/advanced/multi_app/Dockerfile
       args:
         APP_USER: appuser
         APP_UID: 1000
         APP_GID: 1000
     container_name: multi_app_click_tracker
     restart: unless-stopped
-    command: python apps/click_tracker/web.py
+    command: >
+      sh -c "
+      echo '=== Starting Click Tracker ===' 1>&2;
+      echo 'Working directory:' $(pwd) 1>&2;
+      echo 'Python path:' $(which python) 1>&2;
+      echo 'Python version:' $(python --version) 1>&2;
+      echo 'Files in /app:' $(ls -la /app/ | head -5) 1>&2;
+      echo 'Files in /app/apps/click_tracker:' $(ls -la /app/apps/click_tracker/ 2>&1) 1>&2;
+      cd /app && exec python -u apps/click_tracker/web.py 2>&1
+      "
     ports:
       - "${CLICK_TRACKER_PORT:-8000}:8000"
     environment:
-      - MONGODB_URI=${MONGODB_URI:-mongodb://mongodb:27017/?directConnection=true}
+      - MONGODB_URI=${MONGODB_URI:-mongodb://admin:password@mongodb:27017/?authSource=admin&directConnection=true}
       - MONGODB_DB=${MONGODB_DB:-mdb_runtime}
       - MDB_ENGINE_MASTER_KEY=${MDB_ENGINE_MASTER_KEY}
       - CLICK_TRACKER_SECRET=${CLICK_TRACKER_SECRET:-}
+      - SECRET_KEY=${SECRET_KEY:-}
       - PYTHONUNBUFFERED=1
       - LOG_LEVEL=${LOG_LEVEL:-INFO}
     depends_on:
@@ -82,22 +93,32 @@ services:
   # Dashboard Application
   dashboard:
     build:
-      context: ../..
-      dockerfile: examples/multi_app/Dockerfile
+      context: ../../..
+      dockerfile: examples/advanced/multi_app/Dockerfile
       args:
         APP_USER: appuser
         APP_UID: 1000
         APP_GID: 1000
     container_name: multi_app_dashboard
     restart: unless-stopped
-    command: python apps/dashboard/web.py
+    command: >
+      sh -c "
+      echo '=== Starting Dashboard ===' 1>&2;
+      echo 'Working directory:' $(pwd) 1>&2;
+      echo 'Python path:' $(which python) 1>&2;
+      echo 'Python version:' $(python --version) 1>&2;
+      echo 'Files in /app:' $(ls -la /app/ | head -5) 1>&2;
+      echo 'Files in /app/apps/dashboard:' $(ls -la /app/apps/dashboard/ 2>&1) 1>&2;
+      cd /app && exec python -u apps/dashboard/web.py 2>&1
+      "
     ports:
       - "${DASHBOARD_PORT:-8001}:8001"
     environment:
-      - MONGODB_URI=${MONGODB_URI:-mongodb://mongodb:27017/?directConnection=true}
+      - MONGODB_URI=${MONGODB_URI:-mongodb://admin:password@mongodb:27017/?authSource=admin&directConnection=true}
       - MONGODB_DB=${MONGODB_DB:-mdb_runtime}
       - MDB_ENGINE_MASTER_KEY=${MDB_ENGINE_MASTER_KEY}
       - DASHBOARD_SECRET=${DASHBOARD_SECRET:-}
+      - SECRET_KEY=${SECRET_KEY:-}
       - PYTHONUNBUFFERED=1
       - LOG_LEVEL=${LOG_LEVEL:-INFO}
     depends_on:

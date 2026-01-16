@@ -273,14 +273,30 @@ async def _setup_demo_users(app: FastAPI, engine, slug_id: str, config: Dict[str
                         if role_assignment.get("user") == user_email:
                             role = role_assignment.get("role")
                             resource = role_assignment.get("resource", "documents")
+                            
+                            # Check if provider is Casbin (uses email as subject for initial_roles)
+                            is_casbin = hasattr(app.state.authz_provider, "_enforcer")
+                            
                             try:
-                                await app.state.authz_provider.add_role_for_user(
-                                    user_email, role, resource
-                                )
-                                logger.info(
-                                    f"✅ Assigned role '{role}' on resource '{resource}' "
-                                    f"to demo user '{user_email}' for {slug_id}"
-                                )
+                                if is_casbin:
+                                    # For Casbin, use email as subject to match initial_roles format
+                                    # This ensures consistency with how initial_roles are set up
+                                    await app.state.authz_provider.add_role_for_user(
+                                        user_email, role
+                                    )
+                                    logger.info(
+                                        f"✅ Assigned Casbin role '{role}' "
+                                        f"to demo user '{user_email}' for {slug_id}"
+                                    )
+                                else:
+                                    # For OSO, use email, role, resource
+                                    await app.state.authz_provider.add_role_for_user(
+                                        user_email, role, resource
+                                    )
+                                    logger.info(
+                                        f"✅ Assigned role '{role}' on resource '{resource}' "
+                                        f"to demo user '{user_email}' for {slug_id}"
+                                    )
                             except (
                                 ValueError,
                                 TypeError,

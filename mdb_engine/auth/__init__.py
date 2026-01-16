@@ -60,6 +60,9 @@ from .jwt import (
     generate_token_pair,
 )
 
+# Base classes
+from .base import AuthorizationError, BaseAuthorizationProvider
+
 # Middleware
 from .middleware import SecurityMiddleware, create_security_middleware
 from .provider import AUTHZ_CACHE_TTL, AuthorizationProvider, CasbinAdapter, OsoAdapter
@@ -123,7 +126,10 @@ from .utils import (
 )
 
 __all__ = [
-    # Provider
+    # Base classes
+    "BaseAuthorizationProvider",
+    "AuthorizationError",
+    # Provider (Protocol for backward compatibility)
     "AuthorizationProvider",
     "CasbinAdapter",
     "OsoAdapter",

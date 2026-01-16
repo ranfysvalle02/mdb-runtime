@@ -300,24 +300,42 @@ MANIFEST_SCHEMA_V2 = {
                                 "initial_policies": {
                                     "type": "array",
                                     "items": {
-                                        "type": "object",
-                                        "properties": {
-                                            "role": {"type": "string"},
-                                            "resource": {
-                                                "type": "string",
-                                                "default": "documents",
+                                        "oneOf": [
+                                            {
+                                                "type": "array",
+                                                "items": {"type": "string"},
+                                                "minItems": 3,
+                                                "maxItems": 3,
+                                                "description": (
+                                                    "Casbin policy as array: "
+                                                    '["role", "resource", "action"]'
+                                                ),
                                             },
-                                            "action": {"type": "string"},
-                                        },
-                                        "required": ["role", "action"],
-                                        "additionalProperties": False,
+                                            {
+                                                "type": "object",
+                                                "properties": {
+                                                    "role": {"type": "string"},
+                                                    "resource": {
+                                                        "type": "string",
+                                                        "default": "documents",
+                                                    },
+                                                    "action": {"type": "string"},
+                                                },
+                                                "required": ["role", "action"],
+                                                "additionalProperties": False,
+                                                "description": (
+                                                    "OSO policy as object: "
+                                                    '{"role": "admin", "resource": "documents", "action": "read"}'
+                                                ),
+                                            },
+                                        ],
                                     },
                                     "description": (
-                                        "Initial permission policies to set up "
-                                        "in OSO Cloud on startup. Only used "
-                                        "when provider is 'oso'. Example: "
-                                        '[{"role": "admin", "resource": '
-                                        '"documents", "action": "read"}]'
+                                        "Initial permission policies to set up on startup. "
+                                        "For Casbin provider: use arrays like "
+                                        '["admin", "clicks", "read"]. '
+                                        "For OSO Cloud provider: use objects like "
+                                        '{"role": "admin", "resource": "documents", "action": "read"}.'
                                     ),
                                 },
                             },

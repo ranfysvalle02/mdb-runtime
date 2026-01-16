@@ -1,71 +1,158 @@
-# Multi-App SSO Demo
-#
-# Demonstrates:
-# - Single Sign-On (SSO) - login once, authenticated on both apps
-# - Role-based access control (clicker, tracker, admin)
-# - Cross-app data access (dashboard reads click_tracker data)
-# - Shared user pool with per-app roles
-#
-# Run: docker-compose up --build
-# Then visit:
-#   - Click Tracker: http://localhost:8000
-#   - Dashboard: http://localhost:8001
-#
-# Login on either app = logged into BOTH apps!
+# ============================================================================
+# Docker Compose Configuration for Multi-App Shared Auth Example
+# Demonstrates Single Sign-On (SSO) with shared user pool
+# ============================================================================
 
 services:
-  click_tracker:
+  # MongoDB Atlas Local (with Atlas Search and Vector Search support)
+  mongodb:
+    image: mongodb/mongodb-atlas-local:latest
+    container_name: multi_app_shared_mongodb
+    restart: unless-stopped
+    ports:
+      - "${MONGO_PORT:-27017}:27017"
+    environment:
+      MONGODB_INITDB_ROOT_USERNAME: ${MONGO_INITDB_ROOT_USERNAME:-admin}
+      MONGODB_INITDB_ROOT_PASSWORD: ${MONGO_INITDB_ROOT_PASSWORD:-password}
+      MONGODB_INITDB_DATABASE: ${MONGO_INITDB_DATABASE:-mdb_runtime}
+    volumes:
+      - mongodb_data:/data/db
+      - mongodb_config:/data/configdb
+    networks:
+      - mdb_engine_network
+    healthcheck:
+      # Simple ping-based healthcheck (works even with auth enabled)
+      test: echo 'db.runCommand("ping").ok' | mongosh "mongodb://localhost:27017/?directConnection=true" --quiet
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    deploy:
+      resources:
+        limits:
+          cpus: '2.0'
+          memory: 2G
+        reservations:
+          cpus: '0.5'
+          memory: 512M
+
+  # ClickTracker Application (Shared Auth)
+  click-tracker:
     build:
       context: ../../..
       dockerfile: examples/advanced/multi_app_shared/Dockerfile
+      args:
+        APP_USER: appuser
+        APP_UID: 1000
+        APP_GID: 1000
+    container_name: multi_app_shared_click_tracker
+    restart: unless-stopped
+    command: >
+      sh -c "
+      echo '=== Starting Click Tracker (Shared Auth) ===' 1>&2;
+      echo 'Working directory:' $(pwd) 1>&2;
+      echo 'Python path:' $(which python) 1>&2;
+      echo 'Python version:' $(python --version) 1>&2;
+      echo 'Files in /app:' $(ls -la /app/ | head -5) 1>&2;
+      echo 'Files in /app/apps/click_tracker:' $(ls -la /app/apps/click_tracker/ 2>&1) 1>&2;
+      cd /app && exec python -u apps/click_tracker/web.py 2>&1
+      "
     ports:
-      - "8000:8000"
+      - "${CLICK_TRACKER_PORT:-8000}:8000"
     environment:
-      - MONGODB_URI=mongodb://mongo:27017/?directConnection=true
-      - MONGODB_DB=mdb_runtime_shared
-      - MDB_ENGINE_MASTER_KEY=iDMXrti3uG3Exh9iN3H2TY2+T/g1igVh1+qFg+ZxSJo=
-      - MDB_ENGINE_JWT_SECRET=shared_sso_jwt_secret_change_in_production_abc123
+      - MONGODB_URI=${MONGODB_URI:-mongodb://admin:password@mongodb:27017/?authSource=admin&directConnection=true}
+      - MONGODB_DB=${MONGODB_DB:-mdb_runtime}
+      - MDB_ENGINE_MASTER_KEY=${MDB_ENGINE_MASTER_KEY}
+      - MDB_ENGINE_JWT_SECRET=${MDB_ENGINE_JWT_SECRET:-shared_sso_jwt_secret_change_in_production_abc123}
+      - CLICK_TRACKER_SECRET=${CLICK_TRACKER_SECRET:-}
+      - SECRET_KEY=${SECRET_KEY:-}
       - PYTHONUNBUFFERED=1
+      - LOG_LEVEL=${LOG_LEVEL:-INFO}
     depends_on:
-      mongo:
+      mongodb:
         condition: service_healthy
-    volumes:
-      - ./apps/click_tracker:/app
-      - ../../../mdb_engine:/opt/venv/lib/python3.11/site-packages/mdb_engine
-    command: uvicorn web:app --host 0.0.0.0 --port 8000 --reload
+    networks:
+      - mdb_engine_network
+    healthcheck:
+      test: ["CMD", "python", "-c", "import sys; sys.exit(0)"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 512M
+        reservations:
+          cpus: '0.25'
+          memory: 128M
+    tmpfs:
+      - /tmp:noexec,nosuid,size=100m
 
+  # Dashboard Application (Shared Auth)
   dashboard:
     build:
       context: ../../..
       dockerfile: examples/advanced/multi_app_shared/Dockerfile
+      args:
+        APP_USER: appuser
+        APP_UID: 1000
+        APP_GID: 1000
+    container_name: multi_app_shared_dashboard
+    restart: unless-stopped
+    command: >
+      sh -c "
+      echo '=== Starting Dashboard (Shared Auth) ===' 1>&2;
+      echo 'Working directory:' $(pwd) 1>&2;
+      echo 'Python path:' $(which python) 1>&2;
+      echo 'Python version:' $(python --version) 1>&2;
+      echo 'Files in /app:' $(ls -la /app/ | head -5) 1>&2;
+      echo 'Files in /app/apps/dashboard:' $(ls -la /app/apps/dashboard/ 2>&1) 1>&2;
+      cd /app && exec python -u apps/dashboard/web.py 2>&1
+      "
     ports:
-      - "8001:8001"
+      - "${DASHBOARD_PORT:-8001}:8001"
     environment:
-      - MONGODB_URI=mongodb://mongo:27017/?directConnection=true
-      - MONGODB_DB=mdb_runtime_shared
-      - MDB_ENGINE_MASTER_KEY=iDMXrti3uG3Exh9iN3H2TY2+T/g1igVh1+qFg+ZxSJo=
-      - MDB_ENGINE_JWT_SECRET=shared_sso_jwt_secret_change_in_production_abc123
+      - MONGODB_URI=${MONGODB_URI:-mongodb://admin:password@mongodb:27017/?authSource=admin&directConnection=true}
+      - MONGODB_DB=${MONGODB_DB:-mdb_runtime}
+      - MDB_ENGINE_MASTER_KEY=${MDB_ENGINE_MASTER_KEY}
+      - MDB_ENGINE_JWT_SECRET=${MDB_ENGINE_JWT_SECRET:-shared_sso_jwt_secret_change_in_production_abc123}
+      - DASHBOARD_SECRET=${DASHBOARD_SECRET:-}
+      - SECRET_KEY=${SECRET_KEY:-}
       - PYTHONUNBUFFERED=1
+      - LOG_LEVEL=${LOG_LEVEL:-INFO}
     depends_on:
-      mongo:
+      mongodb:
         condition: service_healthy
-    volumes:
-      - ./apps/dashboard:/app
-      - ../../../mdb_engine:/opt/venv/lib/python3.11/site-packages/mdb_engine
-    command: uvicorn web:app --host 0.0.0.0 --port 8001 --reload
-
-  mongo:
-    image: mongodb/mongodb-atlas-local:latest
-    ports:
-      - "27017:27017"
-    volumes:
-      - mongo_data:/data/db
+      click-tracker:
+        condition: service_started
+    networks:
+      - mdb_engine_network
     healthcheck:
-      test: mongosh "mongodb://localhost:27017/?directConnection=true" --quiet --eval "rs.status().ok && rs.status().myState === 1"
-      interval: 5s
+      test: ["CMD", "python", "-c", "import sys; sys.exit(0)"]
+      interval: 30s
       timeout: 10s
-      retries: 20
-      start_period: 15s
+      retries: 3
+      start_period: 40s
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 512M
+        reservations:
+          cpus: '0.25'
+          memory: 128M
+    tmpfs:
+      - /tmp:noexec,nosuid,size=100m
 
 volumes:
-  mongo_data:
+  mongodb_data:
+    driver: local
+  mongodb_config:
+    driver: local
+
+networks:
+  mdb_engine_network:
+    driver: bridge
+    name: multi_app_shared_mdb_engine_network

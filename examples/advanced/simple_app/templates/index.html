@@ -244,6 +244,197 @@
         .code-string {
             color: #22c55e;
         }
+        
+        /* Manifest Display Styles */
+        .manifest-section {
+            margin-top: 2rem;
+        }
+        
+        .manifest-toggle {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 1rem;
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        
+        .manifest-toggle:hover {
+            border-color: var(--accent);
+            background: var(--bg-tertiary);
+        }
+        
+        .manifest-toggle h2 {
+            font-size: 1rem;
+            font-weight: 500;
+            margin: 0;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        
+        .manifest-toggle-icon {
+            transition: transform 0.2s;
+        }
+        
+        .manifest-toggle.expanded .manifest-toggle-icon {
+            transform: rotate(180deg);
+        }
+        
+        .manifest-content {
+            display: none;
+            margin-top: 1rem;
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 1.5rem;
+        }
+        
+        .manifest-toggle.expanded + .manifest-content {
+            display: block;
+        }
+        
+        .manifest-item {
+            margin-bottom: 1.5rem;
+        }
+        
+        .manifest-item:last-child {
+            margin-bottom: 0;
+        }
+        
+        .manifest-label {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-weight: 500;
+            margin-bottom: 0.5rem;
+            color: var(--text-primary);
+        }
+        
+        .manifest-value {
+            color: var(--text-secondary);
+            font-size: 0.875rem;
+            padding-left: 1.5rem;
+        }
+        
+        .manifest-value code {
+            background: var(--bg-secondary);
+            padding: 0.25rem 0.5rem;
+            border-radius: 4px;
+            font-size: 0.8rem;
+            color: var(--accent);
+        }
+        
+        .manifest-nested {
+            margin-left: 1rem;
+            padding-left: 1rem;
+            border-left: 2px solid var(--border);
+        }
+        
+        .tooltip {
+            position: relative;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            cursor: help;
+        }
+        
+        .tooltip-icon {
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            background: rgba(99, 102, 241, 0.2);
+            color: var(--accent);
+            font-size: 0.7rem;
+            font-weight: bold;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-left: 0.25rem;
+        }
+        
+        .tooltip:hover .tooltip-text {
+            visibility: visible;
+            opacity: 1;
+        }
+        
+        .tooltip-text {
+            visibility: hidden;
+            opacity: 0;
+            position: absolute;
+            bottom: 125%;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #1a1a24;
+            color: var(--text-primary);
+            padding: 0.75rem 1rem;
+            border-radius: 8px;
+            font-size: 0.75rem;
+            white-space: normal;
+            width: 250px;
+            z-index: 1000;
+            transition: opacity 0.3s;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+            border: 1px solid var(--border);
+            line-height: 1.4;
+        }
+        
+        .tooltip-text:after {
+            content: "";
+            position: absolute;
+            top: 100%;
+            left: 50%;
+            transform: translateX(-50%);
+            border: 6px solid transparent;
+            border-top-color: #1a1a24;
+        }
+        
+        .manifest-badge {
+            display: inline-block;
+            padding: 0.25rem 0.5rem;
+            font-size: 0.7rem;
+            border-radius: 4px;
+            margin-left: 0.5rem;
+        }
+        
+        .badge-active {
+            background: rgba(34, 197, 94, 0.2);
+            color: var(--success);
+            border: 1px solid rgba(34, 197, 94, 0.3);
+        }
+        
+        .badge-version {
+            background: rgba(99, 102, 241, 0.2);
+            color: var(--accent);
+            border: 1px solid rgba(99, 102, 241, 0.3);
+        }
+        
+        .index-list {
+            list-style: none;
+            padding-left: 0;
+        }
+        
+        .index-item {
+            padding: 0.75rem;
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            margin-bottom: 0.5rem;
+        }
+        
+        .index-name {
+            font-weight: 500;
+            color: var(--accent);
+            margin-bottom: 0.25rem;
+        }
+        
+        .index-keys {
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+        }
     </style>
 </head>
 <body>
@@ -300,6 +491,156 @@ app = engine.create_app(
     manifest=Path(<span class="code-string">"manifest.json"</span>)
 )</pre>
         </div>
+        
+        <div class="manifest-section">
+            <div class="manifest-toggle" onclick="toggleManifest()">
+                <h2>
+                    📋 Application Manifest
+                    <span class="tooltip">
+                        <span class="tooltip-icon">?</span>
+                        <span class="tooltip-text">The manifest.json file defines your app's configuration, including database indexes, authentication settings, and CORS policies. MDB-Engine reads this file on startup to configure your application automatically.</span>
+                    </span>
+                </h2>
+                <span class="manifest-toggle-icon">▼</span>
+            </div>
+            <div class="manifest-content">
+                {% if manifest %}
+                    <div class="manifest-item">
+                        <div class="manifest-label">
+                            Schema Version
+                            <span class="tooltip">
+                                <span class="tooltip-icon">?</span>
+                                <span class="tooltip-text">The version of the manifest schema format. This ensures compatibility with different versions of MDB-Engine.</span>
+                            </span>
+                        </div>
+                        <div class="manifest-value">
+                            <code>{{ manifest.schema_version }}</code>
+                            <span class="manifest-badge badge-version">v{{ manifest.schema_version }}</span>
+                        </div>
+                    </div>
+                    
+                    <div class="manifest-item">
+                        <div class="manifest-label">
+                            App Slug
+                            <span class="tooltip">
+                                <span class="tooltip-icon">?</span>
+                                <span class="tooltip-text">A unique identifier for your app. Used for data isolation - all database queries are automatically scoped to this slug.</span>
+                            </span>
+                        </div>
+                        <div class="manifest-value">
+                            <code>{{ manifest.slug }}</code>
+                        </div>
+                    </div>
+                    
+                    <div class="manifest-item">
+                        <div class="manifest-label">
+                            Name
+                            <span class="tooltip">
+                                <span class="tooltip-icon">?</span>
+                                <span class="tooltip-text">The human-readable name of your application.</span>
+                            </span>
+                        </div>
+                        <div class="manifest-value">{{ manifest.name }}</div>
+                    </div>
+                    
+                    <div class="manifest-item">
+                        <div class="manifest-label">
+                            Description
+                            <span class="tooltip">
+                                <span class="tooltip-icon">?</span>
+                                <span class="tooltip-text">A brief description of what your application does.</span>
+                            </span>
+                        </div>
+                        <div class="manifest-value">{{ manifest.description }}</div>
+                    </div>
+                    
+                    <div class="manifest-item">
+                        <div class="manifest-label">
+                            Status
+                            <span class="tooltip">
+                                <span class="tooltip-icon">?</span>
+                                <span class="tooltip-text">The current status of your application. 'active' means the app is running and accepting requests.</span>
+                            </span>
+                        </div>
+                        <div class="manifest-value">
+                            <code>{{ manifest.status }}</code>
+                            {% if manifest.status == 'active' %}
+                            <span class="manifest-badge badge-active">Active</span>
+                            {% endif %}
+                        </div>
+                    </div>
+                    
+                    {% if manifest.auth %}
+                    <div class="manifest-item">
+                        <div class="manifest-label">
+                            Authentication Policy
+                            <span class="tooltip">
+                                <span class="tooltip-icon">?</span>
+                                <span class="tooltip-text">Defines how authentication works for your app. This app allows anonymous access, meaning users don't need to log in.</span>
+                            </span>
+                        </div>
+                        <div class="manifest-value manifest-nested">
+                            <div style="margin-bottom: 0.5rem;">
+                                <strong>Provider:</strong> <code>{{ manifest.auth.policy.provider }}</code>
+                            </div>
+                            <div style="margin-bottom: 0.5rem;">
+                                <strong>Required:</strong> <code>{{ manifest.auth.policy.required }}</code>
+                            </div>
+                            <div style="margin-bottom: 0.5rem;">
+                                <strong>Allow Anonymous:</strong> <code>{{ manifest.auth.policy.allow_anonymous }}</code>
+                                <span class="tooltip">
+                                    <span class="tooltip-icon">?</span>
+                                    <span class="tooltip-text">When true, users can access the app without logging in. Set to false to require authentication.</span>
+                                </span>
+                            </div>
+                            {% if manifest.auth.policy.authorization %}
+                            <div>
+                                <strong>Authorization Model:</strong> <code>{{ manifest.auth.policy.authorization.model }}</code>
+                                <span class="tooltip">
+                                    <span class="tooltip-icon">?</span>
+                                    <span class="tooltip-text">The authorization model (e.g., 'rbac' for Role-Based Access Control). Defines how permissions are checked.</span>
+                                </span>
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                    {% endif %}
+                    
+                    {% if manifest.managed_indexes %}
+                    <div class="manifest-item">
+                        <div class="manifest-label">
+                            Managed Indexes
+                            <span class="tooltip">
+                                <span class="tooltip-icon">?</span>
+                                <span class="tooltip-text">Database indexes defined in the manifest are automatically created when the app starts. This ensures fast queries without manual database setup.</span>
+                            </span>
+                        </div>
+                        <div class="manifest-value manifest-nested">
+                            {% for collection, indexes in manifest.managed_indexes.items() %}
+                                <div style="margin-bottom: 1rem;">
+                                    <strong style="color: var(--accent);">Collection: <code>{{ collection }}</code></strong>
+                                    <ul class="index-list">
+                                        {% for index in indexes %}
+                                        <li class="index-item">
+                                            <div class="index-name">{{ index.name }}</div>
+                                            <div class="index-keys">
+                                                <strong>Type:</strong> {{ index.type }} | 
+                                                <strong>Keys:</strong> 
+                                                {% for key, direction in index["keys"].items() %}
+                                                    {{ key }}{% if direction == -1 %} (desc){% else %} (asc){% endif %}{% if not loop.last %}, {% endif %}
+                                                {% endfor %}
+                                            </div>
+                                        </li>
+                                        {% endfor %}
+                                    </ul>
+                                </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                    {% endif %}
+                {% endif %}
+            </div>
+        </div>
     </div>
     
     <script>
@@ -349,6 +690,11 @@ app = engine.create_app(
             if (response.ok) {
                 window.location.reload();
             }
+        }
+        
+        function toggleManifest() {
+            const toggle = document.querySelector('.manifest-toggle');
+            toggle.classList.toggle('expanded');
         }
     </script>
 </body>

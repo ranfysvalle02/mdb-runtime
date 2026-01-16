@@ -138,6 +138,39 @@ simple_app/
 └── README.md
 ```
 
+## Code Organization
+
+The `web.py` file is organized into clear sections to help you understand what's MDB-Engine specific vs reusable:
+
+### 1. **Configuration** (Lines ~40-45)
+   - Application constants
+   - **Reusable**: Works with any framework
+
+### 2. **MDB-Engine Setup** (Lines ~50-85)
+   - `MongoDBEngine()` initialization
+   - `engine.create_app()` call
+   - **MDB-Engine specific**: This is what you'd replace if using a different framework
+
+### 3. **Reusable Components** (Lines ~90-150)
+   - Pydantic models (`TaskCreate`, `TaskUpdate`)
+   - Business logic functions (`create_task_document()`, `serialize_task()`, etc.)
+   - **Reusable**: These work with any MongoDB driver or database backend
+
+### 4. **Routes** (Lines ~155+)
+   - FastAPI route handlers
+   - **Mixed**: Routes use MDB-Engine dependencies (`get_scoped_db`) but call reusable business logic functions
+
+### Key Insight
+
+The code clearly separates:
+- **MDB-Engine specifics**: Engine initialization, `get_scoped_db()` dependency, `engine.create_app()`
+- **Reusable logic**: Business functions, data models, query building
+
+This makes it easy to:
+1. Understand what MDB-Engine provides (scoped DB access, lifecycle management)
+2. Extract reusable components for use in other projects
+3. See how to adapt the pattern to other frameworks
+
 ## Comparison: Old vs New Pattern
 
 ### Old Pattern (Manual Lifecycle)

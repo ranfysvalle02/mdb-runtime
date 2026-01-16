@@ -29,6 +29,17 @@ if [ -z "$MASTER_KEY" ]; then
 fi
 
 echo "✅ Master key generated"
+
+# Generate SECRET_KEY for JWT tokens
+echo "Generating SECRET_KEY for JWT tokens..."
+SECRET_KEY=$(python3 -c 'import secrets; print(secrets.token_urlsafe(32))')
+
+if [ -z "$SECRET_KEY" ]; then
+    echo "❌ Error: Failed to generate SECRET_KEY"
+    exit 1
+fi
+
+echo "✅ SECRET_KEY generated"
 echo ""
 
 # Create .env if it doesn't exist
@@ -39,6 +50,9 @@ if [ ! -f "$ENV_FILE" ]; then
     cat > "$ENV_FILE" << EOF
 # Master Key for Envelope Encryption
 MDB_ENGINE_MASTER_KEY=$MASTER_KEY
+
+# JWT Secret Key (for session tokens)
+SECRET_KEY=$SECRET_KEY
 
 # App Secrets (generated at registration, retrieve from logs)
 CLICK_TRACKER_SECRET=
@@ -66,6 +80,45 @@ else
     # Add new master key
     echo "MDB_ENGINE_MASTER_KEY=$MASTER_KEY" >> "$ENV_FILE"
     echo "✅ Added master key to .env"
+fi
+
+# Add or update SECRET_KEY in .env
+if grep -q "^SECRET_KEY=" "$ENV_FILE"; then
+    # Update existing SECRET_KEY
+    if [[ "$OSTYPE" == "darwin"* ]]; then
+        # macOS
+        sed -i '' "s|^SECRET_KEY=.*|SECRET_KEY=$SECRET_KEY|" "$ENV_FILE"
+    else
+        # Linux
+        sed -i "s|^SECRET_KEY=.*|SECRET_KEY=$SECRET_KEY|" "$ENV_FILE"
+    fi
+    echo "✅ Updated SECRET_KEY in .env"
+else
+    # Add new SECRET_KEY (after master key if it exists, otherwise at top)
+    if grep -q "^MDB_ENGINE_MASTER_KEY=" "$ENV_FILE"; then
+        # Insert after master key line
+        if [[ "$OSTYPE" == "darwin"* ]]; then
+            # macOS
+            sed -i '' "/^MDB_ENGINE_MASTER_KEY=/a\\
+SECRET_KEY=$SECRET_KEY
+" "$ENV_FILE"
+        else
+            # Linux
+            sed -i "/^MDB_ENGINE_MASTER_KEY=/a SECRET_KEY=$SECRET_KEY" "$ENV_FILE"
+        fi
+    else
+        # Add at beginning
+        if [[ "$OSTYPE" == "darwin"* ]]; then
+            # macOS
+            sed -i '' "1i\\
+SECRET_KEY=$SECRET_KEY
+" "$ENV_FILE"
+        else
+            # Linux
+            sed -i "1i SECRET_KEY=$SECRET_KEY" "$ENV_FILE"
+        fi
+    fi
+    echo "✅ Added SECRET_KEY to .env"
 fi
 
 echo ""
