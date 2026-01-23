@@ -1,5 +1,19 @@
 # MDB_ENGINE Quick Start Guide
 
+## 🎯 The Key to Everything: manifest.json
+
+**`manifest.json` is the heart of your application.** It's a single configuration file that defines your app's identity, data structure, authentication, indexes, and services. Think of it as your app's DNA—everything flows from this file.
+
+### Why manifest.json Matters
+
+- **Single Source of Truth**: All configuration in one place
+- **Zero Boilerplate**: No scattered setup code across multiple files
+- **Automatic Setup**: Indexes, auth, services configured automatically
+- **Version Control Friendly**: Your entire app config is versioned
+- **Incremental Adoption**: Start minimal, add features as needed
+
+---
+
 ## Installation
 
 ```bash
@@ -14,557 +28,602 @@ pip install -e .
 
 ---
 
-## When to Use What
+## Your First manifest.json
 
-### Choosing Your Pattern
-
-| Scenario | Recommended Approach |
-|----------|---------------------|
-| **New FastAPI app** | `engine.create_app()` - automatic lifecycle |
-| **Existing FastAPI app** | `engine.lifespan()` or manual `initialize()`/`shutdown()` |
-| **Script or CLI tool** | Direct engine usage with `async with` |
-| **Multiple apps** | Multi-app with `read_scopes` in manifest |
-| **Heavy computation** | Enable Ray with `enable_ray=True` |
-
-### Feature Guide
-
-| Feature | When to Use | Configuration |
-|---------|------------|---------------|
-| **`create_app()`** | New FastAPI apps - handles everything automatically | `engine.create_app(slug, manifest)` |
-| **`lifespan()`** | Custom FastAPI apps - just lifecycle management | `FastAPI(lifespan=engine.lifespan(...))` |
-| **Ray Support** | Distributed processing, isolated app actors | `enable_ray=True` in constructor |
-| **Multi-site Mode** | Apps sharing data across boundaries | `read_scopes` in manifest |
-| **App Tokens** | Production security, encrypted secrets | Set `MDB_ENGINE_MASTER_KEY` env var |
-| **Shared Auth (SSO)** | Multi-app with single sign-on | `"auth": {"mode": "shared"}` in manifest |
-| **Per-App Auth** | Isolated auth per app (default) | `"auth": {"mode": "app"}` in manifest |
-| **Casbin Auth** | Simple RBAC (roles like admin, user) | `"provider": "casbin"` in manifest |
-| **OSO Auth** | Complex permission rules (policies) | `"provider": "oso"` in manifest |
-| **Memory Service** | AI chat apps with persistent memory | `memory_config` in manifest |
-| **Embeddings** | Vector search, RAG applications | Use `EmbeddingService` |
-
-### Quick Decision Tree
-
-```
-Building a web app?
-├── YES → Use create_app() for automatic lifecycle
-│         │
-│         └── Need multiple apps sharing data?
-│             ├── YES → Need SSO (login once, access all apps)?
-│             │         ├── YES → Use auth.mode="shared" 
-│             │         └── NO  → Use auth.mode="app" + read_scopes
-│             └── NO  → Single app is fine
-│
-└── NO  → Use engine directly:
-          async with MongoDBEngine(...) as engine:
-              db = engine.get_scoped_db("my_app")
-```
-
----
-
-## Basic Usage
-
-### 1. Initialize the MongoDB Engine
-
-```python
-from mdb_engine import MongoDBEngine
-from pathlib import Path
-
-# Create engine instance
-engine = MongoDBEngine(
-    mongo_uri="mongodb://localhost:27017",
-    db_name="my_database",
-    manifests_dir=Path("manifests")
-)
-
-# Initialize (async)
-await engine.initialize()
-```
-
-### 2. Get Scoped Database Access
-
-```python
-# Get app-scoped database
-db = engine.get_scoped_db("my_app")
-
-# Use MongoDB-style API
-doc = await db.my_collection.find_one({"name": "test"})
-docs = await db.my_collection.find({"status": "active"}).to_list(length=10)
-await db.my_collection.insert_one({"name": "New Doc"})
-```
-
-### 3. Register Apps
-
-```python
-# Load and validate manifest
-manifest = await engine.load_manifest(Path("manifests/my_app/manifest.json"))
-
-# Register app (automatically creates indexes)
-await engine.register_app(manifest)
-
-# Or reload all active apps from database
-count = await engine.reload_apps()
-```
-
-### 4. Use Individual Components
-
-```python
-# Database scoping
-from mdb_engine.database import ScopedMongoWrapper, AppDB
-
-# Authentication & Authorization
-from mdb_engine.auth import (
-    setup_auth_from_manifest,
-    get_current_user,
-    get_authz_provider,
-    require_admin
-)
-
-# Manifest validation
-from mdb_engine.core import ManifestValidator
-
-validator = ManifestValidator()
-is_valid, error, paths = validator.validate(manifest)
-
-# Index management
-from mdb_engine.indexes import AsyncAtlasIndexManager
-```
-
-## Context Manager Usage
-
-```python
-# Automatic cleanup
-async with MongoDBEngine(mongo_uri, db_name) as engine:
-    await engine.reload_apps()
-    db = engine.get_scoped_db("my_app")
-    # ... use engine
-    # Automatic cleanup on exit
-```
-
-## FastAPI Integration
-
-### Simplified Pattern with `create_app()`
-
-The easiest way to integrate with FastAPI - handles all lifecycle management automatically:
-
-```python
-import os
-from pathlib import Path
-from fastapi import Depends
-from mdb_engine import MongoDBEngine
-from mdb_engine.dependencies import get_scoped_db, get_embedding_service
-
-# Initialize engine
-engine = MongoDBEngine(
-    mongo_uri=os.getenv("MONGODB_URI", "mongodb://localhost:27017"),
-    db_name=os.getenv("MONGODB_DB", "my_database"),
-)
-
-# Create FastAPI app with automatic lifecycle management
-app = engine.create_app(
-    slug="my_app",
-    manifest=Path("manifest.json"),
-)
-
-@app.get("/")
-async def index():
-    return {"app": "my_app", "status": "ok"}
-
-@app.get("/items")
-async def get_items(db=Depends(get_scoped_db)):
-    # db is automatically scoped to "my_app"
-    items = await db.items.find({}).to_list(length=10)
-    return {"items": items}
-
-@app.post("/embed")
-async def embed_text(
-    text: str,
-    db=Depends(get_scoped_db),
-    embedding_service=Depends(get_embedding_service),
-):
-    # Both dependencies automatically bound to the current app
-    result = await embedding_service.process_and_store(
-        text_content=text,
-        source_id="doc_1",
-        collection=db.knowledge_base,
-    )
-    return {"chunks_created": result["chunks_created"]}
-```
-
-This pattern automatically:
-- Initializes the engine on startup
-- Loads and registers the manifest
-- Auto-detects multi-site mode from manifest
-- Auto-retrieves app tokens
-- Shuts down the engine on app shutdown
-
-### Request-Scoped Dependencies
-
-Import dependencies from `mdb_engine.dependencies`:
-
-| Dependency | Description |
-|------------|-------------|
-| `get_engine` | Get the MongoDBEngine instance |
-| `get_app_slug` | Get the current app's slug |
-| `get_app_config` | Get the app's manifest/config |
-| `get_scoped_db` | Get scoped database for the current app (most common) |
-| `get_embedding_service` | Get EmbeddingService for the current app |
-| `get_memory_service` | Get Mem0 memory service (returns None if not configured) |
-| `get_llm_client` | Get auto-configured OpenAI/AzureOpenAI client |
-| `get_llm_model_name` | Get LLM deployment/model name |
-| `get_authz_provider` | Get authorization provider (Casbin/OSO) |
-| `get_current_user` | Get authenticated user from request.state |
-| `get_user_roles` | Get current user's roles |
-| `AppContext` | All-in-one context (see below) |
-
-```python
-from fastapi import Depends
-from mdb_engine.dependencies import (
-    get_scoped_db,
-    get_embedding_service,
-    get_memory_service,
-    get_llm_client,
-    get_llm_model_name,
-)
-
-@app.post("/chat")
-async def chat(
-    query: str,
-    db=Depends(get_scoped_db),
-    memory=Depends(get_memory_service),
-    llm=Depends(get_llm_client),
-):
-    # Memory is optional - returns None if not configured
-    context = []
-    if memory:
-        results = memory.search(query=query, user_id=user_id, limit=3)
-        context = [r.get("memory") for r in results if r.get("memory")]
-    
-    # Use LLM
-    response = llm.chat.completions.create(
-        model=get_llm_model_name(),
-        messages=[{"role": "user", "content": query}],
-    )
-    return {"response": response.choices[0].message.content}
-```
-
-### AppContext - All-in-One Magic ✨
-
-For routes that need multiple services, use `AppContext` to get everything at once:
-
-```python
-from fastapi import Depends
-from mdb_engine.dependencies import AppContext
-
-@app.post("/process")
-async def process(data: str, ctx: AppContext = Depends()):
-    # Everything is available through ctx
-    user = ctx.require_user()  # Raises 401 if not authenticated
-    ctx.require_role("editor")  # Raises 403 if missing role
-    
-    # All services available
-    docs = await ctx.db.documents.find({"user": user["email"]}).to_list(10)
-    
-    if ctx.embedding_service:
-        embeddings = await ctx.embedding_service.embed_chunks([data])
-    
-    if ctx.llm:
-        response = ctx.llm.chat.completions.create(
-            model=ctx.llm_model,
-            messages=[{"role": "user", "content": data}],
-        )
-    
-    return {"app": ctx.slug, "docs": len(docs)}
-
-### Custom Lifespan Pattern
-
-For more control over FastAPI app creation:
-
-```python
-from fastapi import FastAPI
-from mdb_engine import MongoDBEngine
-from pathlib import Path
-
-engine = MongoDBEngine(mongo_uri="...", db_name="...")
-
-# Use engine's lifespan helper
-app = FastAPI(
-    title="My App",
-    lifespan=engine.lifespan("my_app", Path("manifest.json"))
-)
-
-@app.get("/")
-async def index():
-    db = engine.get_scoped_db("my_app")
-    return {"status": "ok"}
-```
-
-### With Optional Ray Support
-
-Enable Ray for distributed processing:
-
-```python
-from mdb_engine import MongoDBEngine
-
-# Enable Ray support (only activates if Ray is installed)
-engine = MongoDBEngine(
-    mongo_uri="mongodb://localhost:27017",
-    db_name="my_database",
-    enable_ray=True,
-    ray_namespace="my_namespace",
-)
-
-app = engine.create_app(slug="my_app", manifest=Path("manifest.json"))
-
-@app.get("/status")
-async def status():
-    return {
-        "ray_enabled": engine.has_ray,
-        "ray_namespace": engine.ray_namespace,
-    }
-```
-
-## Authentication & Authorization
-
-### Auto-Initialized from Manifest (Recommended)
-
-When using `engine.create_app()`, authorization and demo users are **automatically initialized** from your manifest. No manual setup required!
-
-**Casbin RBAC Example (manifest.json):**
+Every app starts with a `manifest.json`. Here's the absolute minimum:
 
 ```json
 {
+  "schema_version": "2.0",
   "slug": "my_app",
+  "name": "My App"
+}
+```
+
+That's it! Just 3 fields. This minimal manifest gives you:
+- ✅ App identification and registration
+- ✅ Automatic data scoping (all queries filtered by `app_id`)
+- ✅ Collection name prefixing (`db.tasks` → `my_app_tasks`)
+
+### Create Your manifest.json
+
+1. Create a `manifest.json` file in your project root
+2. Add the three required fields above
+3. You're ready to go!
+
+---
+
+## Quick Start: From manifest.json to Running App
+
+### Step 1: Create Your manifest.json
+
+```json
+{
+  "schema_version": "2.0",
+  "slug": "task_manager",
+  "name": "Task Manager",
+  "status": "active",
+  "managed_indexes": {
+    "tasks": [
+      {
+        "type": "regular",
+        "keys": {"status": 1, "created_at": -1},
+        "name": "status_sort"
+      }
+    ]
+  }
+}
+```
+
+### Step 2: Create Your FastAPI App
+
+```python
+from pathlib import Path
+from fastapi import Depends
+from mdb_engine import MongoDBEngine
+from mdb_engine.dependencies import get_scoped_db
+
+# Initialize engine
+engine = MongoDBEngine(
+    mongo_uri="mongodb://localhost:27017",
+    db_name="my_database"
+)
+
+# Create app - manifest.json is loaded automatically!
+app = engine.create_app(
+    slug="task_manager",
+    manifest=Path("manifest.json")
+)
+
+# Use request-scoped database - automatically isolated!
+@app.post("/tasks")
+async def create_task(task: dict, db=Depends(get_scoped_db)):
+    result = await db.tasks.insert_one(task)
+    return {"id": str(result.inserted_id)}
+
+@app.get("/tasks")
+async def list_tasks(db=Depends(get_scoped_db)):
+    return await db.tasks.find({"status": "pending"}).to_list(length=10)
+```
+
+**What just happened?**
+- ✅ Engine loaded your `manifest.json`
+- ✅ App registered with slug `task_manager`
+- ✅ Indexes created automatically from `managed_indexes`
+- ✅ Database queries automatically scoped to your app
+- ✅ Lifecycle management handled (startup/shutdown)
+
+---
+
+## Understanding manifest.json Structure
+
+### Required Fields
+
+Every manifest must have these three fields:
+
+```json
+{
+  "schema_version": "2.0",    // Schema version (always "2.0" for new apps)
+  "slug": "my_app",           // Unique app identifier (lowercase, alphanumeric, underscores, hyphens)
+  "name": "My App"            // Human-readable app name
+}
+```
+
+### Core Sections
+
+Your manifest can include these powerful sections:
+
+#### 1. Data Isolation (`data_access`)
+
+Control how your app accesses data:
+
+```json
+{
+  "data_access": {
+    "read_scopes": ["my_app", "shared_data"],  // Collections you can read from
+    "write_scope": "my_app"                     // Where writes go
+  }
+}
+```
+
+**Default**: If omitted, `read_scopes` defaults to `[slug]` and `write_scope` defaults to `slug`.
+
+#### 2. Index Management (`managed_indexes`)
+
+Define indexes declaratively—they're created automatically:
+
+```json
+{
+  "managed_indexes": {
+    "tasks": [
+      {
+        "type": "regular",
+        "keys": {"status": 1, "created_at": -1},
+        "name": "status_sort"
+      },
+      {
+        "type": "regular",
+        "keys": {"user_id": 1},
+        "name": "user_idx",
+        "unique": true
+      }
+    ],
+    "knowledge_base": [
+      {
+        "type": "vectorSearch",
+        "name": "embedding_vector_index",
+        "definition": {
+          "fields": [{
+            "type": "vector",
+            "path": "embedding",
+            "numDimensions": 1536,
+            "similarity": "cosine"
+          }]
+        }
+      }
+    ]
+  }
+}
+```
+
+**Supported index types**: `regular`, `text`, `vectorSearch`, `ttl`, `compound`
+
+#### 3. Authentication & Authorization (`auth`)
+
+Configure authentication and authorization declaratively:
+
+```json
+{
   "auth": {
+    "mode": "app",  // "app" (per-app auth) or "shared" (SSO across apps)
     "policy": {
-      "provider": "casbin",
+      "provider": "casbin",  // "casbin" or "oso"
       "required": true,
       "authorization": {
         "model": "rbac",
-        "policies_collection": "casbin_policies",
         "initial_policies": [
           ["admin", "documents", "read"],
           ["admin", "documents", "write"],
-          ["editor", "documents", "read"],
-          ["editor", "documents", "write"],
-          ["viewer", "documents", "read"]
+          ["editor", "documents", "read"]
         ],
         "initial_roles": [
-          {"user": "alice@example.com", "role": "admin"},
-          {"user": "bob@example.com", "role": "editor"}
+          {"user": "alice@example.com", "role": "admin"}
         ]
       }
     },
     "users": {
       "enabled": true,
       "strategy": "app_users",
+      "allow_registration": true,
       "demo_users": [
-        {"email": "alice@example.com", "password": "password123", "role": "admin"},
-        {"email": "bob@example.com", "password": "password123", "role": "editor"}
-      ],
-      "demo_user_seed_strategy": "auto"
-    }
-  }
-}
-```
-
-**Application Code - That's it!**
-
-```python
-from mdb_engine import MongoDBEngine
-from mdb_engine.dependencies import get_scoped_db, get_authz_provider
-from pathlib import Path
-
-engine = MongoDBEngine(mongo_uri="...", db_name="...")
-
-# Everything is auto-configured from manifest!
-app = engine.create_app(slug="my_app", manifest=Path("manifest.json"))
-
-@app.get("/documents")
-async def get_documents(
-    request: Request,
-    authz=Depends(get_authz_provider),
-    db=Depends(get_scoped_db),
-):
-    user = await get_current_user(request)  # From session cookie
-    
-    # Check permission via Casbin
-    if not await authz.check(user["email"], "documents", "read"):
-        raise HTTPException(403, "Permission denied")
-    
-    return await db.documents.find({}).to_list(100)
-```
-
-**What gets auto-initialized:**
-- ✅ Casbin enforcer with initial policies and role assignments
-- ✅ Demo users with bcrypt-hashed passwords
-- ✅ Session cookie authentication
-
-### OSO Cloud Example
-
-For OSO Cloud authorization:
-
-```json
-{
-  "slug": "my_app",
-  "auth": {
-    "policy": {
-      "provider": "oso",
-      "authorization": {
-        "initial_roles": [
-          {"user": "alice@example.com", "role": "editor"},
-          {"user": "bob@example.com", "role": "viewer"}
-        ]
-      }
-    },
-    "users": {
-      "enabled": true,
-      "demo_users": [
-        {"email": "alice@example.com", "password": "password123", "role": "editor"},
-        {"email": "bob@example.com", "password": "password123", "role": "viewer"}
+        {
+          "email": "alice@example.com",
+          "password": "password123",
+          "role": "admin"
+        }
       ]
     }
   }
 }
 ```
 
-**Environment Variables for OSO:**
-```bash
-export OSO_AUTH="your-oso-api-key"
-export OSO_URL="http://oso-dev:8080"  # For OSO Dev Server
-```
+**What this gives you automatically:**
+- ✅ Casbin enforcer with policies
+- ✅ Demo users with bcrypt-hashed passwords
+- ✅ Session cookie authentication
+- ✅ `get_current_user()` dependency ready to use
 
-See `examples/basic/oso_hello_world/` for a complete OSO example with Docker Compose.
+#### 4. AI Services
 
-### Custom Authorization Provider
-
-```python
-from mdb_engine.auth import AuthorizationProvider
-
-class CustomProvider:
-    async def check(self, subject, resource, action, user_object=None):
-        # Your custom logic
-        return True
-
-app.state.authz_provider = CustomProvider()
-```
-
-### Auth Modes (Per-App vs Shared)
-
-MDB_ENGINE supports two authentication modes configured in your manifest:
-
-#### Per-App Auth (Default)
-Each app has its own authentication - isolated users, isolated tokens.
+**Embedding Service** (`embedding_config`):
 
 ```json
 {
+  "embedding_config": {
+    "enabled": true,
+    "max_tokens_per_chunk": 1000,
+    "default_embedding_model": "text-embedding-3-small"
+  }
+}
+```
+
+**Memory Service** (`memory_config`):
+
+```json
+{
+  "memory_config": {
+    "enabled": true,
+    "collection_name": "user_memories",
+    "enable_graph": true
+  }
+}
+```
+
+Both services become available via dependencies:
+- `get_embedding_service()` - Text chunking and embeddings
+- `get_memory_service()` - Persistent AI memory (Mem0)
+
+#### 5. WebSockets (`websockets`)
+
+Define real-time endpoints:
+
+```json
+{
+  "websockets": {
+    "realtime": {
+      "path": "/ws",
+      "description": "Real-time updates",
+      "auth": {
+        "required": false,
+        "allow_anonymous": true
+      }
+    }
+  }
+}
+```
+
+#### 6. CORS (`cors`)
+
+Configure CORS settings:
+
+```json
+{
+  "cors": {
+    "enabled": true,
+    "allow_origins": ["*"],
+    "allow_credentials": true,
+    "allow_methods": ["*"],
+    "allow_headers": ["*"]
+  }
+}
+```
+
+---
+
+## Complete manifest.json Example
+
+Here's a complete manifest.json that demonstrates all major features:
+
+```json
+{
+  "schema_version": "2.0",
   "slug": "my_app",
+  "name": "My Application",
+  "description": "A complete example app",
+  "status": "active",
+  
+  "data_access": {
+    "read_scopes": ["my_app", "shared_data"],
+    "write_scope": "my_app"
+  },
+  
+  "managed_indexes": {
+    "tasks": [
+      {
+        "type": "regular",
+        "keys": {"status": 1, "created_at": -1},
+        "name": "status_sort"
+      }
+    ],
+    "users": [
+      {
+        "type": "regular",
+        "keys": {"email": 1},
+        "name": "email_unique",
+        "unique": true
+      }
+    ]
+  },
+  
   "auth": {
     "mode": "app",
-    "token_required": true
+    "policy": {
+      "provider": "casbin",
+      "required": true,
+      "authorization": {
+        "model": "rbac",
+        "initial_policies": [
+          ["admin", "tasks", "read"],
+          ["admin", "tasks", "write"],
+          ["user", "tasks", "read"]
+        ],
+        "initial_roles": [
+          {"user": "admin@example.com", "role": "admin"}
+        ]
+      }
+    },
+    "users": {
+      "enabled": true,
+      "allow_registration": true,
+      "demo_users": [
+        {
+          "email": "admin@example.com",
+          "password": "password123",
+          "role": "admin"
+        }
+      ]
+    }
+  },
+  
+  "embedding_config": {
+    "enabled": true,
+    "max_tokens_per_chunk": 1000
+  },
+  
+  "memory_config": {
+    "enabled": true,
+    "collection_name": "user_memories"
+  },
+  
+  "websockets": {
+    "realtime": {
+      "path": "/ws",
+      "description": "Real-time updates"
+    }
+  },
+  
+  "cors": {
+    "enabled": true,
+    "allow_origins": ["*"]
   }
 }
 ```
 
-#### Shared Auth (SSO)
-All apps share a central user pool. Login once, access multiple apps.
+---
+
+## Using Your manifest.json in Code
+
+### Pattern 1: create_app() (Recommended)
+
+The simplest way—everything is automatic:
+
+```python
+from pathlib import Path
+from mdb_engine import MongoDBEngine
+
+engine = MongoDBEngine(mongo_uri="...", db_name="...")
+app = engine.create_app(slug="my_app", manifest=Path("manifest.json"))
+
+# Everything configured from manifest.json:
+# - Indexes created
+# - Auth setup
+# - Services initialized
+# - Dependencies available
+```
+
+### Pattern 2: Lifespan Only
+
+For more control over FastAPI app creation:
+
+```python
+from fastapi import FastAPI
+from mdb_engine import MongoDBEngine
+
+engine = MongoDBEngine(...)
+app = FastAPI(
+    title="My App",
+    lifespan=engine.lifespan("my_app", Path("manifest.json"))
+)
+```
+
+### Pattern 3: Manual Control
+
+Full control over initialization:
+
+```python
+@app.on_event("startup")
+async def startup():
+    await engine.initialize()
+    manifest = await engine.load_manifest(Path("manifest.json"))
+    await engine.register_app(manifest, create_indexes=True)
+```
+
+---
+
+## Request-Scoped Dependencies
+
+Once your manifest.json is loaded, these dependencies become available:
+
+| Dependency | Description | Requires in manifest.json |
+|------------|-------------|---------------------------|
+| `get_scoped_db` | Scoped database for current app | (always available) |
+| `get_current_user` | Authenticated user | `auth.users.enabled: true` |
+| `get_authz_provider` | Authorization provider | `auth.policy.provider` |
+| `get_embedding_service` | Embedding service | `embedding_config.enabled: true` |
+| `get_memory_service` | Memory service | `memory_config.enabled: true` |
+| `get_llm_client` | LLM client (OpenAI/Azure) | (auto-detected from env) |
+| `AppContext` | All-in-one context | (combines all above) |
+
+### Example: Using Dependencies
+
+```python
+from fastapi import Depends
+from mdb_engine.dependencies import (
+    get_scoped_db,
+    get_current_user,
+    get_authz_provider,
+    get_embedding_service
+)
+
+@app.get("/tasks")
+async def get_tasks(
+    db=Depends(get_scoped_db),
+    user=Depends(get_current_user),
+    authz=Depends(get_authz_provider)
+):
+    # Check permission
+    if not await authz.check(user["email"], "tasks", "read"):
+        raise HTTPException(403, "Permission denied")
+    
+    # Query automatically scoped to app
+    return await db.tasks.find({}).to_list(100)
+
+@app.post("/embed")
+async def embed_text(
+    text: str,
+    db=Depends(get_scoped_db),
+    embedding_service=Depends(get_embedding_service)
+):
+    # Embedding service configured from manifest.json
+    result = await embedding_service.process_and_store(
+        text_content=text,
+        source_id="doc_1",
+        collection=db.knowledge_base
+    )
+    return {"chunks_created": result["chunks_created"]}
+```
+
+### AppContext - All Services in One
+
+For routes that need multiple services:
+
+```python
+from mdb_engine.dependencies import AppContext
+
+@app.post("/ai-chat")
+async def chat(query: str, ctx: AppContext = Depends()):
+    user = ctx.require_user()  # Raises 401 if not authenticated
+    ctx.require_role("user")   # Raises 403 if missing role
+    
+    # Everything available: ctx.db, ctx.embedding_service, ctx.memory, ctx.llm
+    if ctx.llm:
+        response = ctx.llm.chat.completions.create(
+            model=ctx.llm_model,
+            messages=[{"role": "user", "content": query]}
+        )
+        return {"response": response.choices[0].message.content}
+```
+
+---
+
+## Incremental Adoption
+
+You don't need everything at once! Start minimal and add features:
+
+### Level 1: Minimal (Just Data Scoping)
 
 ```json
 {
+  "schema_version": "2.0",
   "slug": "my_app",
-  "auth": {
-    "mode": "shared",
-    "roles": ["viewer", "editor", "admin"],
-    "default_role": "viewer",
-    "require_role": "viewer",
-    "public_routes": ["/health", "/api/public"]
+  "name": "My App"
+}
+```
+
+**What you get**: Data isolation, collection prefixing
+
+### Level 2: Add Indexes
+
+```json
+{
+  "schema_version": "2.0",
+  "slug": "my_app",
+  "name": "My App",
+  "managed_indexes": {
+    "tasks": [
+      {"type": "regular", "keys": {"status": 1}}
+    ]
   }
 }
 ```
 
-When using shared auth:
-- Users are stored in `_mdb_engine_shared_users` collection
-- JWT tokens work across all apps (SSO)
-- Each app defines its own role requirements
-- `SharedAuthMiddleware` is auto-configured by `engine.create_app()`
+**What you get**: Automatic index creation
+
+### Level 3: Add Authentication
+
+```json
+{
+  "schema_version": "2.0",
+  "slug": "my_app",
+  "name": "My App",
+  "auth": {
+    "policy": {"provider": "casbin"},
+    "users": {"enabled": true}
+  }
+}
+```
+
+**What you get**: Auth setup, user management, session handling
+
+### Level 4: Add AI Services
+
+```json
+{
+  "schema_version": "2.0",
+  "slug": "my_app",
+  "name": "My App",
+  "embedding_config": {"enabled": true},
+  "memory_config": {"enabled": true}
+}
+```
+
+**What you get**: Embedding service, memory service
+
+---
+
+## manifest.json Best Practices
+
+1. **Start Minimal**: Begin with just `slug`, `name`, and `schema_version`
+2. **Version Control**: Keep your manifest.json in git—it's your app's configuration
+3. **Validate Early**: Use `ManifestValidator` to check your manifest before deployment
+4. **Use Examples**: Check `examples/` directory for real-world manifest.json files
+5. **Document Your Choices**: Use `description` field to explain why you configured things a certain way
+
+---
+
+## Validation and Error Handling
+
+Validate your manifest.json before using it:
 
 ```python
-# Shared auth is automatic - just read from request.state
-@app.get("/protected")
-async def protected(request: Request):
-    user = request.state.user  # Populated by middleware
-    roles = request.state.user_roles
-    return {"email": user["email"], "roles": roles}
+from mdb_engine.core import ManifestValidator
+
+validator = ManifestValidator()
+is_valid, error, paths = validator.validate(manifest_dict)
+
+if not is_valid:
+    print(f"Validation error: {error}")
+    print(f"Paths: {paths}")
 ```
 
-For a complete example, see `examples/multi_app_shared/`.
-
-## Observability
-
-```python
-# Health checks
-health = await engine.get_health_status()
-print(health["status"])  # "healthy", "degraded", "unhealthy"
-
-# Metrics
-metrics = engine.get_metrics()
-print(metrics["summary"])
-
-# Structured logging with correlation IDs
-from mdb_engine.observability import get_logger, set_correlation_id
-
-correlation_id = set_correlation_id()
-logger = get_logger(__name__)
-logger.info("Operation completed")  # Includes correlation_id automatically
-```
-
-## Testing
-
-Run the test suite using the Makefile (recommended):
-
-```bash
-# Install test dependencies
-make install-dev
-
-# Run all tests
-make test
-
-# Run unit tests only (fast, no MongoDB required)
-make test-unit
-
-# Run with coverage report
-make test-coverage-html
-# Then open htmlcov/index.html in your browser
-```
-
-For more detailed testing information, see:
-- [Testing Guide](guides/testing.md) - Comprehensive testing documentation
-- [tests/README.md](../tests/README.md) - Test structure and examples
-- [CONTRIBUTING.md](../CONTRIBUTING.md#testing) - Testing guidelines for contributors
-
-## Package Structure
-
-```
-mdb_engine/
-├── core/              # MongoDBEngine, Manifest validation
-├── database/          # Scoped wrappers, AppDB, connection pooling
-├── auth/              # Authentication, authorization
-├── indexes/           # Index management
-├── observability/     # Metrics, logging, health checks
-├── utils/             # Utility functions
-└── constants.py       # Shared constants
-```
-
-## Features
-
-- ✅ **Automatic App Isolation** - All queries automatically scoped
-- ✅ **Manifest Validation** - JSON schema validation with versioning
-- ✅ **Index Management** - Automatic index creation and management
-- ✅ **Observability** - Built-in metrics, logging, and health checks
-- ✅ **Type Safety** - Comprehensive type hints
-- ✅ **Test Infrastructure** - Full test suite
+---
 
 ## Next Steps
 
-- See main [README.md](../README.md) for detailed documentation
-- Deep dive into [manifest.json nuances and incremental adoption](MANIFEST_DEEP_DIVE.md) - Learn how mdb-engine works "with you" rather than requiring everything
-- Check [tests/README.md](../tests/README.md) for testing information
+- **Reference Guide**: Check [MANIFEST_REFERENCE.md](MANIFEST_REFERENCE.md) for complete field documentation
+- **Deep Dive**: Read [MANIFEST_DEEP_DIVE.md](MANIFEST_DEEP_DIVE.md) for comprehensive manifest.json analysis
+- **Examples**: Explore `examples/` directory for complete manifest.json files
+- **Architecture**: Understand how it all works in [ARCHITECTURE.md](ARCHITECTURE.md)
+- **Best Practices**: Learn patterns in [BEST_PRACTICES.md](BEST_PRACTICES.md)
+
+---
+
+## Key Takeaways
+
+1. **manifest.json is the foundation** - Everything starts here
+2. **Start minimal** - Add features as you need them
+3. **Automatic setup** - Indexes, auth, services configured from manifest
+4. **Zero boilerplate** - No scattered setup code
+5. **Version controlled** - Your entire app config in one file
+
+**Remember**: Your `manifest.json` defines your app. The engine reads it and sets everything up automatically. Start simple, grow as needed!

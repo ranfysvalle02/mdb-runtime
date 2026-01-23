@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ app_name }}</title>
+    <style>
+        :root {
+            --bg: #0f0f12;
+            --card: #1a1a1f;
+            --accent: #06b6d4;
+            --text: #f4f4f5;
+            --muted: #71717a;
+            --success: #22c55e;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: system-ui, sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; padding: 2rem; }
+        .container { max-width: 1200px; margin: 0 auto; }
+        
+        .header { background: var(--card); border-radius: 12px; padding: 1.5rem; margin-bottom: 2rem; border: 2px solid var(--accent); }
+        .header h1 { font-size: 1.5rem; display: flex; align-items: center; gap: 0.5rem; }
+        .header h1 i { color: var(--accent); }
+        
+        .card { background: var(--card); border-radius: 12px; padding: 1.5rem; margin-bottom: 1rem; }
+        
+        .badge { display: inline-block; padding: 0.25rem 0.75rem; border-radius: 999px; font-size: 0.75rem; font-weight: 600; text-transform: uppercase; }
+        .badge.viewer { background: rgba(6, 182, 212, 0.2); color: var(--accent); }
+        .badge.editor { background: rgba(139, 92, 246, 0.2); color: #8b5cf6; }
+        .badge.admin { background: rgba(245, 158, 11, 0.2); color: #f59e0b; }
+        
+        .sso-banner { background: rgba(16, 185, 129, 0.1); border: 1px solid var(--success); border-radius: 8px; padding: 1rem; margin-bottom: 1rem; }
+        .sso-banner i { color: var(--success); }
+        
+        table { width: 100%; border-collapse: collapse; }
+        th, td { padding: 0.75rem; text-align: left; border-bottom: 1px solid var(--bg); }
+        th { color: var(--muted); font-size: 0.75rem; text-transform: uppercase; }
+        
+        .btn { padding: 0.5rem 1rem; border-radius: 6px; border: none; background: var(--accent); color: #000; cursor: pointer; font-weight: 600; }
+        .btn:hover { filter: brightness(1.1); }
+    </style>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1><i class="fas fa-eye"></i> {{ app_name }}</h1>
+            <p style="color: var(--muted); margin-top: 0.5rem;">{{ app_description }}</p>
+        </div>
+
+        <div class="sso-banner">
+            <i class="fas fa-link"></i> <strong>SSO Active</strong> - Authenticated via auth hub
+        </div>
+
+        <div class="card">
+            <h3>User Info</h3>
+            <p><strong>Email:</strong> {{ user.email }}</p>
+            <p><strong>Roles:</strong> 
+                {% for role in roles %}
+                <span class="badge {{ role }}">{{ role }}</span>
+                {% endfor %}
+            </p>
+        </div>
+
+        <div class="card">
+            <h3>Data (View Only)</h3>
+            <button class="btn" onclick="loadData()"><i class="fas fa-sync"></i> Refresh Data</button>
+            <div id="data" style="margin-top: 1rem;">
+                <p style="color: var(--muted);">Click refresh to load data...</p>
+            </div>
+        </div>
+
+        <div class="card">
+            <h3>Navigation</h3>
+            <p>
+                <a href="http://localhost:8000" style="color: var(--accent);">Auth Hub</a> |
+                <a href="http://localhost:8002" style="color: var(--accent);">SSO App 2</a> |
+                <a href="http://localhost:8003" style="color: var(--accent);">SSO App 3</a>
+            </p>
+        </div>
+    </div>
+
+    <script>
+    async function loadData() {
+        const res = await fetch('/api/data');
+        const result = await res.json();
+        
+        if (result.success) {
+            const dataDiv = document.getElementById('data');
+            if (result.data.length === 0) {
+                dataDiv.innerHTML = '<p style="color: var(--muted);">No data available</p>';
+            } else {
+                let html = '<table><tr><th>ID</th><th>Name</th><th>Created</th></tr>';
+                for (const item of result.data) {
+                    html += `<tr><td>${item.id.substring(0, 8)}...</td><td>${item.name}</td><td>${new Date(item.created_at).toLocaleString()}</td></tr>`;
+                }
+                html += '</table>';
+                html += `<p style="color: var(--muted); margin-top: 1rem;">Total: ${result.count} items</p>`;
+                dataDiv.innerHTML = html;
+            }
+        }
+    }
+    
+    // Load data on page load
+    loadData();
+    </script>
+</body>
+</html>

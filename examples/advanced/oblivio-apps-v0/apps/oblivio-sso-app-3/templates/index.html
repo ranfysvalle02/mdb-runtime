@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ app_name }}</title>
+    <style>
+        :root {
+            --bg: #0f0f12;
+            --card: #1a1a1f;
+            --accent: #f59e0b;
+            --text: #f4f4f5;
+            --muted: #71717a;
+            --success: #22c55e;
+            --error: #ef4444;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: system-ui, sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; padding: 2rem; }
+        .container { max-width: 1200px; margin: 0 auto; }
+        
+        .header { background: var(--card); border-radius: 12px; padding: 1.5rem; margin-bottom: 2rem; border: 2px solid var(--accent); }
+        .header h1 { font-size: 1.5rem; display: flex; align-items: center; gap: 0.5rem; }
+        .header h1 i { color: var(--accent); }
+        
+        .card { background: var(--card); border-radius: 12px; padding: 1.5rem; margin-bottom: 1rem; }
+        
+        .badge { display: inline-block; padding: 0.25rem 0.75rem; border-radius: 999px; font-size: 0.75rem; font-weight: 600; text-transform: uppercase; }
+        .badge.admin { background: rgba(245, 158, 11, 0.2); color: var(--accent); }
+        
+        .sso-banner { background: rgba(16, 185, 129, 0.1); border: 1px solid var(--success); border-radius: 8px; padding: 1rem; margin-bottom: 1rem; }
+        .sso-banner i { color: var(--success); }
+        
+        .admin-banner { background: rgba(245, 158, 11, 0.1); border: 1px solid var(--accent); border-radius: 8px; padding: 1rem; margin-bottom: 1rem; }
+        .admin-banner i { color: var(--accent); }
+        
+        .btn { padding: 0.5rem 1rem; border-radius: 6px; border: none; cursor: pointer; font-weight: 600; }
+        .btn-primary { background: var(--accent); color: #000; }
+        .btn-primary:hover { filter: brightness(1.1); }
+        .btn-danger { background: var(--error); color: #fff; }
+        .btn-danger:hover { filter: brightness(1.1); }
+        
+        .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-top: 1rem; }
+        .stat-card { background: var(--bg); padding: 1rem; border-radius: 8px; text-align: center; }
+        .stat-card .num { font-size: 2rem; font-weight: 800; color: var(--accent); }
+        .stat-card .label { color: var(--muted); font-size: 0.875rem; }
+    </style>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1><i class="fas fa-crown"></i> {{ app_name }}</h1>
+            <p style="color: var(--muted); margin-top: 0.5rem;">{{ app_description }}</p>
+        </div>
+
+        <div class="sso-banner">
+            <i class="fas fa-link"></i> <strong>SSO Active</strong> - Authenticated via auth hub
+        </div>
+
+        <div class="admin-banner">
+            <i class="fas fa-shield-alt"></i> <strong>Admin Access</strong> - This app requires admin role
+        </div>
+
+        <div class="card">
+            <h3>Admin User Info</h3>
+            <p><strong>Email:</strong> {{ user.email }}</p>
+            <p><strong>Roles:</strong> 
+                {% for role in roles %}
+                <span class="badge {{ role }}">{{ role }}</span>
+                {% endfor %}
+            </p>
+        </div>
+
+        <div class="card">
+            <h3>Admin Statistics</h3>
+            <button class="btn btn-primary" onclick="loadStats()"><i class="fas fa-chart-bar"></i> Refresh Stats</button>
+            <div id="stats" class="stats-grid" style="margin-top: 1rem;">
+                <div class="stat-card">
+                    <div class="num">-</div>
+                    <div class="label">Items</div>
+                </div>
+                <div class="stat-card">
+                    <div class="num">-</div>
+                    <div class="label">Users</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card">
+            <h3>Admin Operations</h3>
+            <p style="color: var(--muted); margin-bottom: 1rem;">Admin-only operations available here</p>
+            <p style="color: var(--muted); font-size: 0.875rem;">
+                <i class="fas fa-info-circle"></i> This app demonstrates admin-only access. 
+                Only users with admin role can access this app.
+            </p>
+        </div>
+
+        <div class="card">
+            <h3>Navigation</h3>
+            <p>
+                <a href="http://localhost:8000" style="color: var(--accent);">Auth Hub</a> |
+                <a href="http://localhost:8001" style="color: var(--accent);">SSO App 1</a> |
+                <a href="http://localhost:8002" style="color: var(--accent);">SSO App 2</a>
+            </p>
+        </div>
+    </div>
+
+    <script>
+    function getCookie(name) {
+        const value = `; ${document.cookie}`;
+        const parts = value.split(`; ${name}=`);
+        if (parts.length === 2) return parts.pop().split(';').shift();
+        return '';
+    }
+
+    async function loadStats() {
+        const res = await fetch('/api/admin/stats');
+        const result = await res.json();
+        
+        if (result.success) {
+            const statsDiv = document.getElementById('stats');
+            statsDiv.innerHTML = `
+                <div class="stat-card">
+                    <div class="num">${result.stats.items_count}</div>
+                    <div class="label">Items</div>
+                </div>
+                <div class="stat-card">
+                    <div class="num">${result.stats.users_count}</div>
+                    <div class="label">Users</div>
+                </div>
+            `;
+        }
+    }
+    
+    loadStats();
+    </script>
+</body>
+</html>

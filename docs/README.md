@@ -2,10 +2,28 @@
 
 Welcome to the MDB Engine documentation. This directory contains comprehensive documentation for developers, contributors, and users.
 
+## 🎯 Start Here: manifest.json
+
+**`manifest.json` is the key to everything.** It's a single configuration file that defines your app's identity, data structure, authentication, indexes, and services. Everything in mdb-engine flows from your manifest.json.
+
+### Essential Reading
+
+1. **[Quick Start Guide](QUICK_START.md)** ⭐ **START HERE** - Learn how manifest.json works and get your first app running
+2. **[Manifest Reference](MANIFEST_REFERENCE.md)** 📖 - Complete reference for all manifest.json fields and configurations
+3. **[Manifest Deep Dive](MANIFEST_DEEP_DIVE.md)** - Comprehensive analysis of manifest.json, its convenience, and incremental adoption
+
+### Understanding manifest.json
+
+- **Minimal**: Start with just `slug`, `name`, and `schema_version`
+- **Powerful**: Add indexes, auth, AI services, WebSockets as needed
+- **Automatic**: Everything configured from your manifest.json automatically
+- **Version Controlled**: Your entire app config in one file
+
 ## Documentation Structure
 
 ### Getting Started
-- **[Quick Start Guide](QUICK_START.md)** - Get up and running quickly
+- **[Quick Start Guide](QUICK_START.md)** ⭐ - Get up and running with manifest.json
+- **[Manifest Reference](MANIFEST_REFERENCE.md)** 📖 - Complete reference for all manifest.json fields
 - **[Manifest Deep Dive](MANIFEST_DEEP_DIVE.md)** - Deep analysis of manifest.json, its convenience, and incremental adoption
 - **[Best Practices](BEST_PRACTICES.md)** - Dependency injection, patterns, and clean code
 - **[Setup Guide](../SETUP.md)** - Development environment setup
