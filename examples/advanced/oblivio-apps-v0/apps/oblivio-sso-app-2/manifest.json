@@ -6,6 +6,7 @@
   "status": "active",
   "auth": {
     "mode": "shared",
+    "auth_hub_url": "http://localhost:8000",
     "roles": ["viewer", "editor", "admin"],
     "require_role": "viewer",
     "public_routes": ["/health", "/auth/callback"]

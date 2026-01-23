@@ -42,6 +42,10 @@ All apps share a central user pool. Users authenticate once and can access any a
 {
   "auth": {
     "mode": "shared",
+    "auth_hub_url": "http://localhost:8000",
+    "related_apps": {
+      "dashboard": "http://localhost:8001"
+    },
     "roles": ["viewer", "editor", "admin"],
     "default_role": "viewer",
     "require_role": "viewer",
@@ -60,6 +64,8 @@ All apps share a central user pool. Users authenticate once and can access any a
 | Field | Description |
 |-------|-------------|
 | `roles` | Available roles for this app |
+| `auth_hub_url` | URL of the authentication hub for SSO apps. Used for redirecting unauthenticated users to login. Can be overridden via `AUTH_HUB_URL` environment variable |
+| `related_apps` | Map of related app slugs to their URLs for cross-app navigation. Keys are app slugs, values are URLs. Can be overridden via `{APP_SLUG_UPPER}_URL` environment variables |
 | `default_role` | Role assigned to new users |
 | `require_role` | Minimum role required to access app |
 | `public_routes` | Routes that don't require authentication |

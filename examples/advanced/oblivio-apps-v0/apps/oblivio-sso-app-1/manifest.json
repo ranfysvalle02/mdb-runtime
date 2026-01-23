@@ -1,11 +1,12 @@
 {
   "schema_version": "2.0",
   "slug": "oblivio-sso-app-1",
-  "name": "Oblivio SSO App 1",
-  "description": "SSO app 1 - Data viewing/listing",
+  "name": "Password Generator",
+  "description": "Secure password generator and manager with SSO authentication",
   "status": "active",
   "auth": {
     "mode": "shared",
+    "auth_hub_url": "http://localhost:8000",
     "roles": ["viewer", "editor", "admin"],
     "require_role": "viewer",
     "public_routes": ["/health", "/auth/callback"]

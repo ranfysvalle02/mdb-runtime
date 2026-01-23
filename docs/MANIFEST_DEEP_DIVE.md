@@ -63,6 +63,8 @@ The engine automatically:
 - `auth.policy`: Authorization provider (Casbin/OSO) - completely optional
 - `auth.users`: User management strategy - optional
 - `auth.mode`: Per-app vs shared auth - defaults to "app"
+- `auth.auth_hub_url`: URL of authentication hub for SSO apps (shared mode only) - optional
+- `auth.related_apps`: Map of related app slugs to URLs for cross-app navigation (shared mode) - optional
 
 **Index Management:**
 

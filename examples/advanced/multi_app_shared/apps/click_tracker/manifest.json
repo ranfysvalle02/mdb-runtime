@@ -6,6 +6,9 @@
   "status": "active",
   "auth": {
     "mode": "shared",
+    "related_apps": {
+      "dashboard": "http://localhost:8001"
+    },
     "roles": ["clicker", "tracker", "admin"],
     "public_routes": ["/", "/health", "/api", "/login", "/logout"],
     "users": {

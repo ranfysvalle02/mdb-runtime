@@ -759,6 +759,33 @@ async def get_items(db=Depends(get_scoped_db)):  # Auto-resolved
     return await db.items.find({}).to_list(100)
 ```
 
+### ❌ Don't Hardcode URLs in SSO/Multi-App Configurations
+
+```python
+# ❌ BAD: Hardcoded auth hub URL
+@app.get("/login")
+async def login_redirect():
+    return RedirectResponse(url="http://localhost:8000/login")  # Hardcoded
+
+# ✅ GOOD: Use manifest-based configuration with fallback
+def get_auth_hub_url() -> str:
+    """Get auth hub URL from manifest, environment variable, or default."""
+    manifest = getattr(app.state, "manifest", None)
+    if manifest:
+        auth_config = manifest.get("auth", {})
+        if auth_config.get("mode") == "shared":
+            auth_hub_url = auth_config.get("auth_hub_url")
+            if auth_hub_url:
+                return auth_hub_url
+    return os.getenv("AUTH_HUB_URL", "http://localhost:8000")
+
+@app.get("/login")
+async def login_redirect():
+    return RedirectResponse(url=f"{get_auth_hub_url()}/login")  # Configurable
+```
+
+**Best Practice**: Configure URLs in `manifest.json` using `auth_hub_url` (for SSO apps) or `related_apps` (for cross-app navigation). This makes your app environment-agnostic and easier to deploy across dev/staging/production.
+
 ### ❌ Don't Manually Initialize Services in Routes
 
 ```python

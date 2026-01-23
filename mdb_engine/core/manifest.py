@@ -184,6 +184,27 @@ MANIFEST_SCHEMA_V2 = {
                         "Works in both auth modes."
                     ),
                 },
+                "auth_hub_url": {
+                    "type": "string",
+                    "format": "uri",
+                    "description": (
+                        "URL of the authentication hub for SSO apps (shared mode only). "
+                        "Used for redirecting unauthenticated users to login. "
+                        "Example: 'http://localhost:8000' or 'https://auth.example.com'. "
+                        "Can be overridden via AUTH_HUB_URL environment variable."
+                    ),
+                },
+                "related_apps": {
+                    "type": "object",
+                    "additionalProperties": {"type": "string", "format": "uri"},
+                    "description": (
+                        "Map of related app slugs to their URLs for cross-app navigation "
+                        "(useful in shared auth mode). Keys are app slugs, values are URLs. "
+                        "Example: {'dashboard': 'http://localhost:8001', "
+                        "'click_tracker': 'http://localhost:8000'}. "
+                        "Can be overridden via {APP_SLUG_UPPER}_URL environment variables."
+                    ),
+                },
                 "policy": {
                     "type": "object",
                     "properties": {

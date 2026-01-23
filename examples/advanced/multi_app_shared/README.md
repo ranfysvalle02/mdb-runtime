@@ -48,6 +48,9 @@ and can access multiple apps (Single Sign-On).
 {
   "auth": {
     "mode": "shared",
+    "related_apps": {
+      "dashboard": "http://localhost:8001"
+    },
     "roles": ["viewer", "editor", "admin"],
     "default_role": "viewer",
     "require_role": "viewer",
@@ -61,12 +64,17 @@ and can access multiple apps (Single Sign-On).
 {
   "auth": {
     "mode": "shared",
+    "related_apps": {
+      "click_tracker": "http://localhost:8000"
+    },
     "roles": ["viewer", "editor", "admin"],
     "require_role": "editor",
     "public_routes": ["/health", "/api", "/login"]
   }
 }
 ```
+
+**Note**: The `related_apps` field maps app slugs to their URLs for cross-app navigation. This enables configurable navigation links between apps. Can be overridden via `{APP_SLUG_UPPER}_URL` environment variables (e.g., `DASHBOARD_URL`, `CLICK_TRACKER_URL`).
 
 ## Running the Example
 

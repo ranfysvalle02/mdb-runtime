@@ -180,6 +180,11 @@ Define indexes declaratively—they're created automatically on app registration
 {
   "auth": {
     "mode": "shared",
+    "auth_hub_url": "http://localhost:8000",
+    "related_apps": {
+      "dashboard": "http://localhost:8001",
+      "click_tracker": "http://localhost:8000"
+    },
     "roles": ["viewer", "editor", "admin"],
     "default_role": "viewer",
     "require_role": "viewer",
@@ -187,6 +192,23 @@ Define indexes declaratively—they're created automatically on app registration
   }
 }
 ```
+
+**Shared Auth Fields**:
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `mode` | `string` | Set to `"shared"` to enable SSO across apps |
+| `auth_hub_url` | `string` (URI) | URL of the authentication hub for SSO apps. Used for redirecting unauthenticated users to login. Can be overridden via `AUTH_HUB_URL` environment variable. Example: `"http://localhost:8000"` or `"https://auth.example.com"` |
+| `related_apps` | `object` | Map of related app slugs to their URLs for cross-app navigation. Keys are app slugs, values are URLs. Can be overridden via `{APP_SLUG_UPPER}_URL` environment variables. Example: `{"dashboard": "http://localhost:8001"}` |
+| `roles` | `array<string>` | Available roles for this app (e.g., `["viewer", "editor", "admin"]`) |
+| `default_role` | `string` | Role assigned to new users for this app (must be one of the defined roles) |
+| `require_role` | `string` | Minimum role required to access app (users without this role are denied) |
+| `public_routes` | `array<string>` | Routes that don't require authentication (supports wildcards, e.g., `["/health", "/api/public/*"]`) |
+
+**Configuration Priority** (for `auth_hub_url` and `related_apps`):
+1. `manifest.auth.auth_hub_url` or `manifest.auth.related_apps[app_slug]` (declarative, versioned)
+2. Environment variables (`AUTH_HUB_URL`, `{APP_SLUG}_URL`) (runtime override)
+3. Defaults (`http://localhost:8000` or app-specific defaults) (fallback)
 
 ### Authorization Policy
 

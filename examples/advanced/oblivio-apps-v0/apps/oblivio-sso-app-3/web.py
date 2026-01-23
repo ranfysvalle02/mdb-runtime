@@ -78,6 +78,31 @@ templates = Jinja2Templates(directory=str(Path(__file__).parent / "templates"))
 # ============================================================================
 
 
+def get_auth_hub_url() -> str:
+    """
+    Get auth hub URL from manifest, environment variable, or default.
+
+    Priority:
+    1. manifest.auth.auth_hub_url (if mode is "shared")
+    2. AUTH_HUB_URL environment variable
+    3. Default: http://localhost:8000
+
+    Returns:
+        Auth hub URL string
+    """
+    # Try manifest first
+    manifest = getattr(app.state, "manifest", None)
+    if manifest:
+        auth_config = manifest.get("auth", {})
+        if auth_config.get("mode") == "shared":
+            auth_hub_url = auth_config.get("auth_hub_url")
+            if auth_hub_url:
+                return auth_hub_url
+
+    # Fallback to environment variable
+    return os.getenv("AUTH_HUB_URL", "http://localhost:8000")
+
+
 def get_current_user(request: Request) -> dict | None:
     """Get user from request.state (populated by SharedAuthMiddleware)."""
     return getattr(request.state, "user", None)
@@ -108,7 +133,7 @@ async def login_redirect(request: Request):
     current_url = str(request.url)
     callback_url = f"{current_url.split('/login')[0]}/auth/callback"
     return RedirectResponse(
-        url=f"http://localhost:8000/login?redirect_to={callback_url}", status_code=302
+        url=f"{get_auth_hub_url()}/login?redirect_to={callback_url}", status_code=302
     )
 
 
@@ -129,7 +154,7 @@ async def auth_callback(request: Request, token: str = None):
         token = unquote_plus(token)
 
     if not token:
-        return RedirectResponse(url="http://localhost:8000/login", status_code=302)
+        return RedirectResponse(url=f"{get_auth_hub_url()}/login", status_code=302)
 
     # Validate token by getting user pool
     from mdb_engine.auth.shared_users import SharedUserPool
@@ -138,14 +163,14 @@ async def auth_callback(request: Request, token: str = None):
 
     if not pool:
         return RedirectResponse(
-            url="http://localhost:8000/login?error=pool_not_initialized", status_code=302
+            url=f"{get_auth_hub_url()}/login?error=pool_not_initialized", status_code=302
         )
 
     # Validate token
     user = await pool.validate_token(token)
     if not user:
         return RedirectResponse(
-            url="http://localhost:8000/login?error=invalid_token", status_code=302
+            url=f"{get_auth_hub_url()}/login?error=invalid_token", status_code=302
         )
 
     # Set cookie for this app
@@ -170,7 +195,7 @@ async def index(request: Request):
     user = get_current_user(request)
     if not user:
         # Redirect to auth hub if not authenticated
-        return RedirectResponse(url="http://localhost:8000/login", status_code=302)
+        return RedirectResponse(url=f"{get_auth_hub_url()}/login", status_code=302)
 
     if not is_admin(user):
         raise HTTPException(403, "Admin role required")
@@ -186,6 +211,7 @@ async def index(request: Request):
             "is_admin": True,
             "app_name": "Oblivio SSO App 3",
             "app_description": "Admin Operations",
+            "auth_hub_url": get_auth_hub_url(),
         },
     )
 

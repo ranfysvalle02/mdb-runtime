@@ -1,18 +1,24 @@
 #!/usr/bin/env python3
 """
-Oblivio SSO App 1 - Data Viewing/Listing
-=========================================
+Password Generator App - SSO Enabled
+====================================
 
-SSO-enabled app that demonstrates data viewing functionality.
-Validates tokens from auth hub via SSO.
+Secure password generator and manager with SSO authentication.
+Generates strong passwords and stores them encrypted per user.
 """
 
+import base64
 import logging
 import os
+import secrets
+import string
 import sys
 from datetime import datetime
 from pathlib import Path
 
+from cryptography.fernet import Fernet
+from cryptography.hazmat.primitives import hashes
+from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
 from fastapi import Depends, HTTPException, Request
 from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
@@ -38,6 +44,7 @@ except ImportError as e:
 # ============================================================================
 
 APP_SLUG = "oblivio-sso-app-1"
+APP_SECRET = os.getenv("APP_ENCRYPTION_SECRET", "default-secret-change-in-production")
 
 # Initialize MongoDB Engine
 try:
@@ -62,8 +69,8 @@ try:
     app = engine.create_app(
         slug=APP_SLUG,
         manifest=manifest_path,
-        title="Oblivio SSO App 1",
-        description="Data viewing/listing SSO app",
+        title="Password Generator",
+        description="Secure password generator and manager",
         version="1.0.0",
     )
     logger.info("FastAPI app created successfully")
@@ -73,6 +80,69 @@ except Exception as e:
 
 # Template engine
 templates = Jinja2Templates(directory=str(Path(__file__).parent / "templates"))
+
+# ============================================================================
+# HELPER FUNCTIONS - AUTH HUB URL
+# ============================================================================
+
+
+def get_auth_hub_url() -> str:
+    """
+    Get auth hub URL from manifest, environment variable, or default.
+
+    Priority:
+    1. manifest.auth.auth_hub_url (if mode is "shared")
+    2. AUTH_HUB_URL environment variable
+    3. Default: http://localhost:8000
+
+    Returns:
+        Auth hub URL string
+    """
+    # Try manifest first
+    manifest = getattr(app.state, "manifest", None)
+    if manifest:
+        auth_config = manifest.get("auth", {})
+        if auth_config.get("mode") == "shared":
+            auth_hub_url = auth_config.get("auth_hub_url")
+            if auth_hub_url:
+                return auth_hub_url
+
+    # Fallback to environment variable
+    return os.getenv("AUTH_HUB_URL", "http://localhost:8000")
+
+
+# ============================================================================
+# ENCRYPTION HELPERS
+# ============================================================================
+
+
+def get_user_encryption_key(user_email: str) -> bytes:
+    """Derive a Fernet encryption key for a specific user."""
+    # Use PBKDF2 to derive a key from user email + app secret
+    kdf = PBKDF2HMAC(
+        algorithm=hashes.SHA256(),
+        length=32,
+        salt=b"password_manager_salt",  # In production, use per-user salt
+        iterations=480000,
+    )
+    key_material = f"{user_email}:{APP_SECRET}".encode()
+    key = base64.urlsafe_b64encode(kdf.derive(key_material))
+    return key
+
+
+def encrypt_password(password: str, user_email: str) -> str:
+    """Encrypt a password using user-specific key."""
+    key = get_user_encryption_key(user_email)
+    f = Fernet(key)
+    return f.encrypt(password.encode()).decode()
+
+
+def decrypt_password(encrypted_password: str, user_email: str) -> str:
+    """Decrypt a password using user-specific key."""
+    key = get_user_encryption_key(user_email)
+    f = Fernet(key)
+    return f.decrypt(encrypted_password.encode()).decode()
+
 
 # ============================================================================
 # HELPER FUNCTIONS
@@ -102,55 +172,41 @@ async def login_redirect(request: Request):
     """Redirect to auth hub login with redirect back to this app."""
     from urllib.parse import quote_plus
 
-    # Get the base URL (scheme + host + port)
     base_url = f"{request.url.scheme}://{request.url.hostname}:{request.url.port}"
     callback_url = f"{base_url}/auth/callback"
-
-    # Properly URL-encode the callback URL
     encoded_callback = quote_plus(callback_url)
 
     return RedirectResponse(
-        url=f"http://localhost:8000/login?redirect_to={encoded_callback}", status_code=302
+        url=f"{get_auth_hub_url()}/login?redirect_to={encoded_callback}", status_code=302
     )
 
 
 @app.get("/auth/callback")
 async def auth_callback(request: Request, token: str = None):
-    """
-    Token exchange endpoint - sets cookie for this app after auth hub login.
-    Called with ?token=... after successful login at auth hub.
-    """
+    """Token exchange endpoint - sets cookie for this app after auth hub login."""
     from urllib.parse import unquote_plus
 
-    # Get token from query parameter (FastAPI auto-decodes, but handle URL-encoded tokens)
     if not token:
         token = request.query_params.get("token")
-
     if token:
-        # URL-decode token in case it was encoded
         token = unquote_plus(token)
-
     if not token:
-        return RedirectResponse(url="http://localhost:8000/login", status_code=302)
+        return RedirectResponse(url=f"{get_auth_hub_url()}/login", status_code=302)
 
-    # Validate token by getting user pool
     from mdb_engine.auth.shared_users import SharedUserPool
 
     pool: SharedUserPool = getattr(app.state, "user_pool", None)
-
     if not pool:
         return RedirectResponse(
-            url="http://localhost:8000/login?error=pool_not_initialized", status_code=302
+            url=f"{get_auth_hub_url()}/login?error=pool_not_initialized", status_code=302
         )
 
-    # Validate token
     user = await pool.validate_token(token)
     if not user:
         return RedirectResponse(
-            url="http://localhost:8000/login?error=invalid_token", status_code=302
+            url=f"{get_auth_hub_url()}/login?error=invalid_token", status_code=302
         )
 
-    # Set cookie for this app
     response = RedirectResponse(url="/", status_code=302)
     response.set_cookie(
         key="mdb_auth_token",
@@ -161,18 +217,23 @@ async def auth_callback(request: Request, token: str = None):
         max_age=86400,  # 24 hours
         path="/",
     )
-
     return response
 
 
 @app.get("/", response_class=HTMLResponse)
 async def index(request: Request):
     """Main page - requires authentication."""
-    # For shared auth, middleware sets request.state.user - check it directly
     user = get_current_user(request)
     if not user:
-        # Redirect to auth hub if not authenticated
-        return RedirectResponse(url="http://localhost:8000/login", status_code=302)
+        # Redirect to auth hub login with callback URL to return here after login
+        from urllib.parse import quote_plus
+
+        base_url = f"{request.url.scheme}://{request.url.hostname}:{request.url.port}"
+        callback_url = f"{base_url}/auth/callback"
+        encoded_callback = quote_plus(callback_url)
+        return RedirectResponse(
+            url=f"{get_auth_hub_url()}/login?redirect_to={encoded_callback}", status_code=302
+        )
 
     roles = get_roles(user)
 
@@ -182,53 +243,281 @@ async def index(request: Request):
             "request": request,
             "user": user,
             "roles": roles,
-            "app_name": "Oblivio SSO App 1",
-            "app_description": "Data Viewing/Listing",
+            "app_name": "Password Generator",
+            "app_description": "Generate and manage secure passwords",
+            "auth_hub_url": get_auth_hub_url(),
         },
     )
 
 
-@app.get("/api/data")
-async def get_data(request: Request, db=Depends(get_scoped_db)):
-    """Get data - requires authentication."""
-    # For shared auth, middleware sets request.state.user - check it directly
+@app.get("/api/passwords")
+async def get_passwords(request: Request, db=Depends(get_scoped_db)):
+    """Get all passwords for the current user."""
     user = get_current_user(request)
     if not user:
-        raise HTTPException(401, "Not authenticated")
+        # For API routes, return 401 with redirect info for frontend to handle
+        raise HTTPException(
+            status_code=401,
+            detail=f"Not authenticated. Please log in at {get_auth_hub_url()}/login",
+        )
 
-    # Query app-specific data
-    data = await db.items.find({"user_id": user.get("email")}).to_list(length=100)
+    user_email = user.get("email")
+    if not user_email:
+        raise HTTPException(400, "User email not found")
 
-    # Serialize data
-    serialized = []
-    for item in data:
-        serialized.append(
+    try:
+        # Find passwords for this user
+        passwords_cursor = db.passwords.find({"user_email": user_email})
+        passwords = await passwords_cursor.to_list(length=1000)
+
+        # Decrypt passwords
+        decrypted_passwords = []
+        for pwd in passwords:
+            try:
+                decrypted_passwords.append(
+                    {
+                        "id": str(pwd["_id"]),
+                        "website": pwd.get("website", ""),
+                        "username": pwd.get("username", ""),
+                        "password": decrypt_password(pwd["encrypted_password"], user_email),
+                        "created_at": pwd.get("created_at", datetime.utcnow()).isoformat()
+                        if isinstance(pwd.get("created_at"), datetime)
+                        else str(pwd.get("created_at", "")),
+                    }
+                )
+            except (ValueError, TypeError, AttributeError) as e:
+                logger.warning(f"Failed to decrypt password {pwd.get('_id')}: {e}")
+                continue
+
+        return JSONResponse(
             {
-                "id": str(item.get("_id", "")),
-                "name": item.get("name", "Unnamed"),
-                "created_at": item.get("created_at", datetime.utcnow()).isoformat()
-                if isinstance(item.get("created_at"), datetime)
-                else str(item.get("created_at", "")),
+                "success": True,
+                "data": decrypted_passwords,
+                "count": len(decrypted_passwords),
+            }
+        )
+    except Exception as e:
+        logger.error(f"Error fetching passwords: {e}", exc_info=True)
+        raise HTTPException(500, f"Error fetching passwords: {str(e)}") from e
+
+
+@app.post("/api/passwords")
+async def add_password(request: Request, db=Depends(get_scoped_db)):
+    """Add a new password entry."""
+    user = get_current_user(request)
+    if not user:
+        raise HTTPException(
+            status_code=401,
+            detail=f"Not authenticated. Please log in at {get_auth_hub_url()}/login",
+        )
+
+    user_email = user.get("email")
+    if not user_email:
+        raise HTTPException(400, "User email not found")
+
+    try:
+        data = await request.json()
+        website = data.get("website", "").strip()
+        username = data.get("username", "").strip()
+        password = data.get("password", "").strip()
+
+        if not all([website, username, password]):
+            raise HTTPException(400, "Website, username, and password are required")
+
+        # Encrypt password
+        encrypted_password = encrypt_password(password, user_email)
+
+        # Store in database
+        result = await db.passwords.insert_one(
+            {
+                "user_email": user_email,
+                "website": website,
+                "username": username,
+                "encrypted_password": encrypted_password,
+                "created_at": datetime.utcnow(),
             }
         )
 
-    return JSONResponse(
-        {
-            "success": True,
-            "data": serialized,
-            "count": len(serialized),
-            "user": user.get("email"),
-        }
-    )
+        return JSONResponse(
+            {
+                "success": True,
+                "id": str(result.inserted_id),
+                "website": website,
+                "username": username,
+                "password": password,  # Return plaintext for immediate UI update
+            },
+            status_code=201,
+        )
+    except Exception as e:
+        logger.error(f"Error adding password: {e}", exc_info=True)
+        raise HTTPException(500, f"Error adding password: {str(e)}") from e
+
+
+@app.put("/api/passwords/{password_id}")
+async def update_password(password_id: str, request: Request, db=Depends(get_scoped_db)):
+    """Update an existing password entry."""
+    user = get_current_user(request)
+    if not user:
+        raise HTTPException(
+            status_code=401,
+            detail=f"Not authenticated. Please log in at {get_auth_hub_url()}/login",
+        )
+
+    user_email = user.get("email")
+    if not user_email:
+        raise HTTPException(400, "User email not found")
+
+    try:
+        data = await request.json()
+        website = data.get("website", "").strip()
+        username = data.get("username", "").strip()
+        password = data.get("password", "").strip()
+
+        if not all([website, username, password]):
+            raise HTTPException(400, "Website, username, and password are required")
+
+        # Encrypt password
+        encrypted_password = encrypt_password(password, user_email)
+
+        # Update in database
+        from bson import ObjectId
+
+        result = await db.passwords.update_one(
+            {"_id": ObjectId(password_id), "user_email": user_email},
+            {
+                "$set": {
+                    "website": website,
+                    "username": username,
+                    "encrypted_password": encrypted_password,
+                    "updated_at": datetime.utcnow(),
+                }
+            },
+        )
+
+        if result.matched_count == 0:
+            raise HTTPException(404, "Password not found or access denied")
+
+        return JSONResponse(
+            {
+                "success": True,
+                "id": password_id,
+                "website": website,
+                "username": username,
+                "password": password,  # Return plaintext for immediate UI update
+            }
+        )
+    except Exception as e:
+        logger.error(f"Error updating password: {e}", exc_info=True)
+        if isinstance(e, HTTPException):
+            raise
+        raise HTTPException(500, f"Error updating password: {str(e)}") from e
+
+
+@app.delete("/api/passwords/{password_id}")
+async def delete_password(password_id: str, request: Request, db=Depends(get_scoped_db)):
+    """Delete a password entry."""
+    user = get_current_user(request)
+    if not user:
+        raise HTTPException(
+            status_code=401,
+            detail=f"Not authenticated. Please log in at {get_auth_hub_url()}/login",
+        )
+
+    user_email = user.get("email")
+    if not user_email:
+        raise HTTPException(400, "User email not found")
+
+    try:
+        from bson import ObjectId
+
+        result = await db.passwords.delete_one(
+            {"_id": ObjectId(password_id), "user_email": user_email}
+        )
+
+        if result.deleted_count == 0:
+            raise HTTPException(404, "Password not found or access denied")
+
+        return JSONResponse({"success": True})
+    except Exception as e:
+        logger.error(f"Error deleting password: {e}", exc_info=True)
+        if isinstance(e, HTTPException):
+            raise
+        raise HTTPException(500, f"Error deleting password: {str(e)}") from e
+
+
+@app.post("/api/generate-password")
+async def generate_password(request: Request):
+    """Generate a secure password based on options."""
+    user = get_current_user(request)
+    if not user:
+        raise HTTPException(
+            status_code=401,
+            detail=f"Not authenticated. Please log in at {get_auth_hub_url()}/login",
+        )
+
+    try:
+        options = await request.json()
+        length = options.get("length", 16)
+        use_upper = options.get("uppercase", True)
+        use_lower = options.get("lowercase", True)
+        use_numbers = options.get("numbers", True)
+        use_symbols = options.get("symbols", True)
+
+        # Validate length
+        try:
+            length = int(length)
+            if not 12 <= length <= 99:
+                raise ValueError()
+        except (ValueError, TypeError) as e:
+            raise HTTPException(400, "Password length must be an integer between 12 and 99") from e
+
+        # Build character set
+        alphabet = ""
+        password_parts = []
+
+        if use_upper:
+            alphabet += string.ascii_uppercase
+            password_parts.append(secrets.choice(string.ascii_uppercase))
+        if use_lower:
+            alphabet += string.ascii_lowercase
+            password_parts.append(secrets.choice(string.ascii_lowercase))
+        if use_numbers:
+            alphabet += string.digits
+            password_parts.append(secrets.choice(string.digits))
+        if use_symbols:
+            safe_symbols = "!@#$%^&*()_+-=[]{}|;:,.<>?"
+            alphabet += safe_symbols
+            password_parts.append(secrets.choice(safe_symbols))
+
+        if not alphabet:
+            raise HTTPException(400, "At least one character type must be selected")
+
+        # Fill the rest
+        remaining_length = length - len(password_parts)
+        for _ in range(remaining_length):
+            password_parts.append(secrets.choice(alphabet))
+
+        # Shuffle
+        secrets.SystemRandom().shuffle(password_parts)
+        password = "".join(password_parts)
+
+        return JSONResponse({"password": password})
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error generating password: {e}", exc_info=True)
+        raise HTTPException(500, f"Error generating password: {str(e)}") from e
 
 
 @app.get("/api/me")
 async def get_me(request: Request):
     """Get current user info."""
-    # For shared auth, middleware sets request.state.user - check it directly
     user = get_current_user(request)
     if not user:
-        raise HTTPException(401, "Not authenticated")
+        raise HTTPException(
+            status_code=401,
+            detail=f"Not authenticated. Please log in at {get_auth_hub_url()}/login",
+        )
 
     return {
         "email": user["email"],
@@ -250,10 +539,10 @@ async def health():
 if __name__ == "__main__":
     import uvicorn
 
-    logger.info("Starting Oblivio SSO App 1 on 0.0.0.0:8000")
+    logger.info("Starting Password Generator App on 0.0.0.0:8001")
     try:
         uvicorn.run(
-            app, host="0.0.0.0", port=8000, log_level=os.getenv("LOG_LEVEL", "info").lower()
+            app, host="0.0.0.0", port=8001, log_level=os.getenv("LOG_LEVEL", "info").lower()
         )
     except Exception as e:
         logger.error(f"Failed to start server: {e}", exc_info=True)

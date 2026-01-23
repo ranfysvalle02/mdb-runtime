@@ -25,17 +25,16 @@ import os
 import sys
 from datetime import datetime, timedelta
 from pathlib import Path
-from typing import Optional
 
-from fastapi import HTTPException, Request, Depends, Form
-from fastapi.responses import JSONResponse, HTMLResponse
+from fastapi import Depends, Form, HTTPException, Request
+from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.templating import Jinja2Templates
 
 # Configure logging early
 logging.basicConfig(
     level=os.getenv("LOG_LEVEL", "INFO"),
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
-    stream=sys.stderr
+    stream=sys.stderr,
 )
 logger = logging.getLogger(__name__)
 
@@ -75,7 +74,7 @@ try:
     mongo_uri = os.getenv("MONGODB_URI", "mongodb://localhost:27017")
     db_name = os.getenv("MONGODB_DB", "mdb_runtime")
     logger.info(f"Initializing MongoDBEngine with URI: {mongo_uri[:50]}... (db: {db_name})")
-    
+
     engine = MongoDBEngine(
         mongo_uri=mongo_uri,
         db_name=db_name,
@@ -103,7 +102,7 @@ except Exception as e:
 try:
     manifest_path = Path(__file__).parent / "manifest.json"
     logger.info(f"Creating FastAPI app with manifest: {manifest_path}")
-    
+
     app = engine.create_app(
         slug=APP_SLUG,
         manifest=manifest_path,
@@ -130,54 +129,84 @@ templates = Jinja2Templates(directory=str(Path(__file__).parent / "templates"))
 # SSO Helper Functions
 # ----------------------------------------------------------------------------
 
+
 def get_user_pool():
     """
     Get the shared user pool from app state.
-    
+
     MDB-Engine specific: SharedUserPool is initialized by engine.create_app()
     when auth.mode="shared" is detected in manifest.json. It's stored in
     app.state.user_pool for access throughout the app.
-    
+
     Reusable: The pattern of accessing shared services from app state is
     standard FastAPI and could work with any shared service.
-    
+
     Returns:
         SharedUserPool instance, or None if not initialized
     """
     return getattr(app.state, "user_pool", None)
 
 
-def get_current_user(request: Request) -> Optional[dict]:
+def get_related_app_url(app_slug: str) -> str:
+    """
+    Get URL for a related app from manifest or environment variable.
+
+    Priority:
+    1. manifest.auth.related_apps[app_slug]
+    2. {APP_SLUG_UPPER}_URL environment variable (e.g., CLICK_TRACKER_URL)
+    3. Default based on app_slug
+
+    Returns:
+        Related app URL string
+    """
+    # Try manifest first
+    manifest = getattr(app.state, "manifest", None)
+    if manifest:
+        auth_config = manifest.get("auth", {})
+        related_apps = auth_config.get("related_apps", {})
+        if app_slug in related_apps:
+            return related_apps[app_slug]
+
+    # Fallback to environment variable
+    env_var = f"{app_slug.upper().replace('-', '_')}_URL"
+    default_urls = {
+        "dashboard": "http://localhost:8001",
+        "click_tracker": "http://localhost:8000",
+    }
+    return os.getenv(env_var, default_urls.get(app_slug, "http://localhost:8000"))
+
+
+def get_current_user(request: Request) -> dict | None:
     """
     Get user from request.state (populated by SharedAuthMiddleware).
-    
+
     MDB-Engine specific: SharedAuthMiddleware (auto-added by create_app())
     validates the SSO JWT token from cookies and populates request.state.user.
     This happens automatically on every request.
-    
+
     Reusable: The pattern of getting user from request.state is standard
     FastAPI middleware pattern and could work with any auth middleware.
-    
+
     Args:
         request: FastAPI Request object
-        
+
     Returns:
         User document, or None if not authenticated
     """
     return getattr(request.state, "user", None)
 
 
-def get_roles(user: Optional[dict], app_slug: str = APP_SLUG) -> list:
+def get_roles(user: dict | None, app_slug: str = APP_SLUG) -> list:
     """
     Get user's roles for specified app.
-    
+
     This is reusable business logic - it extracts per-app roles from a
     user document structure. The pattern works with any role-based system.
-    
+
     Args:
         user: User document (may be None)
         app_slug: App slug to get roles for (defaults to this app)
-        
+
     Returns:
         List of role strings for the specified app
     """
@@ -187,18 +216,18 @@ def get_roles(user: Optional[dict], app_slug: str = APP_SLUG) -> list:
     return app_roles.get(app_slug, [])
 
 
-def get_primary_role(user: Optional[dict]) -> str:
+def get_primary_role(user: dict | None) -> str:
     """
     Get user's primary role for display (highest priority role).
-    
+
     This is reusable business logic - role priority logic is standard
     across role-based systems.
-    
+
     Role priority: admin > tracker > clicker
-    
+
     Args:
         user: User document (may be None)
-        
+
     Returns:
         Primary role string, or "clicker" if no roles
     """
@@ -210,16 +239,16 @@ def get_primary_role(user: Optional[dict]) -> str:
     return "clicker"
 
 
-def can_view_analytics(user: Optional[dict]) -> bool:
+def can_view_analytics(user: dict | None) -> bool:
     """
     Check if user can view analytics (trackers and admins can).
-    
+
     This is reusable permission checking logic - it evaluates role-based
     permissions based on business rules.
-    
+
     Args:
         user: User document (may be None)
-        
+
     Returns:
         True if user can view analytics, False otherwise
     """
@@ -227,34 +256,36 @@ def can_view_analytics(user: Optional[dict]) -> bool:
     return "tracker" in roles or "admin" in roles
 
 
-def can_manage_users(user: Optional[dict]) -> bool:
+def can_manage_users(user: dict | None) -> bool:
     """
     Check if user can manage users (admins only).
-    
+
     This is reusable permission checking logic - it evaluates role-based
     permissions based on business rules.
-    
+
     Args:
         user: User document (may be None)
-        
+
     Returns:
         True if user can manage users, False otherwise
     """
     return "admin" in get_roles(user)
 
+
 # ----------------------------------------------------------------------------
 # Business Logic Functions
 # ----------------------------------------------------------------------------
 
+
 def build_analytics_query(hours: int = 24) -> dict:
     """
     Build a MongoDB query filter for time-based analytics.
-    
+
     This is reusable query building logic.
-    
+
     Args:
         hours: Number of hours to look back
-        
+
     Returns:
         MongoDB query dictionary with timestamp filter
     """
@@ -265,13 +296,13 @@ def build_analytics_query(hours: int = 24) -> dict:
 def aggregate_click_stats(clicks: list) -> dict:
     """
     Aggregate click statistics from a list of click documents.
-    
+
     This is reusable business logic - it doesn't depend on MDB-Engine.
     You could use this same function with any list of click dictionaries.
-    
+
     Args:
         clicks: List of click documents
-        
+
     Returns:
         Dictionary containing aggregated statistics:
         - total_clicks: Total number of clicks
@@ -281,24 +312,25 @@ def aggregate_click_stats(clicks: list) -> dict:
     """
     role_counts = {}
     url_counts = {}
-    
+
     for c in clicks:
         # Count by role
         r = c.get("user_role", "unknown")
         role_counts[r] = role_counts.get(r, 0) + 1
-        
+
         # Count by URL
         url = c.get("url", "/")
         url_counts[url] = url_counts.get(url, 0) + 1
-    
+
     top_urls = sorted(url_counts.items(), key=lambda x: x[1], reverse=True)[:10]
-    
+
     return {
         "total_clicks": len(clicks),
         "unique_users": len(set(c.get("user_id") for c in clicks)),
         "clicks_by_role": role_counts,
         "top_urls": [{"url": u, "count": c} for u, c in top_urls],
     }
+
 
 # ============================================================================
 # ROUTES
@@ -310,6 +342,7 @@ def aggregate_click_stats(clicks: list) -> dict:
 # Authentication Routes (SSO)
 # ----------------------------------------------------------------------------
 
+
 @app.post("/login")
 async def login(
     request: Request,
@@ -318,12 +351,12 @@ async def login(
 ):
     """
     Authenticate via SharedUserPool and set JWT cookie.
-    
+
     MDB-Engine specific:
     - Uses SharedUserPool.authenticate() to verify credentials
     - SharedUserPool manages users in _mdb_engine_shared_users collection
     - Returns JWT token that works across all apps (SSO)
-    
+
     Reusable:
     - The SSO cookie pattern (set shared cookie, works across apps) is standard
     - The authentication flow (verify credentials, return token) is standard
@@ -336,21 +369,22 @@ async def login(
     token = await pool.authenticate(email, password)
 
     if not token:
-        return JSONResponse(status_code=401, content={
-            "success": False,
-            "detail": "Invalid credentials"
-        })
+        return JSONResponse(
+            status_code=401, content={"success": False, "detail": "Invalid credentials"}
+        )
 
     # Get user for response
     user = await pool.validate_token(token)
     role = get_primary_role(user) if user else "unknown"
 
-    response = JSONResponse(content={
-        "success": True,
-        "user": {"email": email, "role": role},
-        "can_view_analytics": can_view_analytics(user) if user else False,
-        "sso": True,
-    })
+    response = JSONResponse(
+        content={
+            "success": True,
+            "user": {"email": email, "role": role},
+            "can_view_analytics": can_view_analytics(user) if user else False,
+            "sso": True,
+        }
+    )
 
     # Set shared JWT cookie (works across all apps on same domain/ports)
     # For localhost: set domain="localhost" to work across ports
@@ -360,8 +394,10 @@ async def login(
     if host == "localhost" or host == "127.0.0.1":
         cookie_domain = "localhost"  # Explicit domain for localhost cross-port SSO
     # In production, you might set: cookie_domain = ".yourdomain.com"
-    
-    logger.info(f"Setting SSO cookie '{AUTH_COOKIE}' for user {email} on {host} (domain={cookie_domain})")
+
+    logger.info(
+        f"Setting SSO cookie '{AUTH_COOKIE}' for user {email} on {host} (domain={cookie_domain})"
+    )
     response.set_cookie(
         key=AUTH_COOKIE,
         value=token,
@@ -381,11 +417,11 @@ async def login(
 async def logout(request: Request):
     """
     Revoke token and clear cookie.
-    
+
     MDB-Engine specific:
     - Uses SharedUserPool.revoke_token() to invalidate the JWT token
     - Token revocation prevents reuse across all apps (SSO logout)
-    
+
     Reusable:
     - The logout pattern (revoke token, clear cookie) is standard SSO
     """
@@ -395,7 +431,7 @@ async def logout(request: Request):
     if pool and token:
         try:
             await pool.revoke_token(token)
-        except Exception:
+        except (ValueError, KeyError, AttributeError):
             pass
 
     response = JSONResponse(content={"success": True})
@@ -413,29 +449,36 @@ async def logout(request: Request):
     )
     return response
 
+
 # ----------------------------------------------------------------------------
 # API Routes
 # ----------------------------------------------------------------------------
+
 
 @app.get("/api/me")
 async def get_me(request: Request):
     """
     Get current user info.
-    
+
     MDB-Engine specific: User comes from request.state.user (populated by
     SharedAuthMiddleware). No database query needed - user is already loaded.
-    
+
     Reusable: Permission checking uses reusable can_view_analytics() and
     can_manage_users() functions. The response structure is standard for
     user info endpoints.
     """
     # Debug: Check cookie
     cookie_token = request.cookies.get(AUTH_COOKIE)
-    logger.debug(f"Cookie '{AUTH_COOKIE}' present: {cookie_token is not None} (length: {len(cookie_token) if cookie_token else 0})")
-    
+    cookie_length = len(cookie_token) if cookie_token else 0
+    logger.debug(
+        f"Cookie '{AUTH_COOKIE}' present: {cookie_token is not None} " f"(length: {cookie_length})"
+    )
+
     user = get_current_user(request)
     if not user:
-        logger.warning(f"No user found in request.state.user - cookie present: {cookie_token is not None}")
+        logger.warning(
+            f"No user found in request.state.user - cookie present: {cookie_token is not None}"
+        )
         raise HTTPException(401, "Not authenticated")
 
     return {
@@ -452,17 +495,17 @@ async def get_me(request: Request):
 async def get_analytics(request: Request, hours: int = 24, db=Depends(get_scoped_db)):
     """
     Get click analytics from click_tracker's data.
-    
+
     This demonstrates CROSS-APP DATA ACCESS:
     - Dashboard's manifest declares read_scopes: ["click_tracker"]
     - This allows Dashboard to read click_tracker's collections
     - MDB-Engine validates cross-app access permissions
-    
+
     MDB-Engine specific:
     - Uses get_scoped_db() for scoped database access
     - Uses db.get_collection("click_tracker_clicks") to access another app's collection
     - Cross-app access is validated by MDB-Engine based on manifest read_scopes
-    
+
     Reusable:
     - Permission checking uses reusable can_view_analytics() function
     - Query building uses reusable build_analytics_query() function
@@ -505,19 +548,21 @@ async def get_analytics(request: Request, hours: int = 24, db=Depends(get_scoped
         "cross_app_access": True,  # Indicate we're reading from click_tracker
     }
 
+
 # ----------------------------------------------------------------------------
 # Admin Routes
 # ----------------------------------------------------------------------------
+
 
 @app.get("/admin/users")
 async def list_users(request: Request):
     """
     List all shared users. Requires: admin role.
-    
+
     MDB-Engine specific:
     - Accesses shared users via SharedUserPool from app.state
     - This collection is managed by SharedUserPool
-    
+
     Reusable:
     - Permission checking uses reusable can_manage_users() function
     - User listing and formatting logic is standard
@@ -530,7 +575,7 @@ async def list_users(request: Request):
     pool = get_user_pool()
     if not pool:
         raise HTTPException(500, "User pool not initialized")
-    
+
     # Access the collection through the pool
     shared_users = await pool._collection.find({}).to_list(100)
 
@@ -558,13 +603,13 @@ async def update_role(
 ):
     """
     Update user role for a specific app.
-    
+
     Admins can update roles for ANY app (click_tracker or dashboard)!
-    
+
     MDB-Engine specific:
     - Uses SharedUserPool.update_user_roles() to modify roles
     - SharedUserPool manages role updates in _mdb_engine_shared_users collection
-    
+
     Reusable:
     - Permission checking uses reusable can_manage_users() function
     - Role validation logic is standard
@@ -596,34 +641,40 @@ async def update_role(
         "target_app": target_app,
     }
 
+
 # ----------------------------------------------------------------------------
 # Pages
 # ----------------------------------------------------------------------------
+
 
 @app.get("/", response_class=HTMLResponse)
 async def home(request: Request):
     """
     Dashboard page.
-    
+
     Reusable: Template rendering works with any FastAPI app.
     """
     user = get_current_user(request)
     role = get_primary_role(user) if user else None
 
-    return templates.TemplateResponse("index.html", {
-        "request": request,
-        "user": user,
-        "role": role,
-        "can_view_analytics": can_view_analytics(user) if user else False,
-        "can_manage_users": can_manage_users(user) if user else False,
-    })
+    return templates.TemplateResponse(
+        "index.html",
+        {
+            "request": request,
+            "user": user,
+            "role": role,
+            "can_view_analytics": can_view_analytics(user) if user else False,
+            "can_manage_users": can_manage_users(user) if user else False,
+            "click_tracker_url": get_related_app_url("click_tracker"),
+        },
+    )
 
 
 @app.get("/health")
 async def health():
     """
     Health check endpoint.
-    
+
     Reusable: Health check pattern works with any app.
     """
     return {"status": "healthy", "app": APP_SLUG, "auth": "sso"}
@@ -633,7 +684,7 @@ async def health():
 async def api_info():
     """
     API info endpoint.
-    
+
     Reusable: Endpoint documentation pattern works with any API.
     """
     return {
@@ -643,7 +694,7 @@ async def api_info():
         "demo_users": [
             "alice@example.com (admin)",
             "bob@example.com (tracker)",
-            "charlie@example.com (clicker - no access)"
+            "charlie@example.com (clicker - no access)",
         ],
         "password": "password123",
         "sso_note": "Login on Click Tracker = logged in here too!",
@@ -660,10 +711,12 @@ async def api_info():
 
 if __name__ == "__main__":
     import uvicorn
-    
+
     logger.info("Starting uvicorn server on 0.0.0.0:8001")
     try:
-        uvicorn.run(app, host="0.0.0.0", port=8001, log_level=os.getenv("LOG_LEVEL", "info").lower())
+        uvicorn.run(
+            app, host="0.0.0.0", port=8001, log_level=os.getenv("LOG_LEVEL", "info").lower()
+        )
     except Exception as e:
         logger.error(f"Failed to start uvicorn server: {e}", exc_info=True)
         sys.exit(1)

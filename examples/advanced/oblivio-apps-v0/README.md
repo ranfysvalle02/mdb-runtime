@@ -170,9 +170,28 @@ See `.env.example` for all available options.
 Each app has a `manifest.json` file that configures:
 
 - **Auth mode**: `"mode": "shared"` enables SSO
+- **Auth hub URL**: `"auth_hub_url": "http://localhost:8000"` - URL of the authentication hub for redirecting unauthenticated users. Can be overridden via `AUTH_HUB_URL` environment variable
 - **Roles**: Available roles for the app
 - **Required role**: Minimum role needed to access
 - **Public routes**: Routes that don't require authentication
+
+**Example manifest.json for SSO apps:**
+```json
+{
+  "auth": {
+    "mode": "shared",
+    "auth_hub_url": "http://localhost:8000",
+    "roles": ["viewer", "editor", "admin"],
+    "require_role": "viewer",
+    "public_routes": ["/health", "/auth/callback"]
+  }
+}
+```
+
+**Configuration Priority**:
+1. `manifest.auth.auth_hub_url` (declarative, versioned)
+2. `AUTH_HUB_URL` environment variable (runtime override)
+3. Default: `http://localhost:8000` (fallback)
 
 ## Architecture Details
 
