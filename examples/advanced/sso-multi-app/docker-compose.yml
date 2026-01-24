@@ -1,0 +1,194 @@
+# ============================================================================
+# Docker Compose Configuration for SSO Multi-App
+# SSO Authentication Example
+# ============================================================================
+
+services:
+  # MongoDB Atlas Local
+  mongodb:
+    image: mongodb/mongodb-atlas-local:latest
+    container_name: oblivio_apps_mongodb
+    restart: unless-stopped
+    ports:
+      - "${MONGO_PORT:-27017}:27017"
+    environment:
+      MONGODB_INITDB_ROOT_USERNAME: ${MONGO_INITDB_ROOT_USERNAME:-admin}
+      MONGODB_INITDB_ROOT_PASSWORD: ${MONGO_INITDB_ROOT_PASSWORD:-password}
+      MONGODB_INITDB_DATABASE: ${MONGODB_INITDB_DATABASE:-oblivio_apps}
+    volumes:
+      - mongodb_data:/data/db
+      - mongodb_config:/data/configdb
+    networks:
+      - oblivio_network
+    healthcheck:
+      test: echo 'db.runCommand("ping").ok' | mongosh "mongodb://localhost:27017/?directConnection=true" --quiet
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    deploy:
+      resources:
+        limits:
+          cpus: '2.0'
+          memory: 2G
+        reservations:
+          cpus: '0.5'
+          memory: 512M
+
+  # Auth Hub - Handles authentication and role management
+  auth-hub:
+    build:
+      context: ../../..
+      dockerfile: examples/advanced/sso-multi-app/Dockerfile
+      args:
+        APP_USER: appuser
+        APP_UID: 1000
+        APP_GID: 1000
+    container_name: sso_auth_hub
+    restart: unless-stopped
+    command: >
+      sh -c "
+      echo '=== Starting SSO Auth Hub ===' 1>&2;
+      cd /app && exec python -u apps/auth-hub/web.py 2>&1
+      "
+    ports:
+      - "${AUTH_HUB_PORT:-8000}:8000"
+    environment:
+      - MONGODB_URI=${MONGODB_URI:-mongodb://admin:password@mongodb:27017/?authSource=admin&directConnection=true}
+      - MONGODB_DB=${MONGODB_DB:-oblivio_apps}
+      - MDB_ENGINE_MASTER_KEY=${MDB_ENGINE_MASTER_KEY:-}
+      - MDB_ENGINE_JWT_SECRET=${MDB_ENGINE_JWT_SECRET:-oblivio_jwt_secret_change_in_production_xyz789}
+      - PYTHONUNBUFFERED=1
+      - LOG_LEVEL=${LOG_LEVEL:-INFO}
+    depends_on:
+      mongodb:
+        condition: service_healthy
+    networks:
+      - oblivio_network
+    healthcheck:
+      test: ["CMD", "python", "-c", "import sys; sys.exit(0)"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 512M
+        reservations:
+          cpus: '0.25'
+          memory: 128M
+    tmpfs:
+      - /tmp:noexec,nosuid,size=100m
+
+  # SSO App 1 - Data viewing/listing
+  sso-app-1:
+    build:
+      context: ../../..
+      dockerfile: examples/advanced/sso-multi-app/Dockerfile
+      args:
+        APP_USER: appuser
+        APP_UID: 1000
+        APP_GID: 1000
+    container_name: sso_app_1
+    restart: unless-stopped
+    command: >
+      sh -c "
+      echo '=== Starting SSO App 1 ===' 1>&2;
+      cd /app && exec python -u apps/sso-app-1/web.py 2>&1
+      "
+    ports:
+      - "${SSO_APP_1_PORT:-8001}:8000"
+    environment:
+      - MONGODB_URI=${MONGODB_URI:-mongodb://admin:password@mongodb:27017/?authSource=admin&directConnection=true}
+      - MONGODB_DB=${MONGODB_DB:-oblivio_apps}
+      - MDB_ENGINE_MASTER_KEY=${MDB_ENGINE_MASTER_KEY:-}
+      - MDB_ENGINE_JWT_SECRET=${MDB_ENGINE_JWT_SECRET:-oblivio_jwt_secret_change_in_production_xyz789}
+      - PYTHONUNBUFFERED=1
+      - LOG_LEVEL=${LOG_LEVEL:-INFO}
+    depends_on:
+      mongodb:
+        condition: service_healthy
+      auth-hub:
+        condition: service_started
+    networks:
+      - oblivio_network
+    healthcheck:
+      test: ["CMD", "python", "-c", "import sys; sys.exit(0)"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 512M
+        reservations:
+          cpus: '0.25'
+          memory: 128M
+    tmpfs:
+      - /tmp:noexec,nosuid,size=100m
+
+  # SSO App 2 - Admin operations (requires admin role)
+  sso-app-2:
+    build:
+      context: ../../..
+      dockerfile: examples/advanced/sso-multi-app/Dockerfile
+      args:
+        APP_USER: appuser
+        APP_UID: 1000
+        APP_GID: 1000
+    container_name: sso_app_2
+    restart: unless-stopped
+    command: >
+      sh -c "
+      echo '=== Starting SSO App 2 ===' 1>&2;
+      cd /app && exec python -u apps/sso-app-2/web.py 2>&1
+      "
+    ports:
+      - "${SSO_APP_2_PORT:-8002}:8000"
+    environment:
+      - MONGODB_URI=${MONGODB_URI:-mongodb://admin:password@mongodb:27017/?authSource=admin&directConnection=true}
+      - MONGODB_DB=${MONGODB_DB:-oblivio_apps}
+      - MDB_ENGINE_MASTER_KEY=${MDB_ENGINE_MASTER_KEY:-}
+      - MDB_ENGINE_JWT_SECRET=${MDB_ENGINE_JWT_SECRET:-oblivio_jwt_secret_change_in_production_xyz789}
+      - ALPACA_API_KEY=${ALPACA_API_KEY:-}
+      - ALPACA_SECRET_KEY=${ALPACA_SECRET_KEY:-}
+      - PYTHONUNBUFFERED=1
+      - LOG_LEVEL=${LOG_LEVEL:-INFO}
+    depends_on:
+      mongodb:
+        condition: service_healthy
+      auth-hub:
+        condition: service_started
+    networks:
+      - oblivio_network
+    healthcheck:
+      test: ["CMD", "python", "-c", "import sys; sys.exit(0)"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 512M
+        reservations:
+          cpus: '0.25'
+          memory: 128M
+    tmpfs:
+      - /tmp:noexec,nosuid,size=100m
+
+volumes:
+  mongodb_data:
+    driver: local
+  mongodb_config:
+    driver: local
+
+networks:
+  oblivio_network:
+    driver: bridge
+    name: oblivio_apps_network

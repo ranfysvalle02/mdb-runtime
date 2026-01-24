@@ -204,15 +204,63 @@ class SharedAuthMiddleware(BaseHTTPMiddleware):
 
         # Check role requirement (only for non-public routes)
         if not is_public and self._require_role:
-            if not SharedUserPool.user_has_role(
+            user_roles = request.state.user_roles
+            has_required_role = SharedUserPool.user_has_role(
                 user,
                 self._app_slug,
                 self._require_role,
                 self._role_hierarchy,
-            ):
-                return self._forbidden_response(
-                    f"Role '{self._require_role}' required for this app"
-                )
+            )
+
+            if not has_required_role:
+                # Auto-assign required role if user has no roles for this app
+                # This is a fallback for SSO scenarios where users might be authenticated
+                # but not yet assigned roles. Only do this if they have NO roles (not if
+                # they have other roles but not the required one - prevents privilege escalation).
+                if not user_roles:
+                    user_email = user.get("email")
+                    if user_email:
+                        try:
+                            # Auto-assign the required role
+                            success = await user_pool.update_user_roles(
+                                user_email, self._app_slug, [self._require_role]
+                            )
+                            if success:
+                                # Refresh user data to include new role
+                                user = await user_pool.get_user_by_email(user_email)
+                                if user:
+                                    request.state.user = user
+                                    request.state.user_roles = [self._require_role]
+                                    logger.info(
+                                        f"Auto-assigned role '{self._require_role}' to user "
+                                        f"{user_email} for app '{self._app_slug}'"
+                                    )
+                                else:
+                                    logger.warning(
+                                        f"Failed to refresh user after auto-assigning role: "
+                                        f"{user_email}"
+                                    )
+                            else:
+                                logger.warning(
+                                    f"Failed to auto-assign role '{self._require_role}' to "
+                                    f"user {user_email} for app '{self._app_slug}'"
+                                )
+                        except Exception as e:
+                            logger.error(
+                                f"Error auto-assigning role to user {user_email}: {e}",
+                                exc_info=True,
+                            )
+
+                # Check again after potential auto-assignment
+                if not SharedUserPool.user_has_role(
+                    user,
+                    self._app_slug,
+                    self._require_role,
+                    self._role_hierarchy,
+                ):
+                    return self._forbidden_response(
+                        f"Role '{self._require_role}' required for this app"
+                    )
 
         return await call_next(request)
 
@@ -364,47 +412,69 @@ def create_shared_auth_middleware(
     return ConfiguredSharedAuthMiddleware
 
 
-def create_shared_auth_middleware_lazy(
-    app_slug: str,
-    manifest_auth: dict[str, Any],
-) -> type:
-    """
-    Factory function to create a lazy SharedAuthMiddleware that reads user_pool from app.state.
-
-    This allows middleware to be added at app creation time (before startup),
-    while the actual SharedUserPool is initialized during the lifespan.
-    The middleware accesses `request.app.state.user_pool` at request time.
-
-    Args:
-        app_slug: Current app's slug
-        manifest_auth: Auth section from manifest
-
-    Returns:
-        Configured middleware class ready to add to FastAPI app
-
-    Usage:
-        # At app creation time:
-        middleware_class = create_shared_auth_middleware_lazy("my_app", manifest["auth"])
-        app.add_middleware(middleware_class)
-
-        # During lifespan startup:
-        app.state.user_pool = SharedUserPool(db)
-    """
-    require_role = manifest_auth.get("require_role")
-    public_routes = manifest_auth.get("public_routes", [])
-
-    # Build role hierarchy from manifest if available
-    role_hierarchy = None
+def _build_role_hierarchy(manifest_auth: dict[str, Any]) -> dict[str, list[str]] | None:
+    """Build role hierarchy from manifest roles."""
     roles = manifest_auth.get("roles", [])
-    if roles and len(roles) > 1:
-        # Auto-generate hierarchy: each role inherits from roles below it
-        role_hierarchy = {}
-        for i, role in enumerate(roles):
-            if i > 0:
-                role_hierarchy[role] = roles[:i]
+    if not roles or len(roles) <= 1:
+        return None
 
-    # Session binding configuration
-    session_binding = manifest_auth.get("session_binding", {})
+    # Auto-generate hierarchy: each role inherits from roles below it
+    role_hierarchy = {}
+    for i, role in enumerate(roles):
+        if i > 0:
+            role_hierarchy[role] = roles[:i]
+    return role_hierarchy
+
+
+def _is_public_route_helper(path: str, public_routes: list[str]) -> bool:
+    """Check if path matches any public route pattern."""
+    for pattern in public_routes:
+        # Normalize pattern for fnmatch
+        if not pattern.startswith("/"):
+            pattern = "/" + pattern
+
+        # Check exact match
+        if path == pattern:
+            return True
+
+        # Check wildcard match
+        if fnmatch.fnmatch(path, pattern):
+            return True
+
+        # Check prefix match for patterns ending with /*
+        if pattern.endswith("/*"):
+            prefix = pattern[:-2]
+            if path.startswith(prefix):
+                return True
+
+    return False
+
+
+def _extract_token_helper(
+    request: Request, cookie_name: str, header_name: str, header_prefix: str
+) -> str | None:
+    """Extract JWT token from cookie or header."""
+    # Try cookie first
+    token = request.cookies.get(cookie_name)
+    if token:
+        return token
+
+    # Try Authorization header
+    auth_header = request.headers.get(header_name)
+    if auth_header and auth_header.startswith(header_prefix):
+        return auth_header[len(header_prefix) :]
+
+    return None
+
+
+def _create_lazy_middleware_class(
+    app_slug: str,
+    require_role: str | None,
+    public_routes: list[str],
+    role_hierarchy: dict[str, list[str]] | None,
+    session_binding: dict[str, Any],
+) -> type:
+    """Create the LazySharedAuthMiddleware class with configuration."""
 
     class LazySharedAuthMiddleware(BaseHTTPMiddleware):
         """
@@ -451,35 +521,44 @@ def create_shared_auth_middleware_lazy(
                 )
                 return await call_next(request)
 
-            is_public = self._is_public_route(request.url.path)
+            is_public = _is_public_route_helper(request.url.path, self._public_routes)
+            token = _extract_token_helper(
+                request, self._cookie_name, self._header_name, self._header_prefix
+            )
 
-            # Extract token from cookie or header
-            token = self._extract_token(request)
-
+            # Handle unauthenticated requests
             if not token:
-                # No token provided
-                if not is_public and self._require_role:
-                    return self._unauthorized_response("Authentication required")
-                # No role required or public route, continue without user
-                return await call_next(request)
+                return await self._handle_no_token(is_public, request, call_next)
 
+            # Authenticate and authorize user
+            auth_result = await self._authenticate_and_authorize(
+                request, user_pool, token, is_public, call_next
+            )
+            if auth_result is not None:
+                return auth_result
+
+            return await call_next(request)
+
+        async def _authenticate_and_authorize(
+            self,
+            request: Request,
+            user_pool: SharedUserPool,
+            token: str,
+            is_public: bool,
+            call_next: Callable[[Request], Response],
+        ) -> Response | None:
+            """Authenticate user and check authorization."""
             # Validate token and get user
             user = await user_pool.validate_token(token)
-
             if not user:
-                # Invalid token - for public routes, continue without user
-                if is_public:
-                    return await call_next(request)
-                return self._unauthorized_response("Invalid or expired token")
+                return await self._handle_invalid_token(is_public, request, call_next)
 
             # Validate session binding if configured
             binding_error = await self._validate_session_binding(request, token)
             if binding_error:
-                if is_public:
-                    # For public routes, log but continue
-                    logger.warning(f"Session binding mismatch on public route: {binding_error}")
-                else:
-                    return self._forbidden_response(binding_error)
+                return await self._handle_binding_error(
+                    binding_error, is_public, request, call_next
+                )
 
             # Set user on request state
             request.state.user = user
@@ -487,54 +566,46 @@ def create_shared_auth_middleware_lazy(
 
             # Check role requirement (only for non-public routes)
             if not is_public and self._require_role:
-                if not SharedUserPool.user_has_role(
-                    user,
-                    self._app_slug,
-                    self._require_role,
-                    self._role_hierarchy,
-                ):
-                    return self._forbidden_response(
-                        f"Role '{self._require_role}' required for this app"
-                    )
-
-            return await call_next(request)
-
-        def _extract_token(self, request: Request) -> str | None:
-            """Extract JWT token from cookie or header."""
-            # Try cookie first
-            token = request.cookies.get(self._cookie_name)
-            if token:
-                return token
-
-            # Try Authorization header
-            auth_header = request.headers.get(self._header_name)
-            if auth_header and auth_header.startswith(self._header_prefix):
-                return auth_header[len(self._header_prefix) :]
+                role_check_result = await self._check_and_assign_role(user, user_pool, request)
+                if role_check_result is not None:
+                    return role_check_result
 
             return None
 
-        def _is_public_route(self, path: str) -> bool:
-            """Check if path matches any public route pattern."""
-            for pattern in self._public_routes:
-                # Normalize pattern for fnmatch
-                if not pattern.startswith("/"):
-                    pattern = "/" + pattern
+        async def _handle_no_token(
+            self,
+            is_public: bool,
+            request: Request,
+            call_next: Callable[[Request], Response],
+        ) -> Response:
+            """Handle request with no token."""
+            if not is_public and self._require_role:
+                return self._unauthorized_response("Authentication required")
+            return await call_next(request)
 
-                # Check exact match
-                if path == pattern:
-                    return True
+        async def _handle_invalid_token(
+            self,
+            is_public: bool,
+            request: Request,
+            call_next: Callable[[Request], Response],
+        ) -> Response:
+            """Handle request with invalid token."""
+            if is_public:
+                return await call_next(request)
+            return self._unauthorized_response("Invalid or expired token")
 
-                # Check wildcard match
-                if fnmatch.fnmatch(path, pattern):
-                    return True
-
-                # Check prefix match for patterns ending with /*
-                if pattern.endswith("/*"):
-                    prefix = pattern[:-2]
-                    if path.startswith(prefix):
-                        return True
-
-            return False
+        async def _handle_binding_error(
+            self,
+            binding_error: str,
+            is_public: bool,
+            request: Request,
+            call_next: Callable[[Request], Response],
+        ) -> Response:
+            """Handle session binding validation error."""
+            if is_public:
+                logger.warning(f"Session binding mismatch on public route: {binding_error}")
+                return await call_next(request)
+            return self._forbidden_response(binding_error)
 
         @staticmethod
         def _unauthorized_response(detail: str) -> JSONResponse:
@@ -551,6 +622,93 @@ def create_shared_auth_middleware_lazy(
                 status_code=403,
                 content={"detail": detail, "error": "forbidden"},
             )
+
+        async def _check_and_assign_role(
+            self,
+            user: dict[str, Any],
+            user_pool: SharedUserPool,
+            request: Request,
+        ) -> Response | None:
+            """
+            Check if user has required role and auto-assign if needed.
+
+            Returns Response if access should be denied, None if OK.
+            """
+            user_roles = request.state.user_roles
+            has_required_role = SharedUserPool.user_has_role(
+                user,
+                self._app_slug,
+                self._require_role,
+                self._role_hierarchy,
+            )
+
+            if has_required_role:
+                return None
+
+            # Auto-assign required role if user has no roles for this app
+            if not user_roles:
+                await self._try_auto_assign_role(user, user_pool, request)
+
+            # Check again after potential auto-assignment
+            if not SharedUserPool.user_has_role(
+                user,
+                self._app_slug,
+                self._require_role,
+                self._role_hierarchy,
+            ):
+                return self._forbidden_response(
+                    f"Role '{self._require_role}' required for this app"
+                )
+
+            return None
+
+        async def _try_auto_assign_role(
+            self,
+            user: dict[str, Any],
+            user_pool: SharedUserPool,
+            request: Request,
+        ) -> None:
+            """
+            Attempt to auto-assign required role to user.
+
+            This is a fallback for SSO scenarios where users might be authenticated
+            but not yet assigned roles. Only do this if they have NO roles (not if
+            they have other roles but not the required one - prevents privilege
+            escalation).
+            """
+            user_email = user.get("email")
+            if not user_email:
+                return
+
+            try:
+                # Auto-assign the required role
+                success = await user_pool.update_user_roles(
+                    user_email, self._app_slug, [self._require_role]
+                )
+                if success:
+                    # Refresh user data to include new role
+                    updated_user = await user_pool.get_user_by_email(user_email)
+                    if updated_user:
+                        request.state.user = updated_user
+                        request.state.user_roles = [self._require_role]
+                        logger.info(
+                            f"Auto-assigned role '{self._require_role}' to user "
+                            f"{user_email} for app '{self._app_slug}'"
+                        )
+                    else:
+                        logger.warning(
+                            f"Failed to refresh user after auto-assigning role: " f"{user_email}"
+                        )
+                else:
+                    logger.warning(
+                        f"Failed to auto-assign role '{self._require_role}' to "
+                        f"user {user_email} for app '{self._app_slug}'"
+                    )
+            except Exception as e:
+                logger.error(
+                    f"Error auto-assigning role to user {user_email}: {e}",
+                    exc_info=True,
+                )
 
         async def _validate_session_binding(
             self,
@@ -571,26 +729,12 @@ def create_shared_auth_middleware_lazy(
                 payload = jwt.decode(token, options={"verify_signature": False})
 
                 # Check IP binding
-                if self._session_binding.get("bind_ip", False):
-                    token_ip = payload.get("ip")
-                    if token_ip:
-                        client_ip = _get_client_ip(request)
-                        if client_ip and client_ip != token_ip:
-                            logger.warning(
-                                f"Session IP mismatch: token={token_ip}, client={client_ip}"
-                            )
-                            return "Session bound to different IP address"
+                ip_error = self._check_ip_binding(request, payload)
+                if ip_error:
+                    return ip_error
 
                 # Check fingerprint binding (soft check - just warn)
-                if self._session_binding.get("bind_fingerprint", True):
-                    token_fp = payload.get("fp")
-                    if token_fp:
-                        client_fp = _compute_fingerprint(request)
-                        if client_fp != token_fp:
-                            logger.warning(
-                                f"Session fingerprint mismatch for user {payload.get('email')}"
-                            )
-                            # Soft check - don't reject, just log
+                self._check_fingerprint_binding(request, payload)
 
                 return None
 
@@ -598,4 +742,70 @@ def create_shared_auth_middleware_lazy(
                 logger.warning(f"Error validating session binding: {e}")
                 return None  # Don't reject for binding check errors
 
+        def _check_ip_binding(self, request: Request, payload: dict) -> str | None:
+            """Check IP binding from token payload."""
+            if not self._session_binding.get("bind_ip", False):
+                return None
+
+            token_ip = payload.get("ip")
+            if not token_ip:
+                return None
+
+            client_ip = _get_client_ip(request)
+            if client_ip and client_ip != token_ip:
+                logger.warning(f"Session IP mismatch: token={token_ip}, client={client_ip}")
+                return "Session bound to different IP address"
+
+            return None
+
+        def _check_fingerprint_binding(self, request: Request, payload: dict) -> None:
+            """Check fingerprint binding from token payload (soft check - just warn)."""
+            if not self._session_binding.get("bind_fingerprint", True):
+                return
+
+            token_fp = payload.get("fp")
+            if not token_fp:
+                return
+
+            client_fp = _compute_fingerprint(request)
+            if client_fp != token_fp:
+                logger.warning(f"Session fingerprint mismatch for user {payload.get('email')}")
+                # Soft check - don't reject, just log
+
     return LazySharedAuthMiddleware
+
+
+def create_shared_auth_middleware_lazy(
+    app_slug: str,
+    manifest_auth: dict[str, Any],
+) -> type:
+    """
+    Factory function to create a lazy SharedAuthMiddleware that reads user_pool from app.state.
+
+    This allows middleware to be added at app creation time (before startup),
+    while the actual SharedUserPool is initialized during the lifespan.
+    The middleware accesses `request.app.state.user_pool` at request time.
+
+    Args:
+        app_slug: Current app's slug
+        manifest_auth: Auth section from manifest
+
+    Returns:
+        Configured middleware class ready to add to FastAPI app
+
+    Usage:
+        # At app creation time:
+        middleware_class = create_shared_auth_middleware_lazy("my_app", manifest["auth"])
+        app.add_middleware(middleware_class)
+
+        # During lifespan startup:
+        app.state.user_pool = SharedUserPool(db)
+    """
+    require_role = manifest_auth.get("require_role")
+    public_routes = manifest_auth.get("public_routes", [])
+    role_hierarchy = _build_role_hierarchy(manifest_auth)
+    session_binding = manifest_auth.get("session_binding", {})
+
+    return _create_lazy_middleware_class(
+        app_slug, require_role, public_routes, role_hierarchy, session_binding
+    )

@@ -78,6 +78,9 @@ from .indexes import (
 # Repository pattern
 from .repositories import Entity, MongoRepository, Repository, UnitOfWork
 
+# Utilities
+from .utils import clean_mongo_doc, clean_mongo_docs
+
 __version__ = "0.2.1"  # Major version bump for new DI system
 
 __all__ = [
@@ -127,4 +130,7 @@ __all__ = [
     "AsyncAtlasIndexManager",
     "AutoIndexManager",
     "run_index_creation_for_collection",
+    # Utilities
+    "clean_mongo_doc",
+    "clean_mongo_docs",
 ]

@@ -1,0 +1,29 @@
+{
+  "schema_version": "2.0",
+  "slug": "auth-hub",
+  "name": "SSO Auth Hub",
+  "description": "Central authentication hub managing users and roles for SSO apps",
+  "status": "active",
+  "auth": {
+    "mode": "shared",
+    "roles": ["base_user", "viewer", "editor", "admin"],
+    "default_role": "base_user",
+    "require_role": "base_user",
+    "public_routes": ["/", "/health", "/login", "/register", "/api/public"],
+    "users": {
+      "enabled": true,
+      "strategy": "app_users"
+    }
+  },
+  "cors": {
+    "enabled": true,
+    "allow_origins": ["http://localhost:8000", "http://localhost:8001", "http://localhost:8002"],
+    "allow_credentials": true,
+    "allow_methods": ["*"],
+    "allow_headers": ["*"]
+  },
+  "data_access": {
+    "read_scopes": ["auth-hub"],
+    "write_scope": "auth-hub"
+  }
+}

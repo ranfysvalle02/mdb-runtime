@@ -1,0 +1,25 @@
+{
+  "schema_version": "2.0",
+  "slug": "sso-app-2",
+  "name": "SSO App 2",
+  "description": "SSO app 2 - Alpaca Paper Trading",
+  "status": "active",
+  "auth": {
+    "mode": "shared",
+    "auth_hub_url": "http://localhost:8000",
+    "roles": ["base_user", "viewer", "editor", "admin"],
+    "require_role": "base_user",
+    "public_routes": ["/health", "/auth/callback"]
+  },
+  "cors": {
+    "enabled": true,
+    "allow_origins": ["http://localhost:8000", "http://localhost:8001", "http://localhost:8002"],
+    "allow_credentials": true,
+    "allow_methods": ["*"],
+    "allow_headers": ["*"]
+  },
+  "data_access": {
+    "read_scopes": ["sso-app-2"],
+    "write_scope": "sso-app-2"
+  }
+}
