@@ -1,15 +1,15 @@
 {
   "schema_version": "2.0",
-  "slug": "sso-app-2",
-  "name": "SSO App 2",
-  "description": "SSO app 2 - Alpaca Paper Trading",
+  "slug": "flux",
+  "name": "FLUX",
+  "description": "Represents the constant change of the market (and your P&L)",
   "status": "active",
   "auth": {
     "mode": "shared",
     "auth_hub_url": "http://localhost:8000",
     "roles": ["base_user", "viewer", "editor", "admin"],
     "require_role": "base_user",
-    "public_routes": ["/health", "/auth/callback"]
+    "public_routes": ["/health", "/auth/callback", "/"]
   },
   "cors": {
     "enabled": true,
@@ -19,7 +19,7 @@
     "allow_headers": ["*"]
   },
   "data_access": {
-    "read_scopes": ["sso-app-2"],
-    "write_scope": "sso-app-2"
+    "read_scopes": ["flux"],
+    "write_scope": "flux"
   }
 }

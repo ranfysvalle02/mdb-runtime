@@ -1,4 +1,4 @@
-# Requirements for SSO App 2 - Alpaca Paper Trading
+# Requirements for SSO App 2 - Paper Trading App
 # Install MDB_ENGINE first: pip install mdb-engine
 # Or install from source: pip install -e ../../../../
 
@@ -7,5 +7,8 @@ fastapi>=0.104.0
 uvicorn[standard]>=0.24.0
 jinja2>=3.1.2
 python-multipart>=0.0.6
-alpaca-py>=0.20.0
 python-dotenv>=1.0.0
+finvizfinance>=0.14.0
+pandas>=2.0.0
+yfinance>=0.2.0
+httpx>=0.25.0

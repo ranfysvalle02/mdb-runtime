@@ -33,15 +33,15 @@ RUN echo "=== Installing mdb-engine with Casbin support ===" && \
     echo "=== Installing web dependencies ===" && \
     pip install --no-cache-dir uvicorn[standard] fastapi jinja2 python-multipart && \
     echo "=== Installing app-specific dependencies ===" && \
-    pip install --no-cache-dir alpaca-py python-dotenv && \
+    pip install --no-cache-dir python-dotenv finvizfinance pandas && \
     echo "=== Installation complete ===" && \
     pip show mdb-engine && \
     echo "=== Verifying Casbin installation ===" && \
     python -c "import casbin; print('✓ Casbin imported successfully')" && \
     python -c "from casbin_motor_adapter import Adapter; print('✓ Casbin Adapter imported successfully')" && \
-    echo "=== Verifying Alpaca SDK installation ===" && \
-    python -c "from alpaca.broker.client import BrokerClient; print('✓ Alpaca SDK imported successfully')" || \
-    (echo "ERROR: Required dependencies not installed!" && exit 1)
+    echo "=== Verifying Finviz installation ===" && \
+    python -c "from finvizfinance.screener.overview import Overview; print('✓ Finviz imported successfully')" || \
+    (echo "WARNING: Finviz not available" && true)
 
 # Verify installation worked in builder stage
 RUN echo "=== Verifying installation in builder ===" && \

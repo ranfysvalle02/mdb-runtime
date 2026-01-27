@@ -47,7 +47,7 @@
             <th>Email</th>
             <th>Auth Hub Roles</th>
             <th>SSO App 1</th>
-            <th>SSO App 2</th>
+            <th>FLUX</th>
             <th>Actions</th>
         </tr>
         {% for u in all_users %}
@@ -64,13 +64,13 @@
                 {% endfor %}
             </td>
             <td>
-                {% for role in u.app_roles.get('sso-app-2', []) %}
+                {% for role in u.app_roles.get('flux', []) %}
                 <span class="badge {{ role }}">{{ role }}</span>
                 {% endfor %}
             </td>
             <td>
                 <button class="btn btn-secondary" onclick="grantAccess('{{ u.email }}', 'sso-app-1')">Grant SSO App 1</button>
-                <button class="btn btn-secondary" onclick="grantAccess('{{ u.email }}', 'sso-app-2')">Grant SSO App 2</button>
+                <button class="btn btn-secondary" onclick="grantAccess('{{ u.email }}', 'flux')">Grant FLUX</button>
             </td>
         </tr>
         {% endfor %}

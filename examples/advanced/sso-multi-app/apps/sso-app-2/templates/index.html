@@ -3,350 +3,607 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{{ app_name }}</title>
-    <!-- Note: Tailwind CDN is used for development. For production, use PostCSS plugin or Tailwind CLI -->
+    <title>FLUX | Sentinel Prime</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        const originalWarn = console.warn;
+        console.warn = function(...args) {
+            if (args[0] && typeof args[0] === 'string' && args[0].includes('cdn.tailwindcss.com')) return;
+            originalWarn.apply(console, args);
+        };
+    </script>
     <script src="https://unpkg.com/lucide@latest"></script>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <script>
         tailwind.config = {
             darkMode: 'class',
             theme: {
                 extend: {
-                    fontFamily: {
-                        sans: ['"Plus Jakarta Sans"', 'sans-serif'],
-                        mono: ['"Fira Code"', 'monospace'],
-                    },
-                    colors: {
-                        glass: {
-                            100: 'rgba(255, 255, 255, 0.05)',
-                            200: 'rgba(255, 255, 255, 0.1)',
-                            300: 'rgba(255, 255, 255, 0.2)',
-                            border: 'rgba(255, 255, 255, 0.08)',
-                        },
-                        accent: {
-                            DEFAULT: '#6366f1',
-                            glow: '#818cf8',
-                        }
-                    },
-                    animation: {
-                        'blob': 'blob 10s infinite',
-                        'float': 'float 6s ease-in-out infinite',
-                    },
-                    keyframes: {
-                        blob: {
-                            '0%': { transform: 'translate(0px, 0px) scale(1)' },
-                            '33%': { transform: 'translate(30px, -50px) scale(1.1)' },
-                            '66%': { transform: 'translate(-20px, 20px) scale(0.9)' },
-                            '100%': { transform: 'translate(0px, 0px) scale(1)' },
-                        },
-                        float: {
-                            '0%, 100%': { transform: 'translateY(0)' },
-                            '50%': { transform: 'translateY(-10px)' },
-                        }
-                    }
+                    fontFamily: { sans: ['Inter', 'sans-serif'], mono: ['JetBrains Mono', 'monospace'] },
+                    colors: { brand: { DEFAULT: '#6366f1', 400: '#818cf8', 500: '#6366f1', 600: '#4f46e5' }, dark: { 800: '#1e293b', 900: '#0f172a', 950: '#020617' } },
+                    animation: { 'pulse-slow': 'pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite' }
                 }
             }
         }
     </script>
     <style>
-        body {
-            background-color: #0f172a;
-            color: #e2e8f0;
-            overflow-x: hidden;
-        }
-        
-        /* Aurora Background */
-        .aurora-bg {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100vw;
-            height: 100vh;
-            z-index: -1;
-            background: radial-gradient(circle at 50% 50%, #1e1b4b 0%, #0f172a 100%);
-            overflow: hidden;
-        }
-        .aurora-blob {
-            position: absolute;
-            filter: blur(80px);
-            opacity: 0.6;
-            animation: blob 20s infinite alternate;
-        }
-        .blob-1 { top: -10%; left: -10%; width: 50vw; height: 50vw; background: #4338ca; animation-delay: 0s; }
-        .blob-2 { bottom: -10%; right: -10%; width: 50vw; height: 50vw; background: #3730a3; animation-delay: 2s; }
-        .blob-3 { top: 40%; left: 40%; width: 40vw; height: 40vw; background: #312e81; animation-delay: 4s; }
-
-        /* Modern Glassmorphism */
-        .glass-panel {
-            background: rgba(15, 23, 42, 0.6);
-            backdrop-filter: blur(20px);
-            -webkit-backdrop-filter: blur(20px);
-            border: 1px solid rgba(255, 255, 255, 0.08);
-            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.36);
-        }
-
-        /* Custom Scrollbar */
+        body { background-color: #020617; color: #e2e8f0; font-family: 'Inter', sans-serif; overflow-y: auto; }
+        .glass { background: rgba(15, 23, 42, 0.65); backdrop-filter: blur(16px) saturate(180%); border: 1px solid rgba(255,255,255,0.06); box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3); }
+        .glass-panel { background: linear-gradient(180deg, rgba(30, 41, 59, 0.4) 0%, rgba(15, 23, 42, 0.4) 100%); border: 1px solid rgba(255,255,255,0.05); }
+        .input-compact { background: rgba(2, 6, 23, 0.6); border: 1px solid rgba(255,255,255,0.08); transition: all 0.3s ease; }
+        .input-compact:focus { border-color: #6366f1; background: rgba(2, 6, 23, 0.8); outline: none; box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.1); }
         ::-webkit-scrollbar { width: 6px; }
         ::-webkit-scrollbar-track { background: transparent; }
-        ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 10px; }
-        ::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.2); }
+        ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 3px; }
+        .card-entrance { animation: cardSlideIn 0.4s cubic-bezier(0.2, 0.8, 0.2, 1); }
+        @keyframes cardSlideIn { from { opacity: 0; transform: translateY(15px) scale(0.98); } to { opacity: 1; transform: translateY(0) scale(1); } }
+        .btn-primary { background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%); transition: all 0.2s; }
+        .btn-primary:hover { transform: translateY(-1px); box-shadow: 0 0 20px rgba(99, 102, 241, 0.4); border: 1px solid rgba(255,255,255,0.1); }
+        .btn-primary.loading { pointer-events: none; opacity: 0.7; filter: grayscale(0.5); }
+        .btn-primary.success { background: linear-gradient(135deg, #10b981 0%, #059669 100%); box-shadow: 0 0 20px rgba(16, 185, 129, 0.4); }
+        
+        /* Range Slider Logic */
+        input[type=range] { -webkit-appearance: none; width: 100%; background: transparent; }
+        input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; }
+        input[type=range]:focus { outline: none; }
+        
+        /* Tooltip Styles */
+        .tooltip-container { position: relative; }
+        .tooltip-content { 
+            position: absolute; 
+            bottom: calc(100% + 8px); 
+            right: 0;
+            transform: translateX(0);
+            min-width: 280px;
+            max-width: 320px;
+            padding: 10px 12px;
+            background: rgba(15, 23, 42, 0.98);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 8px;
+            font-size: 10px;
+            line-height: 1.5;
+            color: #cbd5e1;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.2s ease;
+            z-index: 1000;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+            backdrop-filter: blur(8px);
+            white-space: normal;
+        }
+        th.tooltip-container:hover .tooltip-content { opacity: 1; }
+        th.tooltip-container:hover i[data-lucide="info"] { opacity: 1 !important; }
+        .tooltip-content strong { color: #e2e8f0; font-weight: 600; display: block; margin-bottom: 4px; }
     </style>
 </head>
-<body class="antialiased min-h-screen flex flex-col">
-
-    <div class="aurora-bg">
-        <div class="aurora-blob blob-1"></div>
-        <div class="aurora-blob blob-2"></div>
-        <div class="aurora-blob blob-3"></div>
+<body class="h-screen flex flex-col bg-[#020617] relative overflow-hidden">
+    
+    <div class="fixed inset-0 pointer-events-none z-0">
+        <div class="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-brand-600/10 rounded-full blur-[120px]"></div>
+        <div class="absolute bottom-[-10%] right-[-10%] w-[30%] h-[30%] bg-emerald-600/10 rounded-full blur-[100px]"></div>
+        <div class="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-20 brightness-150 contrast-150"></div>
     </div>
 
-    <nav class="sticky top-0 z-40 glass-panel border-b border-white/5">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div class="flex items-center justify-between h-16">
-                <div class="flex items-center gap-3">
-                    <div class="bg-indigo-600/20 p-2 rounded-lg border border-indigo-500/30">
-                        <i data-lucide="trending-up" class="h-6 w-6 text-indigo-400"></i>
-                    </div>
-                    <span class="font-bold text-xl tracking-tight text-white">Alpaca <span class="text-indigo-400">Paper Trading</span></span>
+    <div id="toast-container" class="fixed bottom-6 right-6 z-[100] flex flex-col gap-3 pointer-events-none"></div>
+
+    <div id="trade-modal" class="hidden fixed inset-0 z-[200] flex items-center justify-center backdrop-blur-sm">
+        <div class="absolute inset-0 bg-black/60"></div>
+        <div class="relative glass rounded-2xl p-8 max-w-md w-full mx-4 border border-brand-500/30 shadow-2xl card-entrance">
+            <div class="flex flex-col items-center gap-6">
+                <div class="w-16 h-16 border-4 border-brand-500 border-t-transparent rounded-full animate-spin"></div>
+                <div class="text-center">
+                    <h3 class="text-xl font-bold text-white mb-2" id="trade-modal-title">EXECUTING ORDER</h3>
+                    <p class="text-sm text-slate-400" id="trade-modal-details">Processing your trade...</p>
                 </div>
-                
-                <div class="flex items-center gap-4">
-                    <div class="hidden md:flex flex-col items-end mr-2">
-                        <span class="text-sm font-medium text-white">{{ user.email }}</span>
-                        <div class="flex gap-1">
-                            {% for role in roles %}
-                            <span class="text-[10px] uppercase tracking-wider px-1.5 py-0.5 rounded bg-indigo-500/10 text-indigo-400 border border-indigo-500/20">{{ role }}</span>
-                            {% endfor %}
-                        </div>
+                <div class="w-full bg-slate-900/50 rounded-lg p-4 space-y-2">
+                    <div class="flex justify-between text-xs">
+                        <span class="text-slate-500">Symbol:</span>
+                        <span class="text-white font-mono font-bold" id="trade-modal-symbol">--</span>
                     </div>
-                    <div class="h-8 w-px bg-white/10 mx-1"></div>
-                    <a href="{{ auth_hub_url }}/dashboard" class="p-2 text-gray-400 hover:text-white hover:bg-white/5 rounded-lg transition-all" title="Hub">
-                        <i data-lucide="grid" class="h-5 w-5"></i>
-                    </a>
-                    <form id="logout-form" method="POST" action="/logout" class="inline">
-                        <button type="submit" class="p-2 text-red-400 hover:text-red-300 hover:bg-red-500/10 rounded-lg transition-all" title="Logout">
-                            <i data-lucide="log-out" class="h-5 w-5"></i>
-                        </button>
-                    </form>
+                    <div class="flex justify-between text-xs">
+                        <span class="text-slate-500">Side:</span>
+                        <span class="text-white font-mono font-bold" id="trade-modal-side">--</span>
+                    </div>
+                    <div class="flex justify-between text-xs">
+                        <span class="text-slate-500">Quantity:</span>
+                        <span class="text-white font-mono font-bold" id="trade-modal-qty">--</span>
+                    </div>
                 </div>
+            </div>
+        </div>
+    </div>
+
+    <nav class="h-16 border-b border-white/5 bg-slate-950/50 backdrop-blur-xl flex-none z-50 relative">
+        <div class="h-full px-6 flex items-center justify-between">
+            <div class="flex items-center gap-4">
+                <div class="flex items-center justify-center w-8 h-8 rounded-lg bg-brand-500/10 border border-brand-500/20">
+                    <i data-lucide="zap" class="text-brand-400 h-5 w-5 fill-brand-400/20"></i>
+                </div>
+                <div class="flex flex-col">
+                    <span class="font-bold text-lg tracking-tight text-white leading-none">FLUX</span>
+                    <span class="text-[10px] text-brand-400 font-mono tracking-widest uppercase">Sentinel Prime</span>
+                </div>
+            </div>
+            <div class="flex items-center gap-8">
+                <div class="flex gap-8 text-sm">
+                    <div class="flex flex-col items-end">
+                        <span class="text-[10px] text-slate-500 font-bold uppercase tracking-wider">Equity</span>
+                        <span id="nav-equity" class="text-white font-mono font-bold text-base tracking-tight">--</span>
+                    </div>
+                    <div class="flex flex-col items-end">
+                        <span class="text-[10px] text-slate-500 font-bold uppercase tracking-wider">Cash</span>
+                        <span id="nav-cash" class="text-emerald-400 font-mono font-bold text-base tracking-tight">--</span>
+                    </div>
+                </div>
+                <button onclick="logout()" class="text-slate-400 hover:text-white transition-colors"><i data-lucide="log-out" class="h-5 w-5"></i></button>
             </div>
         </div>
     </nav>
 
-    <main class="flex-grow container mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-8 z-10 relative">
-        
-        <!-- Loading State -->
-        <div id="loading-state" class="hidden flex items-center justify-center py-20">
-            <div class="text-center">
-                <div class="inline-block animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-indigo-500 mb-4"></div>
-                <p class="text-gray-400">Loading account information...</p>
-            </div>
-        </div>
-
-        <!-- No Account State -->
-        <div id="no-account-state" class="{% if has_account %}hidden{% endif %}">
-            <div class="max-w-2xl mx-auto mt-20">
-                <div class="glass-panel rounded-2xl p-8 text-center">
-                    <div class="bg-indigo-500/10 p-6 rounded-full w-24 h-24 mx-auto mb-6 flex items-center justify-center border border-indigo-500/20">
-                        <i data-lucide="wallet" class="h-12 w-12 text-indigo-400"></i>
-                    </div>
-                    <h1 class="text-3xl font-bold text-white mb-4">Get Started with Paper Trading</h1>
-                    <p class="text-gray-400 mb-8 max-w-md mx-auto">
-                        Create a free Alpaca paper trading account to practice trading with virtual money. 
-                        No risk, real market data.
-                    </p>
-                    <button id="register-btn" class="px-8 py-3 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl font-semibold transition-all shadow-lg shadow-indigo-500/20 flex items-center gap-2 mx-auto">
-                        <i data-lucide="plus" class="h-5 w-5"></i>
-                        Create Paper Trading Account
-                    </button>
-                </div>
-            </div>
-        </div>
-
-        <!-- Account Display State -->
-        <div id="account-state" class="{% if not has_account %}hidden{% endif %}">
-            <div class="mb-8">
-                <h1 class="text-3xl font-bold text-white mb-2">Paper Trading Account</h1>
-                <p class="text-gray-400">Manage your Alpaca paper trading account</p>
-            </div>
-
-            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-                <!-- Account Status Card -->
-                <div class="glass-panel p-6 rounded-2xl">
-                    <div class="flex items-center justify-between mb-4">
-                        <p class="text-sm text-gray-400 font-medium">Account Status</p>
-                        <div class="bg-emerald-500/10 p-2 rounded-lg border border-emerald-500/20">
-                            <i data-lucide="check-circle" class="h-5 w-5 text-emerald-400"></i>
+    <main class="flex-grow p-4 lg:p-6 overflow-y-auto min-h-0 relative z-10">
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 h-full">
+            <div class="lg:col-span-7 flex flex-col gap-6 h-full min-h-0">
+                <div class="glass rounded-xl flex flex-col flex-1 min-h-0 overflow-hidden border-t border-t-brand-500/20 shadow-2xl">
+                    <div class="px-5 py-4 border-b border-white/5 flex items-center justify-between bg-slate-950/40 flex-none">
+                        <div class="flex items-center gap-3">
+                            <i data-lucide="radar" class="h-5 w-5 text-brand-400 animate-pulse-slow"></i>
+                            <span class="font-semibold text-sm text-white tracking-wide">MARKET SCANNER</span>
+                        </div>
+                        <div class="flex gap-2">
+                            <select id="strategy-select" onchange="scanMarket()" class="bg-slate-900 border border-white/10 rounded-lg pl-3 pr-8 py-1.5 text-xs text-slate-300 focus:outline-none focus:border-brand-500/50 hover:border-white/20 transition-colors w-40 font-mono cursor-pointer"></select>
+                            <button onclick="scanMarket()" class="p-1.5 rounded-lg bg-white/5 hover:bg-brand-500 text-slate-400 hover:text-white transition-all"><i data-lucide="refresh-cw" class="h-4 w-4"></i></button>
                         </div>
                     </div>
-                    <h3 id="account-status" class="text-2xl font-bold text-white">Active</h3>
+                    <div class="flex-1 overflow-y-auto relative bg-slate-950/20 min-h-0">
+                        <div id="scan-loading" class="hidden absolute inset-0 bg-slate-950/80 z-20 flex items-center justify-center backdrop-blur-sm">
+                            <span class="text-xs font-mono text-brand-300 tracking-widest animate-pulse">SCANNING...</span>
+                        </div>
+                        <table class="w-full text-left border-collapse">
+                            <thead class="text-xs font-mono text-slate-500 bg-slate-950/40 sticky top-0 backdrop-blur-md z-10 border-b border-white/5">
+                                <tr>
+                                    <th class="py-3 pl-6 font-medium">TICKER</th>
+                                    <th class="py-3 text-right font-medium">PRICE</th>
+                                    <th class="py-3 text-right font-medium tooltip-container">
+                                        <div class="inline-flex items-center gap-1 cursor-help">
+                                            RSI
+                                            <i data-lucide="info" class="h-3 w-3 opacity-50 transition-opacity"></i>
+                                        </div>
+                                        <div class="tooltip-content">
+                                            <strong>RSI (14)</strong>
+                                            Relative Strength Index measures momentum. Values above 70 indicate overbought conditions (potential sell), below 30 indicate oversold (potential buy).
+                                        </div>
+                                    </th>
+                                    <th class="py-3 text-right font-medium tooltip-container">
+                                        <div class="inline-flex items-center gap-1 cursor-help">
+                                            REL VOL
+                                            <i data-lucide="info" class="h-3 w-3 opacity-50 transition-opacity"></i>
+                                        </div>
+                                        <div class="tooltip-content">
+                                            <strong>Relative Volume</strong>
+                                            Current volume compared to average. Values above 1.5 indicate high activity and potential price movement. Higher volume confirms price trends.
+                                        </div>
+                                    </th>
+                                    <th class="py-3 text-right font-medium tooltip-container">
+                                        <div class="inline-flex items-center gap-1 cursor-help">
+                                            SMA200
+                                            <i data-lucide="info" class="h-3 w-3 opacity-50 transition-opacity"></i>
+                                        </div>
+                                        <div class="tooltip-content">
+                                            <strong>SMA200</strong>
+                                            200-day Simple Moving Average. Price above SMA200 suggests long-term uptrend (bullish), below indicates downtrend (bearish). Key support/resistance level.
+                                        </div>
+                                    </th>
+                                    <th class="py-3 text-right font-medium tooltip-container">
+                                        <div class="inline-flex items-center gap-1 cursor-help">
+                                            BETA
+                                            <i data-lucide="info" class="h-3 w-3 opacity-50 transition-opacity"></i>
+                                        </div>
+                                        <div class="tooltip-content">
+                                            <strong>Beta</strong>
+                                            Measures volatility relative to the market. Beta > 1 = more volatile than market, Beta < 1 = less volatile. Higher beta = higher risk/reward potential.
+                                        </div>
+                                    </th>
+                                    <th class="py-3 text-right font-medium tooltip-container">
+                                        <div class="inline-flex items-center gap-1 cursor-help">
+                                            CHANGE %
+                                            <i data-lucide="info" class="h-3 w-3 opacity-50 transition-opacity"></i>
+                                        </div>
+                                        <div class="tooltip-content">
+                                            <strong>Change %</strong>
+                                            Price change percentage for the day. Positive = gain, negative = loss. Shows immediate momentum and market sentiment.
+                                        </div>
+                                    </th>
+                                    <th class="py-3 pr-6 text-center font-medium">ACTION</th>
+                                </tr>
+                            </thead>
+                            <tbody id="signal-list" class="divide-y divide-white/5 text-sm"></tbody>
+                        </table>
+                    </div>
                 </div>
 
-                <!-- Portfolio Value Card -->
-                <div class="glass-panel p-6 rounded-2xl">
-                    <div class="flex items-center justify-between mb-4">
-                        <p class="text-sm text-gray-400 font-medium">Portfolio Value</p>
-                        <div class="bg-indigo-500/10 p-2 rounded-lg border border-indigo-500/20">
-                            <i data-lucide="dollar-sign" class="h-5 w-5 text-indigo-400"></i>
+                <div class="glass rounded-xl flex flex-col flex-1 min-h-0 overflow-hidden shadow-lg border-t border-t-emerald-500/20">
+                    <div class="px-5 py-3 border-b border-white/5 flex items-center justify-between bg-slate-950/40 flex-none">
+                        <div class="flex items-center gap-3">
+                            <i data-lucide="briefcase" class="h-5 w-5 text-emerald-400"></i>
+                            <span class="font-semibold text-sm text-white tracking-wide">PORTFOLIO</span>
+                        </div>
+                        <button onclick="refreshPortfolio()" id="refresh-positions-btn" class="text-slate-500 hover:text-white transition-colors"><i data-lucide="refresh-cw" class="h-3.5 w-3.5" id="refresh-icon"></i></button>
+                    </div>
+                    <div class="flex-1 overflow-y-auto bg-slate-950/20 min-h-0">
+                        <table class="w-full text-left">
+                            <thead class="text-[10px] font-mono text-slate-500 bg-slate-950/40 sticky top-0 backdrop-blur-md z-10">
+                                <tr>
+                                    <th class="py-2 pl-5 font-medium uppercase">Asset</th>
+                                    <th class="py-2 text-right font-medium uppercase">Price</th>
+                                    <th class="py-2 px-3 font-medium uppercase">Risk/Reward</th>
+                                    <th class="py-2 pr-5 text-right font-medium uppercase">P&L</th>
+                                </tr>
+                            </thead>
+                            <tbody id="positions-list" class="divide-y divide-white/5 text-sm"></tbody>
+                        </table>
+                        <div id="empty-positions" class="hidden flex flex-col items-center justify-center py-10 text-slate-600">
+                            <i data-lucide="layers" class="h-8 w-8 mb-2 opacity-50"></i>
+                            <span class="text-xs font-medium">NO POSITIONS</span>
                         </div>
                     </div>
-                    <h3 id="portfolio-value" class="text-2xl font-bold text-white">$0.00</h3>
                 </div>
+            </div>
 
-                <!-- Buying Power Card -->
-                <div class="glass-panel p-6 rounded-2xl">
-                    <div class="flex items-center justify-between mb-4">
-                        <p class="text-sm text-gray-400 font-medium">Buying Power</p>
-                        <div class="bg-blue-500/10 p-2 rounded-lg border border-blue-500/20">
-                            <i data-lucide="zap" class="h-5 w-5 text-blue-400"></i>
+            <div class="lg:col-span-5 flex flex-col gap-6 h-full overflow-y-auto pb-4 min-h-0">
+                <div class="glass rounded-xl p-1 shadow-lg flex-none">
+                    <div class="bg-slate-950/40 rounded-lg p-5">
+                        <div class="flex justify-between items-start">
+                            <div class="relative w-full max-w-[240px]">
+                                <input type="text" id="symbol-input" placeholder="SEARCH TICKER..." class="w-full bg-slate-900/80 border border-white/10 rounded-lg pl-10 pr-4 py-3 text-sm font-bold text-white uppercase placeholder:text-slate-600 focus:ring-1 focus:ring-brand-500 focus:border-brand-500 transition-all font-mono" onkeydown="if(event.key === 'Enter') checkPrice()">
+                                <i data-lucide="search" class="absolute left-3.5 top-3.5 h-4 w-4 text-slate-500"></i>
+                            </div>
+                            <div class="text-right">
+                                <div id="quote-price" class="text-4xl font-bold text-white tracking-tighter tabular-nums">$0.00</div>
+                                <div id="quote-symbol" class="text-xs text-brand-400 font-bold uppercase tracking-widest mt-1">WAITING</div>
+                            </div>
                         </div>
                     </div>
-                    <h3 id="buying-power" class="text-2xl font-bold text-white">$0.00</h3>
                 </div>
 
-                <!-- Cash Card -->
-                <div class="glass-panel p-6 rounded-2xl">
-                    <div class="flex items-center justify-between mb-4">
-                        <p class="text-sm text-gray-400 font-medium">Cash</p>
-                        <div class="bg-purple-500/10 p-2 rounded-lg border border-purple-500/20">
-                            <i data-lucide="wallet" class="h-5 w-5 text-purple-400"></i>
+                <div id="sentinel-card" class="hidden glass rounded-xl overflow-y-auto relative min-h-[400px] max-h-[calc(100vh-200px)] border-t border-t-brand-500/30 card-entrance">
+                    <div id="sentinel-loading" class="hidden absolute inset-0 z-20 bg-slate-950/50 flex flex-col items-center justify-center gap-4">
+                        <div class="w-8 h-8 border-2 border-brand-500 border-t-transparent rounded-full animate-spin"></div>
+                        <span class="text-xs font-mono text-slate-400 tracking-widest">SENTINEL AI ANALYZING...</span>
+                    </div>
+
+                    <div id="sentinel-content" class="p-6 space-y-6 pb-8">
+                        <div class="flex items-center justify-between pb-4 border-b border-white/5">
+                            <div class="flex items-center gap-2">
+                                <div class="w-2 h-2 rounded-full bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.5)] animate-pulse"></div>
+                                <span class="text-xs font-bold text-slate-300 tracking-widest">SENTINEL ANALYSIS</span>
+                            </div>
+                            <div id="sentinel-confidence" class="px-2 py-1 rounded bg-white/5 border border-white/5 text-[10px] font-mono text-brand-300">CONFIDENCE: --%</div>
+                        </div>
+
+                        <div class="flex items-stretch gap-4">
+                            <div class="flex-1 bg-gradient-to-br from-slate-900 to-slate-950 border border-white/5 rounded-lg p-4 relative overflow-hidden group">
+                                <div class="text-[10px] text-slate-500 font-bold uppercase tracking-wider mb-1">STRATEGIC VERDICT</div>
+                                <div id="sentinel-verdict" class="text-2xl font-black italic tracking-tighter text-white">--</div>
+                            </div>
+                            <div class="w-1/3 bg-slate-900/50 border border-white/5 rounded-lg p-4 flex flex-col justify-center items-center text-center">
+                                <div class="text-[10px] text-slate-500 font-bold uppercase tracking-wider mb-1">SCORE</div>
+                                <div id="sentinel-opportunity-score" class="text-2xl font-bold text-brand-400 tabular-nums">--</div>
+                            </div>
+                        </div>
+
+                        <div id="trade-horizon-section" class="bg-slate-900/40 rounded-lg p-5 border border-white/5 relative overflow-hidden">
+                            <div class="text-[10px] text-slate-400 font-bold uppercase tracking-wider mb-8 flex items-center gap-2">
+                                <i data-lucide="crosshair" class="h-3 w-3 text-brand-400"></i> TRADE HORIZON
+                            </div>
+
+                            <div class="relative w-full h-12 mb-8 select-none px-4">
+                                <div class="absolute top-1/2 left-4 right-4 h-1.5 bg-slate-800 rounded-full -translate-y-1/2 overflow-hidden">
+                                    <div id="viz-risk-bar" class="absolute top-0 bottom-0 left-0 bg-gradient-to-r from-rose-900/50 to-rose-500 transition-all duration-300" style="width: 50%"></div>
+                                    <div id="viz-reward-bar" class="absolute top-0 bottom-0 right-0 bg-gradient-to-l from-emerald-900/50 to-emerald-500 transition-all duration-300" style="width: 50%"></div>
+                                </div>
+
+                                <div class="absolute top-1/2 left-4 -translate-y-1/2 -translate-x-1/2 flex flex-col items-center group cursor-help z-10">
+                                    <div class="w-3 h-3 rounded-full bg-rose-500 shadow-[0_0_10px_rgba(244,63,94,0.5)]"></div>
+                                    <span class="absolute top-5 text-[9px] font-mono text-rose-400 font-bold whitespace-nowrap opacity-60 group-hover:opacity-100 transition-opacity">STOP</span>
+                                </div>
+
+                                <div class="absolute top-1/2 right-4 -translate-y-1/2 translate-x-1/2 flex flex-col items-center group cursor-help z-10">
+                                    <div class="w-3 h-3 rounded-full bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.5)]"></div>
+                                    <span class="absolute top-5 text-[9px] font-mono text-emerald-400 font-bold whitespace-nowrap opacity-60 group-hover:opacity-100 transition-opacity">TARGET</span>
+                                </div>
+
+                                <div class="absolute inset-x-4 top-0 bottom-0 pointer-events-none">
+                                    <div id="viz-puck" class="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 z-20 transition-all duration-500 ease-out" style="left: 50%">
+                                        <div class="relative">
+                                            <div class="w-1.5 h-6 bg-white rounded-full shadow-[0_0_15px_rgba(255,255,255,0.8)] border border-slate-900"></div>
+                                            <div id="viz-puck-tooltip" class="absolute -top-9 left-1/2 -translate-x-1/2 bg-slate-800 border border-white/10 px-2 py-1 rounded text-[10px] font-bold text-white whitespace-nowrap shadow-xl">
+                                                CURRENT
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div id="rr-verbiage" class="text-center text-xs font-mono text-slate-300 mb-6 py-2 bg-white/5 rounded border border-white/5 mx-auto max-w-sm">
+                                Calculating scenario...
+                            </div>
+
+                            <div class="grid grid-cols-2 gap-4">
+                                <div class="relative group">
+                                    <label class="text-[9px] text-rose-400/70 font-bold uppercase tracking-wider block mb-1.5 ml-1 flex items-center gap-1">
+                                        <i data-lucide="arrow-down" class="h-3 w-3"></i> STOP LOSS PRICE
+                                    </label>
+                                    <input type="number" id="sl-input" step="0.01" class="w-full bg-slate-950/50 border border-white/10 rounded-lg px-3 py-2 text-sm text-rose-200 font-mono font-bold focus:border-rose-500 focus:outline-none focus:ring-1 focus:ring-rose-500/20 transition-colors hover:bg-slate-950/80">
+                                </div>
+                                <div class="relative group">
+                                    <label class="text-[9px] text-emerald-400/70 font-bold uppercase tracking-wider block mb-1.5 ml-1 flex items-center gap-1">
+                                        <i data-lucide="arrow-up" class="h-3 w-3"></i> TAKE PROFIT PRICE
+                                    </label>
+                                    <input type="number" id="tp-input" step="0.01" class="w-full bg-slate-950/50 border border-white/10 rounded-lg px-3 py-2 text-sm text-emerald-200 font-mono font-bold focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500/20 transition-colors hover:bg-slate-950/80">
+                                </div>
+                            </div>
+                        </div>
+
+                        <div id="trade-controls" class="hidden bg-gradient-to-r from-brand-500/10 to-emerald-500/10 border border-brand-500/30 rounded-lg p-4">
+                            <div class="flex items-center gap-4">
+                                <div class="w-24">
+                                    <label class="text-[10px] text-slate-400 font-bold uppercase tracking-wider block mb-1.5">QUANTITY</label>
+                                    <input type="number" id="qty-input" value="1" min="1" step="1" class="w-full bg-slate-900/80 border border-white/20 rounded-lg py-2.5 text-center text-white font-bold text-sm focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20">
+                                </div>
+                                <button id="buy-button" class="btn-primary flex-1 rounded-lg py-3 text-base font-black text-white shadow-xl flex items-center justify-center gap-2 hover:scale-[1.02] transition-transform">
+                                    <i data-lucide="zap" class="h-4 w-4"></i>
+                                    EXECUTE ORDER
+                                </button>
+                            </div>
+                        </div>
+
+                        <div class="bg-slate-900/30 rounded-lg p-4 border-l-2 border-brand-500">
+                            <div class="text-[10px] text-slate-500 font-bold uppercase tracking-wider mb-2">ANALYSIS & EXPLANATION</div>
+                            <p id="sentinel-reasoning" class="text-sm text-slate-200 leading-relaxed">--</p>
+                        </div>
+
+                        <div class="glass-panel rounded-lg p-3">
+                            <div class="text-[10px] text-slate-500 font-bold uppercase tracking-wider mb-1">RISK PROFILE</div>
+                            <div id="sentinel-risk-level" class="text-sm font-bold text-white">--</div>
+                        </div>
+                        
+                        <div id="sentinel-recommendations-section" class="hidden pt-4 border-t border-white/5">
+                            <div class="text-[10px] text-slate-500 font-bold uppercase tracking-wider mb-3">TACTICAL NOTES</div>
+                            <ul id="sentinel-recommendations" class="space-y-2"></ul>
+                        </div>
+                        
+                        <div id="sentinel-sources-section" class="hidden pt-4 border-t border-white/5">
+                            <div class="text-[10px] text-slate-500 font-bold uppercase tracking-wider mb-3 flex items-center gap-2">
+                                <i data-lucide="newspaper" class="h-3 w-3"></i> INTELLIGENCE SOURCES
+                            </div>
+                            <div id="sentinel-sources-list" class="space-y-2">
+                            </div>
                         </div>
                     </div>
-                    <h3 id="cash" class="text-2xl font-bold text-white">$0.00</h3>
                 </div>
-            </div>
 
-            <!-- Account Details Card -->
-            <div class="glass-panel rounded-2xl p-6 mb-8">
-                <h2 class="text-xl font-bold text-white mb-6 flex items-center gap-2">
-                    <i data-lucide="info" class="h-6 w-6 text-indigo-400"></i>
-                    Account Details
-                </h2>
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div>
-                        <p class="text-sm text-gray-400 mb-1">Account Number</p>
-                        <p id="account-number" class="text-white font-mono text-sm">-</p>
-                    </div>
-                    <div>
-                        <p class="text-sm text-gray-400 mb-1">Equity</p>
-                        <p id="equity" class="text-white font-semibold">$0.00</p>
-                    </div>
-                    <div>
-                        <p class="text-sm text-gray-400 mb-1">Currency</p>
-                        <p id="currency" class="text-white">USD</p>
-                    </div>
-                    <div>
-                        <p class="text-sm text-gray-400 mb-1">Day Trading Buying Power</p>
-                        <p id="daytrading-buying-power" class="text-white">$0.00</p>
-                    </div>
-                    <div>
-                        <p class="text-sm text-gray-400 mb-1">Regulatory Buying Power</p>
-                        <p id="regt-buying-power" class="text-white">$0.00</p>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Trading Interface -->
-            <div class="glass-panel rounded-2xl p-6 mb-8">
-                <h2 class="text-xl font-bold text-white mb-6 flex items-center gap-2">
-                    <i data-lucide="trending-up" class="h-6 w-6 text-indigo-400"></i>
-                    Place Trade
-                </h2>
-                <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
-                    <div>
-                        <label class="block text-sm text-gray-400 mb-2">Symbol</label>
-                        <input type="text" id="trade-symbol" placeholder="AAPL" class="w-full px-4 py-2 bg-white/5 border border-white/10 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-indigo-500">
-                    </div>
-                    <div>
-                        <label class="block text-sm text-gray-400 mb-2">Quantity</label>
-                        <input type="number" id="trade-qty" placeholder="10" min="1" step="1" class="w-full px-4 py-2 bg-white/5 border border-white/10 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-indigo-500">
-                    </div>
-                    <div>
-                        <label class="block text-sm text-gray-400 mb-2">Order Type</label>
-                        <select id="trade-order-type" class="w-full px-4 py-2 bg-white/5 border border-white/10 rounded-lg text-white focus:outline-none focus:border-indigo-500">
-                            <option value="market">Market</option>
-                            <option value="limit">Limit</option>
-                        </select>
-                    </div>
-                    <div id="limit-price-container" class="hidden">
-                        <label class="block text-sm text-gray-400 mb-2">Limit Price</label>
-                        <input type="number" id="trade-limit-price" placeholder="150.00" step="0.01" class="w-full px-4 py-2 bg-white/5 border border-white/10 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-indigo-500">
-                    </div>
-                </div>
-                <div class="flex gap-4 mt-4">
-                    <button id="buy-btn" class="flex-1 px-6 py-3 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl font-semibold transition-all shadow-lg shadow-emerald-500/20 flex items-center justify-center gap-2">
-                        <i data-lucide="arrow-up" class="h-5 w-5"></i>
-                        Buy
-                    </button>
-                    <button id="sell-btn" class="flex-1 px-6 py-3 bg-red-600 hover:bg-red-500 text-white rounded-xl font-semibold transition-all shadow-lg shadow-red-500/20 flex items-center justify-center gap-2">
-                        <i data-lucide="arrow-down" class="h-5 w-5"></i>
-                        Sell
-                    </button>
-                </div>
-            </div>
-
-            <!-- Positions Table -->
-            <div class="glass-panel rounded-2xl p-6 mb-8">
-                <h2 class="text-xl font-bold text-white mb-6 flex items-center gap-2">
-                    <i data-lucide="briefcase" class="h-6 w-6 text-indigo-400"></i>
-                    Positions
-                </h2>
-                <div id="positions-container">
-                    <p class="text-gray-400 text-center py-4">No positions yet. Place your first trade!</p>
-                </div>
-            </div>
-
-            <!-- Order History -->
-            <div class="glass-panel rounded-2xl p-6 mb-8">
-                <div class="flex items-center justify-between mb-6">
-                    <h2 class="text-xl font-bold text-white flex items-center gap-2">
-                        <i data-lucide="history" class="h-6 w-6 text-indigo-400"></i>
-                        Order History
-                    </h2>
-                    <button onclick="fetchOrders()" class="px-4 py-2 bg-indigo-600/50 hover:bg-indigo-600 text-white rounded-lg text-sm font-medium transition-all flex items-center gap-2">
-                        <i data-lucide="refresh-cw" class="h-4 w-4"></i>
-                        Refresh
-                    </button>
-                </div>
-                <div id="orders-container">
-                    <p class="text-gray-400 text-center py-4">No orders yet.</p>
-                </div>
-            </div>
-
-            <!-- Action Buttons -->
-            <div class="flex justify-end gap-4">
-                <button id="fund-btn" class="px-6 py-3 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl font-semibold transition-all shadow-lg shadow-emerald-500/20 flex items-center gap-2">
-                    <i data-lucide="dollar-sign" class="h-5 w-5"></i>
-                    Fund Account ($1k)
-                </button>
-                <button id="refresh-btn" class="px-6 py-3 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl font-semibold transition-all shadow-lg shadow-indigo-500/20 flex items-center gap-2">
-                    <i data-lucide="refresh-cw" class="h-5 w-5"></i>
-                    Refresh Account Data
-                </button>
             </div>
         </div>
-
-        <!-- Toast Notification -->
-        <div id="toast" class="fixed bottom-6 right-6 z-[70] translate-y-24 opacity-0 transition-all duration-500 flex items-center gap-4 p-4 rounded-xl glass-panel border-l-4 border-indigo-500 shadow-2xl min-w-[300px]">
-            <div id="toast-icon-bg" class="p-2 rounded-full bg-indigo-500/20">
-                <i id="toast-icon" data-lucide="check" class="h-5 w-5 text-indigo-400"></i>
-            </div>
-            <div>
-                <h4 id="toast-title" class="font-bold text-white text-sm">Success</h4>
-                <p id="toast-msg" class="text-xs text-gray-400 mt-0.5">Operation completed.</p>
-            </div>
-        </div>
-
     </main>
 
     <script>
-        // Initialize Lucide icons
         lucide.createIcons();
+        const fmt = (n) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(n);
+        
+        async function init() {
+            await Promise.all([refreshPortfolio(), loadPresets()]);
+            scanMarket();
+        }
 
-        // Cookie helper function
+        async function checkPrice() {
+            const sym = document.getElementById('symbol-input').value.toUpperCase();
+            if(!sym) return;
+            
+            const sentinelCard = document.getElementById('sentinel-card');
+            sentinelCard.classList.remove('hidden');
+            document.getElementById('sentinel-loading').classList.remove('hidden');
+            document.getElementById('sentinel-content').classList.add('hidden');
+            document.getElementById('trade-controls').classList.add('hidden');
+            const tradeHorizonSection = document.getElementById('trade-horizon-section');
+            if(tradeHorizonSection) tradeHorizonSection.classList.add('hidden');
+
+            try {
+                const res = await fetch(`/api/quote/${sym}`);
+                const d = await res.json();
+                
+                if(d.error) { showToast(d.error, "error"); return; }
+                
+                document.getElementById('quote-symbol').innerText = d.symbol;
+                document.getElementById('quote-price').innerText = fmt(d.price);
+                
+                if(d.sentinel_analysis) {
+                    document.getElementById('sentinel-loading').classList.add('hidden');
+                    document.getElementById('sentinel-content').classList.remove('hidden');
+                    
+                    const s = d.sentinel_analysis;
+                    const verdict = (s.verdict || "NOT BUY").toUpperCase();
+                    
+                    const vEl = document.getElementById('sentinel-verdict');
+                    vEl.innerText = verdict;
+                    
+                    // Logic to colorize the verdict
+                    vEl.className = "text-2xl font-black italic tracking-tighter";
+                    const buyButton = document.getElementById('buy-button');
+                    
+                    const tradeHorizonSection = document.getElementById('trade-horizon-section');
+                    
+                    if(verdict === "BUY") {
+                        vEl.classList.add("text-emerald-400");
+                        buyButton.className = "btn-primary flex-1 rounded-lg py-3 text-base font-black text-white shadow-xl flex items-center justify-center gap-2 hover:scale-[1.02] transition-transform";
+                        buyButton.innerHTML = '<i data-lucide="zap" class="h-4 w-4"></i> EXECUTE BUY ORDER';
+                        buyButton.disabled = false;
+                        buyButton.onclick = () => executeTrade('buy');
+                        // Show trade horizon when BUY
+                        if(tradeHorizonSection) tradeHorizonSection.classList.remove('hidden');
+                    } else {
+                        vEl.classList.add("text-rose-400");
+                        buyButton.className = "flex-1 rounded-lg py-3 text-base font-black text-white shadow-xl flex items-center justify-center gap-2 transition-all bg-gradient-to-r from-slate-700 to-slate-800 border border-slate-600/50 opacity-60 cursor-not-allowed";
+                        buyButton.innerHTML = '<i data-lucide="x-circle" class="h-4 w-4"></i> NOT RECOMMENDED';
+                        buyButton.disabled = true;
+                        buyButton.onclick = null;
+                        // Hide trade horizon when NOT RECOMMENDED
+                        if(tradeHorizonSection) tradeHorizonSection.classList.add('hidden');
+                    }
+
+                    document.getElementById('sentinel-confidence').innerText = `CONFIDENCE: ${s.confidence}%`;
+                    document.getElementById('sentinel-reasoning').innerText = s.reasoning;
+                    document.getElementById('sentinel-opportunity-score').innerText = s.opportunity_score;
+                    document.getElementById('sentinel-risk-level').innerText = (s.risk_level || "MED").toUpperCase();
+
+                    // ============================================
+                    // NEW VISUAL TRADE HORIZON LOGIC
+                    // ============================================
+                    
+                    const currentPrice = d.price;
+                    // Default logic: If API returns 0 or null, use % based defaults
+                    const stopLoss = s.projected_stop || (currentPrice * 0.95);
+                    const takeProfit = s.projected_target || (currentPrice * 1.10);
+
+                    const slInput = document.getElementById('sl-input');
+                    const tpInput = document.getElementById('tp-input');
+                    
+                    // Set initial values to inputs
+                    slInput.value = stopLoss.toFixed(2);
+                    tpInput.value = takeProfit.toFixed(2);
+
+                    const updateRiskMetrics = () => {
+                        const sl = parseFloat(slInput.value) || 0;
+                        const tp = parseFloat(tpInput.value) || 0;
+                        const price = currentPrice;
+
+                        // 1. Calculate Metrics
+                        const riskAmt = Math.abs(price - sl);
+                        const rewardAmt = Math.abs(tp - price);
+                        const totalRange = tp - sl;
+                        
+                        // 2. Visual Puck Positioning
+                        // We map current price within the range [SL, TP]
+                        let pct = 50; 
+                        if (totalRange > 0) {
+                            pct = ((price - sl) / totalRange) * 100;
+                        }
+                        
+                        // Clamp visual pct to 0-100 for css
+                        const visualPct = Math.max(0, Math.min(100, pct));
+                        
+                        // Update DOM Elements
+                        const puck = document.getElementById('viz-puck');
+                        const puckTooltip = document.getElementById('viz-puck-tooltip');
+                        const riskBar = document.getElementById('viz-risk-bar');
+                        const rewardBar = document.getElementById('viz-reward-bar');
+                        const verbiage = document.getElementById('rr-verbiage');
+
+                        // Move Puck
+                        puck.style.left = `${visualPct}%`;
+                        
+                        // Adjust Bar Fills
+                        // Risk bar fills from Left (0%) to Puck
+                        riskBar.style.width = `${visualPct}%`;
+                        // Reward bar fills from Right (100%) to Puck
+                        rewardBar.style.width = `${100 - visualPct}%`;
+
+                        // 3. Status Verbiage & Ratios
+                        const ratio = riskAmt > 0 ? (rewardAmt / riskAmt).toFixed(2) : '0';
+                        const riskPct = ((riskAmt / price) * 100).toFixed(2);
+                        const rewardPct = ((rewardAmt / price) * 100).toFixed(2);
+
+                        let statusHTML = '';
+                        
+                        // Reset classes
+                        puckTooltip.className = 'absolute -top-9 left-1/2 -translate-x-1/2 bg-slate-800 border border-white/10 px-2 py-1 rounded text-[10px] font-bold text-white whitespace-nowrap shadow-xl';
+
+                        if (sl >= price) {
+                            statusHTML = `<span class="text-rose-400 font-bold"><i data-lucide="alert-triangle" class="inline w-3 h-3"></i> PRICE BELOW STOP LOSS</span>`;
+                            puckTooltip.classList.add('bg-rose-500', 'border-rose-400');
+                        } else if (tp <= price) {
+                            statusHTML = `<span class="text-emerald-400 font-bold"><i data-lucide="check-circle" class="inline w-3 h-3"></i> PRICE ABOVE TARGET</span>`;
+                            puckTooltip.classList.add('bg-emerald-500', 'border-emerald-400');
+                        } else {
+                            // Normal Range
+                            const isGoodRatio = parseFloat(ratio) >= 2.0;
+                            const ratioColor = isGoodRatio ? "text-emerald-400" : "text-amber-400";
+                            
+                            statusHTML = `
+                                <span class="text-slate-400">RISK</span> <span class="text-rose-400 font-bold">-${riskPct}%</span> 
+                                <span class="text-slate-600 mx-2">/</span> 
+                                <span class="text-slate-400">REWARD</span> <span class="text-emerald-400 font-bold">+${rewardPct}%</span>
+                                <span class="ml-3 pl-3 border-l border-white/10 ${ratioColor} font-bold tracking-tight">R/R 1:${ratio}</span>
+                            `;
+                        }
+                        
+                        verbiage.innerHTML = statusHTML;
+                        lucide.createIcons();
+                    };
+
+                    // Clean Event Listeners by cloning
+                    const slParent = slInput.parentNode;
+                    const tpParent = tpInput.parentNode;
+                    const slClone = slInput.cloneNode(true);
+                    const tpClone = tpInput.cloneNode(true);
+                    slParent.replaceChild(slClone, slInput);
+                    tpParent.replaceChild(tpClone, tpInput);
+                    
+                    const newSlInput = document.getElementById('sl-input');
+                    const newTpInput = document.getElementById('tp-input');
+                    
+                    newSlInput.addEventListener('input', updateRiskMetrics);
+                    newTpInput.addEventListener('input', updateRiskMetrics);
+                    
+                    // Initial calculation
+                    updateRiskMetrics();
+
+                    // ============================================
+                    // END VISUAL LOGIC
+                    // ============================================
+                    
+                    // Recommendations
+                    const recsEl = document.getElementById('sentinel-recommendations');
+                    recsEl.innerHTML = '';
+                    if(s.recommendations?.length) {
+                        document.getElementById('sentinel-recommendations-section').classList.remove('hidden');
+                        s.recommendations.forEach(r => recsEl.innerHTML += `<li class="text-xs text-slate-300 flex items-start gap-2"><i data-lucide="chevron-right" class="h-3 w-3 text-brand-500 mt-0.5 shrink-0"></i>${r}</li>`);
+                    } else document.getElementById('sentinel-recommendations-section').classList.add('hidden');
+
+                    // Sources
+                    const sourcesEl = document.getElementById('sentinel-sources-list');
+                    const sourcesSection = document.getElementById('sentinel-sources-section');
+                    sourcesEl.innerHTML = '';
+                    
+                    if(d.news_items && Array.isArray(d.news_items) && d.news_items.length > 0) {
+                        sourcesSection.classList.remove('hidden');
+                        d.news_items.forEach((item, idx) => {
+                            const url = item.url || item.link;
+                            const title = item.title || `News Article ${idx + 1}`;
+                            if(url) {
+                                sourcesEl.innerHTML += `
+                                    <a href="${url}" target="_blank" rel="noopener noreferrer" class="block bg-white/5 hover:bg-white/10 p-2 rounded border border-white/5 transition-colors group">
+                                        <div class="flex items-center gap-2 text-[10px] text-brand-400 font-mono font-bold">
+                                            <i data-lucide="external-link" class="h-3 w-3"></i> NEWS SOURCE
+                                        </div>
+                                        <div class="text-xs text-slate-300 mt-1 group-hover:text-white break-words">${title}</div>
+                                    </a>
+                                `;
+                            }
+                        });
+                    } else {
+                        sourcesSection.classList.add('hidden');
+                    }
+
+                    document.getElementById('trade-controls').classList.remove('hidden');
+                    lucide.createIcons();
+                    
+                    setTimeout(() => {
+                        document.getElementById('trade-controls').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                    }, 200);
+                }
+            } catch(e) { showToast("Fetch failed", "error"); console.error(e); }
+        }
+
         function getCookie(name) {
             const value = `; ${document.cookie}`;
             const parts = value.split(`; ${name}=`);
@@ -354,530 +611,320 @@
             return null;
         }
 
-        // Format currency
-        function formatCurrency(value) {
-            return new Intl.NumberFormat('en-US', {
-                style: 'currency',
-                currency: 'USD',
-                minimumFractionDigits: 2,
-                maximumFractionDigits: 2
-            }).format(value || 0);
+        function showTradeModal(side, symbol, qty) {
+            const modal = document.getElementById('trade-modal');
+            document.getElementById('trade-modal-title').textContent = `EXECUTING ${side.toUpperCase()} ORDER`;
+            document.getElementById('trade-modal-details').textContent = 'Processing your trade request...';
+            document.getElementById('trade-modal-symbol').textContent = symbol;
+            document.getElementById('trade-modal-side').textContent = side.toUpperCase();
+            document.getElementById('trade-modal-qty').textContent = qty;
+            modal.classList.remove('hidden');
         }
 
-        // Toast notification
-        let toastTimer;
-        function showToast(title, msg, type = 'success') {
-            const toast = document.getElementById('toast');
-            const icon = document.getElementById('toast-icon');
-            const tTitle = document.getElementById('toast-title');
-            const tMsg = document.getElementById('toast-msg');
-            const iconBg = document.getElementById('toast-icon-bg');
-            
-            tTitle.textContent = title;
-            tMsg.textContent = msg;
-            
-            const colors = {
-                success: 'text-emerald-400',
-                error: 'text-red-400',
-                info: 'text-indigo-400'
-            };
-            const bgs = {
-                success: 'bg-emerald-500/20',
-                error: 'bg-red-500/20',
-                info: 'bg-indigo-500/20'
-            };
-            
-            icon.className = `h-5 w-5 ${colors[type]}`;
-            iconBg.className = `p-2 rounded-full ${bgs[type]}`;
-            toast.className = `fixed bottom-6 right-6 z-[70] transition-all duration-500 flex items-center gap-4 p-4 rounded-xl glass-panel shadow-2xl min-w-[300px] border-l-4 ${type === 'success' ? 'border-emerald-500' : type === 'error' ? 'border-red-500' : 'border-indigo-500'}`;
-
-            toast.classList.remove('translate-y-24', 'opacity-0');
-            
-            clearTimeout(toastTimer);
-            toastTimer = setTimeout(() => {
-                toast.classList.add('translate-y-24', 'opacity-0');
-            }, 3000);
+        function hideTradeModal() {
+            const modal = document.getElementById('trade-modal');
+            modal.classList.add('hidden');
         }
 
-        // Update account display
-        function updateAccountDisplay(account) {
-            if (!account) return;
-
-            document.getElementById('account-status').textContent = (account.status || 'active').charAt(0).toUpperCase() + (account.status || 'active').slice(1);
-            document.getElementById('portfolio-value').textContent = formatCurrency(account.portfolio_value || account.equity || 0);
-            document.getElementById('buying-power').textContent = formatCurrency(account.buying_power || 0);
-            document.getElementById('cash').textContent = formatCurrency(account.virtual_cash || account.cash || 0);
-            document.getElementById('account-number').textContent = 'Virtual Account';
-            document.getElementById('equity').textContent = formatCurrency(account.equity || 0);
-            document.getElementById('currency').textContent = account.currency || 'USD';
-            document.getElementById('daytrading-buying-power').textContent = formatCurrency(account.buying_power || 0);
-            document.getElementById('regt-buying-power').textContent = formatCurrency(account.buying_power || 0);
-        }
-
-        // Fetch account details
-        async function fetchAccountDetails() {
+        async function executeTrade(side, symbol = null, quantity = null) {
+            const sym = (symbol || document.getElementById('symbol-input')?.value || '').toUpperCase();
+            const qty = quantity || parseFloat(document.getElementById('qty-input')?.value || '1');
+            const sl = parseFloat(document.getElementById('sl-input')?.value || '0');
+            const tp = parseFloat(document.getElementById('tp-input')?.value || '0');
+            const btn = document.getElementById('buy-button');
+            
+            if(!sym) { showToast("Please enter a symbol", "error"); return; }
+            if(!qty || qty <= 0) { showToast("Please enter a valid quantity", "error"); return; }
+            
+            showTradeModal(side, sym, qty);
+            
+            if(btn) btn.classList.add('loading');
             try {
                 const csrfToken = getCookie('csrf_token');
-                const headers = {
-                    'Content-Type': 'application/json',
-                };
-                if (csrfToken) {
-                    headers['X-CSRF-Token'] = csrfToken;
-                }
-
-                const res = await fetch('/api/alpaca/account', {
+                const headers = { 'Content-Type': 'application/json' };
+                if(csrfToken) headers['X-CSRF-Token'] = csrfToken;
+                
+                const res = await fetch('/api/trade', { 
+                    method: 'POST', 
                     headers: headers,
-                    credentials: 'same-origin'
+                    credentials: 'include',
+                    body: JSON.stringify({ symbol: sym, side: side.toLowerCase(), qty: qty, stop_loss: sl, take_profit: tp }) 
                 });
-                if (res.status === 404) {
-                    // No account found, show registration UI
-                    document.getElementById('no-account-state').classList.remove('hidden');
-                    document.getElementById('account-state').classList.add('hidden');
-                    return;
+                
+                if(!res.ok) {
+                    const errorData = await res.json().catch(() => ({}));
+                    throw new Error(errorData.error || `HTTP ${res.status}`);
                 }
                 
-                if (!res.ok) {
-                    const data = await res.json();
-                    throw new Error(data.error || 'Failed to fetch account details');
-                }
-
-                const data = await res.json();
-                if (data.success && data.account) {
-                    updateAccountDisplay(data.account);
-                    document.getElementById('no-account-state').classList.add('hidden');
-                    document.getElementById('account-state').classList.remove('hidden');
-                }
-            } catch (error) {
-                console.error('Error fetching account:', error);
-                showToast('Error', error.message, 'error');
-            }
-        }
-
-        // Register account
-        async function registerAccount() {
-            const btn = document.getElementById('register-btn');
-            const originalText = btn.innerHTML;
-            btn.disabled = true;
-            btn.innerHTML = '<div class="inline-block animate-spin rounded-full h-5 w-5 border-t-2 border-b-2 border-white mr-2"></div> Creating account...';
-
-            try {
-                const csrfToken = getCookie('csrf_token');
-                if (!csrfToken) {
-                    throw new Error('CSRF token not found. Please refresh the page.');
-                }
-
-                const res = await fetch('/api/alpaca/register', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRF-Token': csrfToken
-                    },
-                    credentials: 'same-origin'
-                });
-
-                const data = await res.json();
-
-                if (!res.ok) {
-                    const errorMsg = data.error || data.detail || `Failed to create account (${res.status})`;
-                    throw new Error(errorMsg);
-                }
-
-                if (data.success && data.account) {
-                    updateAccountDisplay(data.account);
-                    document.getElementById('no-account-state').classList.add('hidden');
-                    document.getElementById('account-state').classList.remove('hidden');
-                    showToast('Success', 'Paper trading account created successfully!', 'success');
-                }
-            } catch (error) {
-                console.error('Error registering account:', error);
-                showToast('Error', error.message, 'error');
-            } finally {
-                btn.disabled = false;
-                btn.innerHTML = originalText;
-            }
-        }
-
-        // Fund account
-        async function fundAccount() {
-            const btn = document.getElementById('fund-btn');
-            const originalText = btn.innerHTML;
-            btn.disabled = true;
-            btn.innerHTML = '<div class="inline-block animate-spin rounded-full h-5 w-5 border-t-2 border-b-2 border-white mr-2"></div> Funding account...';
-
-            try {
-                const csrfToken = getCookie('csrf_token');
-                if (!csrfToken) {
-                    throw new Error('CSRF token not found. Please refresh the page.');
-                }
-
-                const res = await fetch('/api/alpaca/fund', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRF-Token': csrfToken
-                    },
-                    credentials: 'same-origin'
-                });
-
-                const data = await res.json();
-
-                if (!res.ok) {
-                    const errorMsg = data.error || data.detail || `Failed to fund account (${res.status})`;
-                    throw new Error(errorMsg);
-                }
-
-                if (data.success) {
-                    showToast('Success', data.message || 'Account funded successfully!', 'success');
-                    // Refresh account details to show updated balance
+                const d = await res.json();
+                if(d.success) {
+                    document.getElementById('trade-modal-title').textContent = 'ORDER FILLED';
+                    document.getElementById('trade-modal-details').textContent = `Executed ${side.toUpperCase()} order`;
+                    document.getElementById('trade-modal-title').classList.add('text-emerald-400');
                     setTimeout(() => {
-                        fetchAccountDetails();
-                    }, 1000);
+                        hideTradeModal();
+                        document.getElementById('trade-modal-title').classList.remove('text-emerald-400');
+                    }, 1500);
+                    showToast(`ORDER FILLED: ${sym}`, 'success');
+                    refreshPortfolio();
+                } else {
+                    throw new Error(d.error || 'Trade failed');
                 }
-            } catch (error) {
-                console.error('Error funding account:', error);
-                showToast('Error', error.message, 'error');
-            } finally {
-                btn.disabled = false;
-                btn.innerHTML = originalText;
+            } catch(e) { 
+                document.getElementById('trade-modal-title').textContent = 'ORDER FAILED';
+                document.getElementById('trade-modal-details').textContent = e.message;
+                document.getElementById('trade-modal-title').classList.add('text-rose-400');
+                setTimeout(() => {
+                    hideTradeModal();
+                    document.getElementById('trade-modal-title').classList.remove('text-rose-400');
+                }, 2000);
+                showToast(e.message, "error"); 
             }
+            finally { if(btn) btn.classList.remove('loading'); }
         }
 
-        // Show/hide limit price input
-        document.getElementById('trade-order-type')?.addEventListener('change', (e) => {
-            const limitContainer = document.getElementById('limit-price-container');
-            if (e.target.value === 'limit') {
-                limitContainer.classList.remove('hidden');
-            } else {
-                limitContainer.classList.add('hidden');
-            }
-        });
+        async function closePosition(symbol, qty) { await executeTrade('sell', symbol, qty); }
 
-        // Execute trade
-        async function executeTrade(side) {
-            const symbol = document.getElementById('trade-symbol')?.value.trim().toUpperCase();
-            const qty = parseFloat(document.getElementById('trade-qty')?.value);
-            const orderType = document.getElementById('trade-order-type')?.value;
-            const limitPrice = orderType === 'limit' ? parseFloat(document.getElementById('trade-limit-price')?.value) : null;
+        async function loadPresets() {
+            const s = document.getElementById('strategy-select');
+            ["OVERSOLD", "BREAKOUT", "SQUEEZE"].forEach(p => { 
+                const opt = document.createElement('option'); opt.value = p.toLowerCase(); opt.innerText = p; s.appendChild(opt); 
+            });
+        }
 
-            if (!symbol) {
-                showToast('Error', 'Please enter a symbol', 'error');
-                return;
-            }
-
-            if (!qty || qty <= 0) {
-                showToast('Error', 'Please enter a valid quantity', 'error');
-                return;
-            }
-
-            if (orderType === 'limit' && (!limitPrice || limitPrice <= 0)) {
-                showToast('Error', 'Please enter a valid limit price', 'error');
-                return;
-            }
-
-            const btn = side === 'buy' ? document.getElementById('buy-btn') : document.getElementById('sell-btn');
-            const originalText = btn.innerHTML;
-            btn.disabled = true;
-            btn.innerHTML = '<div class="inline-block animate-spin rounded-full h-5 w-5 border-t-2 border-b-2 border-white"></div>';
-
+        async function scanMarket() {
+            const preset = document.getElementById('strategy-select').value || 'oversold';
+            document.getElementById('scan-loading').classList.remove('hidden');
             try {
-                const csrfToken = getCookie('csrf_token');
-                if (!csrfToken) {
-                    throw new Error('CSRF token not found. Please refresh the page.');
-                }
-
-                const res = await fetch('/api/alpaca/trade', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRF-Token': csrfToken
-                    },
-                    credentials: 'same-origin',
-                    body: JSON.stringify({
-                        symbol: symbol,
-                        side: side,
-                        qty: qty,
-                        order_type: orderType,
-                        limit_price: limitPrice
-                    })
-                });
-
-                let data;
-                try {
-                    data = await res.json();
-                } catch {
-                    // Response might not be JSON
-                    throw new Error(`Failed to execute trade (${res.status})`);
-                }
-
-                if (!res.ok) {
-                    // Handle wash trade error with special UI
-                    if (data.error_code === 'WASH_TRADE' || (data.error && (data.error.includes('wash trade') || data.error.includes('opposite side')))) {
-                        const errorMsg = data.error || 'Wash trade detected';
-                        const conflictingOrderId = data.conflicting_order_id;
-                        
-                        showToast('Wash Trade Detected', errorMsg, 'error');
-                        
-                        // Show a more detailed error with cancel option
-                        setTimeout(() => {
-                            const cancelMsg = conflictingOrderId 
-                                ? `${errorMsg}\n\nYou can cancel the conflicting order from the Order History below, or click OK to refresh orders.`
-                                : `${errorMsg}\n\nPlease check your Order History and cancel any pending orders of the opposite side.`;
-                            
-                            if (confirm(cancelMsg)) {
-                                fetchOrders();
-                            }
-                        }, 500);
-                        return;
+                const res = await fetch(`/api/scan?filter_type=${preset}`);
+                const data = await res.json();
+                const list = document.getElementById('signal-list');
+                list.innerHTML = '';
+                if(data.length) data.forEach(item => {
+                    // Format RSI with color coding
+                    const rsi = item.rsi !== null && item.rsi !== undefined ? item.rsi.toFixed(1) : '--';
+                    let rsiColor = 'text-slate-400';
+                    let rsiBg = '';
+                    if (item.rsi !== null && item.rsi !== undefined) {
+                        if (item.rsi >= 70) { rsiColor = 'text-rose-400'; rsiBg = 'bg-rose-500/10'; }
+                        else if (item.rsi <= 30) { rsiColor = 'text-emerald-400'; rsiBg = 'bg-emerald-500/10'; }
+                        else { rsiColor = 'text-slate-300'; }
                     }
                     
-                    // Handle other errors
-                    const errorMsg = data.error || data.detail || data.message || `Failed to execute trade (${res.status})`;
-                    throw new Error(errorMsg);
-                }
-
-                if (data.success) {
-                    showToast('Success', data.message || 'Order submitted successfully!', 'success');
-                    // Clear form
-                    document.getElementById('trade-symbol').value = '';
-                    document.getElementById('trade-qty').value = '';
-                    document.getElementById('trade-limit-price').value = '';
-                    // Refresh data
-                    setTimeout(() => {
-                        fetchAccountDetails();
-                        fetchPositions();
-                        fetchOrders();
-                    }, 1000);
-                }
-            } catch (error) {
-                console.error('Error executing trade:', error);
-                let errorMsg = error.message;
-                
-                // Try to parse JSON error messages
-                try {
-                    const errorObj = JSON.parse(error.message);
-                    if (errorObj.error) {
-                        errorMsg = errorObj.error;
-                    } else if (errorObj.message) {
-                        errorMsg = errorObj.message;
+                    // Format Relative Volume
+                    const relVol = item.rel_volume !== null && item.rel_volume !== undefined ? item.rel_volume.toFixed(2) : '--';
+                    let relVolColor = 'text-slate-400';
+                    if (item.rel_volume !== null && item.rel_volume !== undefined) {
+                        relVolColor = item.rel_volume >= 1.5 ? 'text-emerald-400' : 'text-slate-300';
                     }
-                } catch {
-                    // Not JSON, use as-is
-                }
-                
-                // Check for wash trade in error message
-                if (errorMsg.includes('wash trade') || errorMsg.includes('opposite side') || errorMsg.includes('WASH_TRADE')) {
-                    showToast('Wash Trade Detected', 'You have a pending order of the opposite side. Please cancel it first or wait for it to fill.', 'error');
-                    setTimeout(() => fetchOrders(), 1000);
-                } else {
-                    showToast('Error', errorMsg, 'error');
-                }
-            } finally {
-                btn.disabled = false;
-                btn.innerHTML = originalText;
-            }
-        }
-
-        // Fetch positions
-        async function fetchPositions() {
-            try {
-                const csrfToken = getCookie('csrf_token');
-                const headers = {
-                    'Content-Type': 'application/json',
-                };
-                if (csrfToken) {
-                    headers['X-CSRF-Token'] = csrfToken;
-                }
-
-                const res = await fetch('/api/alpaca/positions', {
-                    headers: headers,
-                    credentials: 'same-origin'
+                    
+                    // Format SMA200 - show price vs SMA200
+                    const sma200 = item.sma200 !== null && item.sma200 !== undefined ? fmt(item.sma200) : '--';
+                    let sma200Color = 'text-slate-400';
+                    if (item.sma200 !== null && item.sma200 !== undefined && item.price) {
+                        sma200Color = item.price > item.sma200 ? 'text-emerald-400' : 'text-rose-400';
+                    }
+                    
+                    // Format Beta
+                    const beta = item.beta !== null && item.beta !== undefined ? item.beta.toFixed(2) : '--';
+                    let betaColor = 'text-slate-400';
+                    if (item.beta !== null && item.beta !== undefined) {
+                        if (item.beta > 1.5) betaColor = 'text-amber-400';
+                        else if (item.beta < 0.5) betaColor = 'text-blue-400';
+                        else betaColor = 'text-slate-300';
+                    }
+                    
+                    // Format Change %
+                    const change = item.change !== null && item.change !== undefined ? item.change.toFixed(2) : '--';
+                    let changeColor = 'text-slate-400';
+                    let changeSign = '';
+                    if (item.change !== null && item.change !== undefined) {
+                        changeColor = item.change >= 0 ? 'text-emerald-400' : 'text-rose-400';
+                        changeSign = item.change >= 0 ? '+' : '';
+                    }
+                    
+                    list.innerHTML += `<tr class="hover:bg-white/5 cursor-pointer border-b border-white/5" onclick="stage('${item.symbol}')">
+                        <td class="py-3 pl-6 font-bold text-white text-xs font-mono">${item.symbol}</td>
+                        <td class="py-3 text-right text-xs font-mono text-slate-300">${fmt(item.price || 0)}</td>
+                        <td class="py-3 text-right text-xs font-mono">
+                            <span class="px-2 py-0.5 rounded ${rsiBg} ${rsiColor}">${rsi}</span>
+                        </td>
+                        <td class="py-3 text-right text-xs font-mono ${relVolColor}">${relVol}x</td>
+                        <td class="py-3 text-right text-xs font-mono ${sma200Color}">${sma200}</td>
+                        <td class="py-3 text-right text-xs font-mono ${betaColor}">${beta}</td>
+                        <td class="py-3 text-right text-xs font-mono ${changeColor}">${changeSign}${change}%</td>
+                        <td class="py-3 pr-6 text-center"><button class="text-[10px] bg-brand-500/20 text-brand-300 px-2 py-1 rounded hover:bg-brand-500/30 transition-colors">LOAD</button></td></tr>`;
                 });
-
-                if (!res.ok) {
-                    throw new Error('Failed to fetch positions');
-                }
-
-                const data = await res.json();
-                const container = document.getElementById('positions-container');
-
-                if (data.success && data.positions && data.positions.length > 0) {
-                    container.innerHTML = `
-                        <div class="overflow-x-auto">
-                            <table class="w-full">
-                                <thead>
-                                    <tr class="border-b border-white/10">
-                                        <th class="text-left py-3 px-4 text-sm text-gray-400 font-medium">Symbol</th>
-                                        <th class="text-right py-3 px-4 text-sm text-gray-400 font-medium">Shares</th>
-                                        <th class="text-right py-3 px-4 text-sm text-gray-400 font-medium">Avg Price</th>
-                                        <th class="text-right py-3 px-4 text-sm text-gray-400 font-medium">Cost Basis</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    ${data.positions.map(pos => `
-                                        <tr class="border-b border-white/5 hover:bg-white/5">
-                                            <td class="py-3 px-4 text-white font-medium">${pos.symbol}</td>
-                                            <td class="py-3 px-4 text-right text-white">${pos.shares}</td>
-                                            <td class="py-3 px-4 text-right text-white">${formatCurrency(pos.avg_price)}</td>
-                                            <td class="py-3 px-4 text-right text-white">${formatCurrency(pos.cost_basis)}</td>
-                                        </tr>
-                                    `).join('')}
-                                </tbody>
-                            </table>
-                        </div>
-                    `;
-                } else {
-                    container.innerHTML = '<p class="text-gray-400 text-center py-4">No positions yet. Place your first trade!</p>';
-                }
-            } catch (error) {
-                console.error('Error fetching positions:', error);
-            }
+                else list.innerHTML = '<tr><td colspan="8" class="py-6 text-center text-xs text-slate-500">NO SIGNALS</td></tr>';
+                lucide.createIcons();
+            } catch(e) { showToast('Scanner Error', 'error'); } 
+            finally { document.getElementById('scan-loading').classList.add('hidden'); }
         }
 
-        // Cancel order
-        async function cancelOrder(orderId) {
-            if (!confirm('Are you sure you want to cancel this order?')) {
-                return;
-            }
-
+        function stage(sym) { document.getElementById('symbol-input').value = sym; checkPrice(); }
+        
+        async function refreshPortfolio() {
+            const icon = document.getElementById('refresh-icon'); icon.classList.add('animate-spin');
             try {
-                const csrfToken = getCookie('csrf_token');
-                if (!csrfToken) {
-                    throw new Error('CSRF token not found. Please refresh the page.');
-                }
+                const [pRes, posRes] = await Promise.all([fetch('/api/portfolio'), fetch('/api/positions')]);
+                const d = await pRes.json();
+                const pos = await posRes.json();
+                document.getElementById('nav-equity').innerText = fmt(d.equity);
+                document.getElementById('nav-cash').innerText = fmt(d.cash);
+                const pl = document.getElementById('positions-list'); pl.innerHTML = '';
+                if(pos.length) {
+                    document.getElementById('empty-positions').classList.add('hidden');
+                    pos.forEach(p => {
+                        // PER POSITION CALCULATION - Each position is independent
+                        const avg = p.avg_price || p.last_price;
+                        const cur = p.last_price || avg;
+                        const sl = p.stop_loss || (avg * 0.95);
+                        const tp = p.take_profit || (avg * 1.10);
+                        const change = cur - avg;
+                        const trendColor = change > 0 ? 'text-emerald-400' : 'text-rose-400';
+                        const pnlColor = p.pnl >= 0 ? 'text-emerald-400' : 'text-rose-400';
+                        const pnlBg = p.pnl >= 0 ? 'bg-emerald-500/10 border-emerald-500/30' : 'bg-rose-500/10 border-rose-500/30';
+                        
+                        // PER POSITION: Calculate puck position for THIS position's risk/reward visualization
+                        // Each position has its own SL, TP, and current price
+                        const totalRange = tp - sl;
+                        let puckPct = 50;
+                        let isOutsideRange = false;
+                        let outsideRangeType = null; // 'below_sl' or 'above_tp'
+                        
+                        if (totalRange > 0) {
+                            puckPct = ((cur - sl) / totalRange) * 100;
+                            
+                            // Handle edge cases: price outside the range
+                            if (cur < sl) {
+                                puckPct = 0;
+                                isOutsideRange = true;
+                                outsideRangeType = 'below_sl';
+                            } else if (cur > tp) {
+                                puckPct = 100;
+                                isOutsideRange = true;
+                                outsideRangeType = 'above_tp';
+                            }
+                        } else if (totalRange === 0) {
+                            // Edge case: SL == TP
+                            puckPct = 50;
+                        }
+                        
+                        puckPct = Math.max(0, Math.min(100, puckPct));
+                        
+                        // PER POSITION: Calculate risk/reward bar widths for THIS position
+                        const riskBarWidth = puckPct;
+                        const rewardBarWidth = 100 - puckPct;
+                        
+                        // PER POSITION: Calculate risk/reward ratio for display
+                        const riskAmt = Math.abs(cur - sl);
+                        const rewardAmt = Math.abs(tp - cur);
+                        const rrRatio = riskAmt > 0 ? (rewardAmt / riskAmt).toFixed(2) : '0';
+                        const riskPct = ((riskAmt / cur) * 100).toFixed(2);
+                        const rewardPct = ((rewardAmt / cur) * 100).toFixed(2);
 
-                const res = await fetch(`/api/alpaca/orders/${orderId}/cancel`, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRF-Token': csrfToken
-                    },
-                    credentials: 'same-origin'
-                });
+                        pl.innerHTML += `
+                            <tr class="border-b border-white/5 hover:bg-white/5 transition-colors">
+                                <td class="py-4 pl-5">
+                                    <div class="flex flex-col gap-1">
+                                        <div class="flex items-center gap-2">
+                                            <span class="font-bold text-xs font-mono text-white">${p.symbol}</span>
+                                            <i data-lucide="${change > 0 ? 'trending-up' : 'trending-down'}" class="h-3 w-3 ${trendColor}"></i>
+                                        </div>
+                                        <span class="text-[10px] text-slate-500">${p.qty} UNITS @ $${avg.toFixed(2)}</span>
+                                    </div>
+                                </td>
+                                <td class="py-4 text-right">
+                                    <div class="flex flex-col items-end gap-1">
+                                        <span class="text-xs font-mono font-bold text-white">${fmt(cur)}</span>
+                                        <span class="text-[10px] ${trendColor} font-mono">${change > 0 ? '+' : ''}${((change / avg) * 100).toFixed(2)}%</span>
+                                    </div>
+                                </td>
+                                <td class="py-4 px-3">
+                                    <div class="flex flex-col gap-2">
+                                        <div class="relative w-full h-12 select-none px-4">
+                                            <div class="absolute top-1/2 left-4 right-4 h-1.5 bg-slate-800 rounded-full -translate-y-1/2 overflow-hidden">
+                                                <div class="absolute top-0 bottom-0 left-0 bg-gradient-to-r from-rose-900/50 to-rose-500 transition-all duration-300" style="width: ${riskBarWidth}%;"></div>
+                                                <div class="absolute top-0 bottom-0 right-0 bg-gradient-to-l from-emerald-900/50 to-emerald-500 transition-all duration-300" style="width: ${rewardBarWidth}%;"></div>
+                                            </div>
 
-                const data = await res.json();
+                                            <div class="absolute top-1/2 left-4 -translate-y-1/2 -translate-x-1/2 flex flex-col items-center group cursor-help z-10">
+                                                <div class="w-3 h-3 rounded-full bg-rose-500 shadow-[0_0_10px_rgba(244,63,94,0.5)]"></div>
+                                                <span class="absolute top-5 text-[9px] font-mono text-rose-400 font-bold whitespace-nowrap opacity-60 group-hover:opacity-100 transition-opacity">STOP</span>
+                                                <div class="absolute top-8 left-1/2 -translate-x-1/2 bg-slate-900/95 border border-rose-500/30 px-2 py-1 rounded text-[9px] font-mono text-rose-300 whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-30 shadow-xl">
+                                                    ${fmt(sl)}
+                                                </div>
+                                            </div>
 
-                if (!res.ok) {
-                    throw new Error(data.error || `Failed to cancel order (${res.status})`);
-                }
+                                            <div class="absolute top-1/2 right-4 -translate-y-1/2 translate-x-1/2 flex flex-col items-center group cursor-help z-10">
+                                                <div class="w-3 h-3 rounded-full bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.5)]"></div>
+                                                <span class="absolute top-5 text-[9px] font-mono text-emerald-400 font-bold whitespace-nowrap opacity-60 group-hover:opacity-100 transition-opacity">TARGET</span>
+                                                <div class="absolute top-8 left-1/2 -translate-x-1/2 bg-slate-900/95 border border-emerald-500/30 px-2 py-1 rounded text-[9px] font-mono text-emerald-300 whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-30 shadow-xl">
+                                                    ${fmt(tp)}
+                                                </div>
+                                            </div>
 
-                if (data.success) {
-                    showToast('Success', data.message || 'Order cancelled successfully!', 'success');
-                    // Refresh orders and positions
-                    setTimeout(() => {
-                        fetchOrders();
-                        fetchPositions();
-                        fetchAccountDetails();
-                    }, 500);
-                }
-            } catch (error) {
-                console.error('Error cancelling order:', error);
-                showToast('Error', error.message, 'error');
-            }
+                                            <div class="absolute inset-x-4 top-0 bottom-0 pointer-events-none">
+                                                <div class="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 z-20 transition-all duration-500 ease-out" style="left: ${puckPct}%;">
+                                                    <div class="relative group cursor-help">
+                                                        <div class="w-1.5 h-6 bg-white rounded-full shadow-[0_0_15px_rgba(255,255,255,0.8)] border border-slate-900 ${isOutsideRange ? (outsideRangeType === 'below_sl' ? 'bg-rose-400' : 'bg-emerald-400') : ''}"></div>
+                                                        <div class="absolute -top-9 left-1/2 -translate-x-1/2 bg-slate-800 border border-white/10 px-2 py-1 rounded text-[10px] font-bold text-white whitespace-nowrap shadow-xl ${isOutsideRange ? (outsideRangeType === 'below_sl' ? 'bg-rose-500 border-rose-400' : 'bg-emerald-500 border-emerald-400') : ''}">
+                                                            ${isOutsideRange ? (outsideRangeType === 'below_sl' ? 'BELOW SL' : 'ABOVE TP') : 'CURRENT'}
+                                                        </div>
+                                                        <div class="absolute top-7 left-1/2 -translate-x-1/2 bg-slate-900/95 border border-white/10 px-2 py-1 rounded text-[9px] font-mono text-white whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-30 shadow-xl">
+                                                            ${fmt(cur)}
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="text-center text-[9px] font-mono text-slate-400 px-2">
+                                            <span class="text-rose-400">R: -${riskPct}%</span>
+                                            <span class="text-slate-600 mx-1">/</span>
+                                            <span class="text-emerald-400">R: +${rewardPct}%</span>
+                                            <span class="text-slate-600 mx-1">|</span>
+                                            <span class="text-slate-300">R/R 1:${rrRatio}</span>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td class="py-4 pr-5">
+                                    <div class="flex flex-col items-end gap-2">
+                                        <div class="px-2 py-1 rounded ${pnlBg} border ${pnlColor}">
+                                            <span class="text-xs font-bold font-mono ${pnlColor}">${fmt(p.pnl)}</span>
+                                        </div>
+                                        <span class="text-[10px] font-mono ${pnlColor}">${p.pnl_pct.toFixed(2)}%</span>
+                                        <button onclick="closePosition('${p.symbol}', ${p.qty})" class="mt-1 px-3 py-1.5 bg-gradient-to-r from-rose-600 to-rose-500 hover:from-rose-500 hover:to-rose-400 text-white text-xs font-bold rounded-lg transition-all duration-200 shadow-lg hover:shadow-rose-500/50 flex items-center gap-1.5 hover:scale-105">
+                                            <i data-lucide="x-circle" class="h-3.5 w-3.5"></i>
+                                            SELL
+                                        </button>
+                                    </div>
+                                </td>
+                            </tr>`;
+                    });
+                    lucide.createIcons();
+                } else document.getElementById('empty-positions').classList.remove('hidden');
+            } catch(e) {} finally { setTimeout(() => icon.classList.remove('animate-spin'), 500); }
+        }
+        
+        function showToast(msg, type='success') { 
+            const el = document.createElement('div'); 
+            const bg = type === 'error' ? 'bg-rose-950/90 border-rose-500/30 text-rose-200' : 'bg-emerald-950/90 border-emerald-500/30 text-emerald-200';
+            el.className = `glass px-4 py-3 rounded-lg border text-xs font-bold flex gap-3 items-center shadow-xl translate-x-full transition-all duration-300 ${bg}`; 
+            el.innerHTML = `<i data-lucide="${type==='error'?'alert-circle':'check-circle-2'}" class="h-4 w-4"></i><span>${msg.toUpperCase()}</span>`;
+            document.getElementById('toast-container').appendChild(el);
+            lucide.createIcons();
+            requestAnimationFrame(() => el.style.transform = 'translateX(0)');
+            setTimeout(() => { el.style.transform = 'translateX(100%)'; setTimeout(() => el.remove(), 300); }, 3000); 
         }
 
-        // Fetch orders
-        async function fetchOrders() {
-            try {
-                const csrfToken = getCookie('csrf_token');
-                const headers = {
-                    'Content-Type': 'application/json',
-                };
-                if (csrfToken) {
-                    headers['X-CSRF-Token'] = csrfToken;
-                }
-
-                const res = await fetch('/api/alpaca/orders', {
-                    headers: headers,
-                    credentials: 'same-origin'
-                });
-
-                if (!res.ok) {
-                    throw new Error('Failed to fetch orders');
-                }
-
-                const data = await res.json();
-                const container = document.getElementById('orders-container');
-
-                if (data.success && data.orders && data.orders.length > 0) {
-                    container.innerHTML = `
-                        <div class="overflow-x-auto">
-                            <table class="w-full">
-                                <thead>
-                                    <tr class="border-b border-white/10">
-                                        <th class="text-left py-3 px-4 text-sm text-gray-400 font-medium">Symbol</th>
-                                        <th class="text-left py-3 px-4 text-sm text-gray-400 font-medium">Side</th>
-                                        <th class="text-right py-3 px-4 text-sm text-gray-400 font-medium">Qty</th>
-                                        <th class="text-right py-3 px-4 text-sm text-gray-400 font-medium">Price</th>
-                                        <th class="text-left py-3 px-4 text-sm text-gray-400 font-medium">Status</th>
-                                        <th class="text-left py-3 px-4 text-sm text-gray-400 font-medium">Time</th>
-                                        <th class="text-center py-3 px-4 text-sm text-gray-400 font-medium">Actions</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    ${data.orders.map(order => {
-                                        const sideColor = order.side === 'buy' ? 'text-emerald-400' : 'text-red-400';
-                                        const statusColor = order.status === 'filled' ? 'text-emerald-400' : 
-                                                          order.status === 'rejected' || order.status === 'cancelled' ? 'text-red-400' : 
-                                                          'text-yellow-400';
-                                        const canCancel = ['pending', 'accepted', 'pending_new', 'accepted_for_bidding', 'pending_replace'].includes(order.status?.toLowerCase()) && order.status?.toLowerCase() !== 'pending_cancel';
-                                        const orderId = order.alpaca_order_id || order.client_order_id || order._id;
-                                        const priceDisplay = order.filled_avg_price ? formatCurrency(order.filled_avg_price) : 
-                                                           (order.limit_price ? `Limit: ${formatCurrency(order.limit_price)}` : 
-                                                           (order.order_type === 'market' ? 'Market' : '-'));
-                                        return `
-                                            <tr class="border-b border-white/5 hover:bg-white/5">
-                                                <td class="py-3 px-4 text-white font-medium">${order.symbol}</td>
-                                                <td class="py-3 px-4 ${sideColor} font-medium uppercase">${order.side}</td>
-                                                <td class="py-3 px-4 text-right text-white">${order.qty}${order.filled_qty && order.filled_qty > 0 ? ` (${order.filled_qty} filled)` : ''}</td>
-                                                <td class="py-3 px-4 text-right text-white">${priceDisplay}</td>
-                                                <td class="py-3 px-4 ${statusColor} font-medium capitalize">
-                                                    ${order.status || 'pending'}
-                                                    ${(order.status === 'pending' || order.status === 'accepted' || order.status === 'pending_cancel') ? ' <span class="text-xs">⏳</span>' : ''}
-                                                </td>
-                                                <td class="py-3 px-4 text-gray-400 text-sm">${order.submitted_at ? new Date(order.submitted_at).toLocaleString() : '-'}</td>
-                                                <td class="py-3 px-4 text-center">
-                                                    ${canCancel ? `
-                                                        <button onclick="cancelOrder('${orderId}')" 
-                                                                class="px-3 py-1 text-xs bg-red-500/20 hover:bg-red-500/30 text-red-400 rounded border border-red-500/30 transition-colors">
-                                                            Cancel
-                                                        </button>
-                                                    ` : '-'}
-                                                </td>
-                                            </tr>
-                                        `;
-                                    }).join('')}
-                                </tbody>
-                            </table>
-                        </div>
-                    `;
-                } else {
-                    container.innerHTML = '<p class="text-gray-400 text-center py-4">No orders yet.</p>';
-                }
-            } catch (error) {
-                console.error('Error fetching orders:', error);
-            }
-        }
-
-        // Event listeners
-        document.getElementById('register-btn')?.addEventListener('click', registerAccount);
-        document.getElementById('fund-btn')?.addEventListener('click', fundAccount);
-        document.getElementById('buy-btn')?.addEventListener('click', () => executeTrade('buy'));
-        document.getElementById('sell-btn')?.addEventListener('click', () => executeTrade('sell'));
-        document.getElementById('refresh-btn')?.addEventListener('click', () => {
-            fetchAccountDetails();
-            fetchPositions();
-            fetchOrders();
-            showToast('Refreshing', 'Updating account data...', 'info');
-        });
-
-        // Load account details on page load if account exists
-        {% if has_account %}
+        async function logout() { await fetch('/logout', { method:'POST' }); window.location.reload(); }
+        
         document.addEventListener('DOMContentLoaded', () => {
-            fetchAccountDetails();
-            fetchPositions();
-            fetchOrders();
+            const buyBtn = document.getElementById('buy-button');
+            if(buyBtn && !buyBtn.onclick) buyBtn.onclick = () => executeTrade('buy');
         });
-        {% endif %}
+        
+        init();
     </script>
 </body>
 </html>

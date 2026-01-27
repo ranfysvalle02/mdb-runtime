@@ -142,12 +142,6 @@ After logging in on the auth hub:
 - **Required Role**: `viewer` (to access), `editor` or `admin` (to edit)
 - **Features**: Create, read, update data
 
-  3. Or add to `.env` file:
-     ```
-     ALPACA_API_KEY=your_paper_api_key
-     ALPACA_SECRET_KEY=your_paper_secret_key
-     ```
-
 ## Configuration
 
 ### Environment Variables
@@ -157,14 +151,6 @@ All apps share these critical environment variables:
 - `MONGODB_URI`: MongoDB connection string
 - `MONGODB_DB`: Database name (must be same for all apps)
 - `MDB_ENGINE_JWT_SECRET`: JWT secret (must be same for all apps for SSO to work)
-
-**SSO App 2 (Alpaca Trading) requires additional variables:**
-
-- `ALPACA_API_KEY`: Alpaca Trade API key for paper trading
-- `ALPACA_SECRET_KEY`: Alpaca Trade API secret for paper trading
-
-**Important**: Use Trade API credentials (not Broker API). Get them from:
-https://app.alpaca.markets/paper/dashboard/overview
 
 See `.env.example` for all available options.
 

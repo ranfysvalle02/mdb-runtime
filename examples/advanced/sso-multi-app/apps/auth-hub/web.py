@@ -115,39 +115,39 @@ def is_admin(user: dict | None) -> bool:
 def get_default_app_roles() -> dict[str, list[str]]:
     """
     Get default app roles for new user registration.
-    
+
     This function returns a dictionary mapping app slugs to their default roles.
     The base role (e.g., "base_user" or "viewer") is assigned to all new users
     for each SSO app they should have access to.
-    
+
     Configuration options:
     1. Environment variable DEFAULT_BASE_ROLE (default: "base_user")
     2. Environment variable SSO_APPS (comma-separated list of app slugs)
     3. Hardcoded fallback list
-    
+
     Returns:
         Dictionary of app_slug -> [role_list]
     """
     # Get base role from environment or use default
     base_role = os.getenv("DEFAULT_BASE_ROLE", "base_user")
-    
+
     # Get list of SSO apps from environment or use defaults
     sso_apps_env = os.getenv("SSO_APPS", "")
     if sso_apps_env:
         sso_apps = [app.strip() for app in sso_apps_env.split(",") if app.strip()]
     else:
         # Default SSO apps for this example
-        sso_apps = ["sso-app-1", "sso-app-2"]
-    
+        sso_apps = ["sso-app-1", "flux"]
+
     # Build default roles dictionary
     default_roles = {
         APP_SLUG: [base_role],  # Auth hub gets base role
     }
-    
+
     # Add base role for all SSO apps
     for app_slug in sso_apps:
         default_roles[app_slug] = [base_role]
-    
+
     return default_roles
 
 
@@ -318,7 +318,7 @@ async def register(
     try:
         # Get default app roles for new user (uses base_user or configured role)
         default_roles = get_default_app_roles()
-        
+
         # Create user with default roles for all apps
         user = await pool.create_user(
             email=email,
@@ -431,7 +431,7 @@ async def dashboard(request: Request):
             "user": user,
             "is_admin": is_admin(user),
             "all_users": all_users,
-            "sso_apps": ["sso-app-1", "sso-app-2"],
+            "sso_apps": ["sso-app-1", "flux"],
         },
     )
 
@@ -511,7 +511,7 @@ async def grant_access(
 
     # Get base role from environment or use default
     base_role = os.getenv("DEFAULT_BASE_ROLE", "base_user")
-    
+
     # Add base role if not present
     if base_role not in current_roles:
         current_roles.append(base_role)

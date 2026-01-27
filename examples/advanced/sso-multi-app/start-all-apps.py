@@ -9,7 +9,7 @@ Each app runs in its own thread with its own uvicorn server.
 Port Mapping:
 - Port 8000: auth-hub (master app)
 - Port 8001: sso-app-1
-- Port 8002: sso-app-2
+- Port 8002: FLUX
 """
 
 import logging
@@ -82,7 +82,7 @@ def main() -> None:
     apps: list[tuple[str, int, str]] = [
         ("auth-hub/web.py", 8000, "SSO Auth Hub"),
         ("sso-app-1/web.py", 8001, "SSO App 1"),
-        ("sso-app-2/web.py", 8002, "SSO App 2"),
+        ("sso-app-2/web.py", 8002, "FLUX"),
     ]
 
     apps_dir = Path(__file__).parent / "apps"
