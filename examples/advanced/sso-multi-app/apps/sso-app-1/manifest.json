@@ -1,6 +1,6 @@
 {
   "schema_version": "2.0",
-  "slug": "sso-app-1",
+  "slug": "pwd-zero",
   "name": "Password Generator",
   "description": "Secure password generator and manager with SSO authentication",
   "status": "active",
@@ -19,7 +19,7 @@
     "allow_headers": ["*"]
   },
   "data_access": {
-    "read_scopes": ["sso-app-1"],
-    "write_scope": "sso-app-1"
+    "read_scopes": ["pwd-zero"],
+    "write_scope": "pwd-zero"
   }
 }

@@ -1,4 +1,4 @@
-# Requirements for SSO App 2 - Paper Trading App
+# Requirements for FLUX - Paper Trading App
 # Install MDB_ENGINE first: pip install mdb-engine
 # Or install from source: pip install -e ../../../../
 

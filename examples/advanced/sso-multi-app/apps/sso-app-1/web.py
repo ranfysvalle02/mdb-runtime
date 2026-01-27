@@ -43,7 +43,7 @@ except ImportError as e:
 # CONFIGURATION
 # ============================================================================
 
-APP_SLUG = "sso-app-1"
+APP_SLUG = "pwd-zero"
 APP_SECRET = os.getenv("APP_ENCRYPTION_SECRET", "default-secret-change-in-production")
 
 # Initialize MongoDB Engine
@@ -224,22 +224,22 @@ async def auth_callback(request: Request, token: str = None):
 async def logout(request: Request):
     """Logout and revoke token."""
     from mdb_engine.auth.shared_users import SharedUserPool
-    
+
     pool: SharedUserPool = getattr(app.state, "user_pool", None)
-    
+
     # Get token from cookie
     token = request.cookies.get("mdb_auth_token")
-    
+
     # Revoke token if we have pool and token
     if pool and token:
         try:
             await pool.revoke_token(token, reason="logout")
-        except Exception as e:
+        except (AttributeError, TypeError) as e:
             logger.warning(f"Failed to revoke token: {e}")
-    
+
     # Create response redirecting to auth hub
     response = RedirectResponse(url=f"{get_auth_hub_url()}/login", status_code=302)
-    
+
     # Delete cookie
     response.delete_cookie(
         "mdb_auth_token",
@@ -248,7 +248,7 @@ async def logout(request: Request):
         secure=False,
         samesite="lax",
     )
-    
+
     return response
 
 

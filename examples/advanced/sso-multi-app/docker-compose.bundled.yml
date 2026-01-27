@@ -49,7 +49,7 @@ services:
     ports:
       - "${AUTH_HUB_PORT:-8000}:8000"    # Auth Hub
       - "${SSO_APP_1_PORT:-8001}:8001"    # SSO App 1
-      - "${SSO_APP_2_PORT:-8002}:8002"    # SSO App 2
+      - "${SSO_APP_2_PORT:-8002}:8002"    # FLUX
     environment:
       - MONGODB_URI=${MONGODB_URI:-mongodb://admin:password@mongodb:27017/?authSource=admin&directConnection=true}
       - MONGODB_DB=${MONGODB_DB:-oblivio_apps}

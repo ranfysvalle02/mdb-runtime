@@ -8,8 +8,8 @@ A complete working example demonstrating Single Sign-On (SSO) architecture where
 graph TB
     AuthHub[SSO Auth Hub<br/>Port 8000<br/>- Registration<br/>- Login/Logout<br/>- Role Management]
     
-    SSOApp1[SSO App 1<br/>Port 8001<br/>- Data Viewing]
-    SSOApp2[SSO App 2<br/>Port 8002<br/>- Data Editing]
+    SSOApp1[pwd-zero<br/>Port 8001<br/>- Data Viewing]
+    SSOApp2[FLUX<br/>Port 8002<br/>- Data Editing]
     
     MongoDB[(MongoDB<br/>Shared Database)]
     UserPool[Shared User Pool<br/>_mdb_engine_shared_users]
@@ -65,8 +65,8 @@ docker-compose up --build
 4. **Access the apps:**
 
 - **Auth Hub**: http://localhost:8000
-- **SSO App 1**: http://localhost:8001
-- **SSO App 2**: http://localhost:8002
+- **pwd-zero**: http://localhost:8001
+- **FLUX**: http://localhost:8002
 
 ### Running with Bundled Dockerfile (Single Container)
 
@@ -130,13 +130,13 @@ After logging in on the auth hub:
 - **Dashboard**: View users and manage roles
 - **Role Management**: Grant/revoke access to SSO apps
 
-### SSO App 1 (Port 8001)
+### pwd-zero (Port 8001)
 
 - **Functionality**: Data viewing/listing
 - **Required Role**: `viewer` (default)
 - **Features**: View data, read-only operations
 
-### SSO App 2 (Port 8002)
+### FLUX (Port 8002)
 
 - **Functionality**: Data editing
 - **Required Role**: `viewer` (to access), `editor` or `admin` (to edit)
@@ -244,11 +244,11 @@ docker run -d -p 27017:27017 --name mongodb mongo:7
 cd apps/auth-hub
 python web.py
 
-# Terminal 2 - SSO App 1
+# Terminal 2 - pwd-zero
 cd apps/sso-app-1
 python web.py
 
-# Terminal 3 - SSO App 2
+# Terminal 3 - FLUX
 cd apps/sso-app-2
 python web.py
 ```
@@ -315,11 +315,11 @@ sso-multi-app/
     │   ├── manifest.json
     │   ├── web.py
     │   └── templates/
-    ├── sso-app-1/               # SSO app 1
+    ├── sso-app-1/               # pwd-zero
     │   ├── manifest.json
     │   ├── web.py
     │   └── templates/
-    └── sso-app-2/               # SSO app 2
+    └── sso-app-2/               # FLUX
         ├── manifest.json
         ├── web.py
         └── templates/

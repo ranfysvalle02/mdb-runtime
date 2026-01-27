@@ -11,8 +11,8 @@
         <strong style="color: var(--accent);">SSO Active</strong><br>
         <span style="color: var(--muted);">You're logged in across all apps. Access SSO apps:</span>
         <ul style="margin-top: 0.5rem; list-style: none; padding: 0;">
-            <li><a href="http://localhost:8001" style="color: var(--accent);">SSO App 1</a> (Port 8001)</li>
-            <li><a href="http://localhost:8002" style="color: var(--accent);">SSO App 2</a> (Port 8002)</li>
+            <li><a href="http://localhost:8001" style="color: var(--accent);">pwd-zero</a> (Port 8001)</li>
+            <li><a href="http://localhost:8002" style="color: var(--accent);">FLUX</a> (Port 8002)</li>
         </ul>
     </div>
 </div>
@@ -46,7 +46,7 @@
         <tr>
             <th>Email</th>
             <th>Auth Hub Roles</th>
-            <th>SSO App 1</th>
+            <th>pwd-zero</th>
             <th>FLUX</th>
             <th>Actions</th>
         </tr>
@@ -59,7 +59,7 @@
                 {% endfor %}
             </td>
             <td>
-                {% for role in u.app_roles.get('sso-app-1', []) %}
+                {% for role in u.app_roles.get('pwd-zero', []) %}
                 <span class="badge {{ role }}">{{ role }}</span>
                 {% endfor %}
             </td>
@@ -69,7 +69,7 @@
                 {% endfor %}
             </td>
             <td>
-                <button class="btn btn-secondary" onclick="grantAccess('{{ u.email }}', 'sso-app-1')">Grant SSO App 1</button>
+                <button class="btn btn-secondary" onclick="grantAccess('{{ u.email }}', 'pwd-zero')">Grant pwd-zero</button>
                 <button class="btn btn-secondary" onclick="grantAccess('{{ u.email }}', 'flux')">Grant FLUX</button>
             </td>
         </tr>
