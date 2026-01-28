@@ -180,6 +180,67 @@ services:
     tmpfs:
       - /tmp:noexec,nosuid,size=100m
 
+  # AI Chat - ChitChat Clone with SSO
+  ai-chat:
+    build:
+      context: ../../..
+      dockerfile: examples/advanced/sso-multi-app/Dockerfile
+      args:
+        APP_USER: appuser
+        APP_UID: 1000
+        APP_GID: 1000
+    container_name: ai_chat
+    restart: unless-stopped
+    command: >
+      sh -c "
+      echo '=== Starting AI Chat ===' 1>&2;
+      cd /app && exec python -u apps/sso-app-3/web.py 2>&1
+      "
+    ports:
+      - "${AI_CHAT_PORT:-8003}:8000"
+    env_file:
+      - ./apps/sso-app-3/.env
+    environment:
+      # MongoDB - support both naming conventions
+      - MONGO_URI=${MONGO_URI:-${MONGODB_URI:-mongodb://admin:password@mongodb:27017/?authSource=admin&directConnection=true}}
+      - MONGODB_URI=${MONGODB_URI:-${MONGO_URI:-mongodb://admin:password@mongodb:27017/?authSource=admin&directConnection=true}}
+      - MONGO_DB_NAME=${MONGO_DB_NAME:-${MONGODB_DB:-oblivio_apps}}
+      - MONGODB_DB=${MONGODB_DB:-${MONGO_DB_NAME:-oblivio_apps}}
+      # MDB Engine
+      - MDB_ENGINE_MASTER_KEY=${MDB_ENGINE_MASTER_KEY:-}
+      - MDB_ENGINE_JWT_SECRET=${MDB_ENGINE_JWT_SECRET:-oblivio_jwt_secret_change_in_production_xyz789}
+      # Auth Hub
+      - AUTH_HUB_URL=${AUTH_HUB_URL:-http://auth-hub:8000}
+      # Azure OpenAI - loaded from .env file (env_file directive above)
+      # These will be automatically loaded from ./apps/sso-app-3/.env
+      # To override, export them in your shell before running docker-compose
+      # Other
+      - PYTHONUNBUFFERED=1
+      - LOG_LEVEL=${LOG_LEVEL:-INFO}
+    depends_on:
+      mongodb:
+        condition: service_healthy
+      auth-hub:
+        condition: service_started
+    networks:
+      - oblivio_network
+    healthcheck:
+      test: ["CMD", "python", "-c", "import sys; sys.exit(0)"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 512M
+        reservations:
+          cpus: '0.25'
+          memory: 128M
+    tmpfs:
+      - /tmp:noexec,nosuid,size=100m
+
 volumes:
   mongodb_data:
     driver: local

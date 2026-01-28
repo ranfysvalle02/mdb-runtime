@@ -34,6 +34,10 @@ RUN echo "=== Installing mdb-engine with Casbin support ===" && \
     pip install --no-cache-dir uvicorn[standard] fastapi jinja2 python-multipart && \
     echo "=== Installing app-specific dependencies ===" && \
     pip install --no-cache-dir python-dotenv finvizfinance pandas && \
+    echo "=== Installing file processing libraries ===" && \
+    pip install --no-cache-dir python-docx pypdf openpyxl && \
+    echo "=== Installing AI/LLM dependencies ===" && \
+    pip install --no-cache-dir google-genai openai anthropic mem0ai aiohttp && \
     echo "=== Installation complete ===" && \
     pip show mdb-engine && \
     echo "=== Verifying Casbin installation ===" && \
@@ -41,7 +45,10 @@ RUN echo "=== Installing mdb-engine with Casbin support ===" && \
     python -c "from casbin_motor_adapter import Adapter; print('✓ Casbin Adapter imported successfully')" && \
     echo "=== Verifying Finviz installation ===" && \
     python -c "from finvizfinance.screener.overview import Overview; print('✓ Finviz imported successfully')" || \
-    (echo "WARNING: Finviz not available, price lookups will use fallback" && true)
+    (echo "WARNING: Finviz not available, price lookups will use fallback" && true) && \
+    echo "=== Verifying google-genai installation ===" && \
+    python -c "from google import genai; print('✓ google-genai imported successfully')" || \
+    (echo "ERROR: google-genai not available" && exit 1)
 
 # Verify installation worked in builder stage
 RUN echo "=== Verifying installation in builder ===" && \
@@ -87,6 +94,14 @@ RUN echo "=== Verifying installation in runtime stage ===" && \
     echo "=== Verifying Casbin dependencies ===" && \
     python -c "import casbin; print('✓ Casbin imported successfully')" && \
     python -c "from casbin_motor_adapter import Adapter; print('✓ Casbin Adapter imported successfully')" && \
+    echo "=== Verifying google-genai installation ===" && \
+    python -c "from google import genai; print('✓ google-genai imported successfully')" && \
+    python -c "from google.genai import types; print('✓ google.genai.types imported successfully')" && \
+    echo "=== Verifying file processing libraries ===" && \
+    python -c "import docx; print('✓ python-docx imported successfully')" && \
+    python -c "from pypdf import PdfReader; print('✓ pypdf imported successfully')" && \
+    python -c "import openpyxl; print('✓ openpyxl imported successfully')" && \
+    python -c "import pandas as pd; print('✓ pandas imported successfully')" && \
     echo "=== Verification complete ==="
 
 # Switch to non-root user

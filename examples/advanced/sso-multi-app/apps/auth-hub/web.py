@@ -137,7 +137,7 @@ def get_default_app_roles() -> dict[str, list[str]]:
         sso_apps = [app.strip() for app in sso_apps_env.split(",") if app.strip()]
     else:
         # Default SSO apps for this example
-        sso_apps = ["pwd-zero", "flux"]
+        sso_apps = ["pwd-zero", "flux", "ai-chat"]
 
     # Build default roles dictionary
     default_roles = {
@@ -431,7 +431,7 @@ async def dashboard(request: Request):
             "user": user,
             "is_admin": is_admin(user),
             "all_users": all_users,
-            "sso_apps": ["pwd-zero", "flux"],
+            "sso_apps": ["pwd-zero", "flux", "ai-chat"],
         },
     )
 

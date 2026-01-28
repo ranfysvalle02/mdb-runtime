@@ -1,0 +1,108 @@
+{
+  "schema_version": "2.0",
+  "slug": "ai-chat",
+  "name": "AI Chat - AI Chat with Memory",
+  "description": "Beautiful AI chat application with persistent memory using Mem0. SSO-enabled version of ChitChat demonstrating shared authentication across multi-app deployments.",
+  "status": "active",
+  "developer_id": "developer@example.com",
+  "auth": {
+    "mode": "shared",
+    "auth_hub_url": "http://localhost:8000",
+    "roles": ["base_user", "viewer", "editor", "admin"],
+    "require_role": "base_user",
+    "public_routes": ["/health", "/auth/callback"]
+  },
+  "memory_config": {
+    "enabled": true,
+    "collection_name": "user_memories",
+    "embedding_model_dims": 1536,
+    "embedding_model": "text-embedding-3-small",
+    "chat_model": "gemini-2.5-flash",
+    "enable_graph": true,
+    "infer": true
+  },
+  "raw_content_config": {
+    "enabled": true,
+    "collection_name": "raw_content",
+    "embedding_model_dims": 1536,
+    "embedding_model": "text-embedding-3-small"
+  },
+  "managed_indexes": {
+    "conversations": [
+      {
+        "type": "regular",
+        "keys": {"user_id": 1, "created_at": -1},
+        "name": "user_conversations_idx",
+        "options": {
+          "background": true
+        }
+      },
+      {
+        "type": "regular",
+        "keys": {"created_at": -1},
+        "name": "created_idx",
+        "options": {
+          "background": true
+        }
+      }
+    ],
+    "messages": [
+      {
+        "type": "regular",
+        "keys": {"conversation_id": 1, "created_at": 1},
+        "name": "conversation_messages_idx",
+        "options": {
+          "background": true
+        }
+      },
+      {
+        "type": "regular",
+        "keys": {"user_id": 1, "created_at": -1},
+        "name": "user_messages_idx",
+        "options": {
+          "background": true
+        }
+      }
+    ],
+    "raw_content": [
+      {
+        "type": "vectorSearch",
+        "name": "raw_content_vector_idx",
+        "definition": {
+          "fields": [{
+            "type": "vector",
+            "path": "embedding",
+            "numDimensions": 1536,
+            "similarity": "cosine"
+          }]
+        }
+      },
+      {
+        "type": "regular",
+        "keys": {"bucket_id": 1, "user_id": 1},
+        "name": "raw_content_bucket_user_idx",
+        "options": {
+          "background": true
+        }
+      }
+    ]
+  },
+  "websockets": {
+    "realtime": {
+      "path": "/ws",
+      "description": "Real-time message updates and memory events",
+      "auth": {
+        "required": false,
+        "allow_anonymous": true
+      },
+      "ping_interval": 30
+    }
+  },
+  "cors": {
+    "enabled": true,
+    "allow_origins": ["*"],
+    "allow_credentials": true,
+    "allow_methods": ["*"],
+    "allow_headers": ["*"]
+  }
+}

@@ -10,6 +10,8 @@ Mem0.ai integration for intelligent memory management in MDB_ENGINE applications
 - **Semantic Search**: Vector-based semantic memory search
 - **Memory Inference**: Optional LLM-based memory inference and summarization
 - **Graph Memory**: Optional graph-based memory relationships (requires graph store config)
+- **Bucket Organization**: Built-in support for organizing memories into buckets (general, file, conversation, etc.)
+- **Dual Storage**: Store both extracted facts AND raw content for richer context retrieval
 
 ## Installation
 
@@ -203,6 +205,92 @@ await memory_service.delete(memory_id="memory_123", user_id="user123")
 await memory_service.delete_all(user_id="user123")
 ```
 
+### Bucket Organization
+
+Organize memories into buckets for better management:
+
+```python
+# Add memory to a bucket
+memory = await memory_service.add(
+    messages=[{"role": "user", "content": "I love Python programming"}],
+    user_id="user123",
+    bucket_id="coding:user123",
+    bucket_type="general",
+    metadata={"category": "coding"}
+)
+
+# Get all buckets for a user
+buckets = await memory_service.get_buckets(user_id="user123")
+
+# Get only file buckets
+file_buckets = await memory_service.get_buckets(
+    user_id="user123",
+    bucket_type="file"
+)
+
+# Get all memories in a specific bucket
+bucket_memories = await memory_service.get_bucket_memories(
+    bucket_id="file:document.pdf:user123",
+    user_id="user123"
+)
+```
+
+### Store Both Facts and Raw Content
+
+Store extracted facts alongside raw content for richer context:
+
+```python
+# Store both extracted facts and raw content
+facts, raw_memory_id = await memory_service.add_with_raw_content(
+    messages=[{"role": "user", "content": "Extract key facts from this document..."}],
+    raw_content="Full document text here...",
+    user_id="user123",
+    bucket_id="file:document.pdf:user123",
+    bucket_type="file",
+    infer=True  # Extract facts
+)
+
+# Later, retrieve raw content when needed
+raw_content = await memory_service.get_raw_content(
+    bucket_id="file:document.pdf:user123",
+    user_id="user123"
+)
+
+# Or include raw content when getting bucket memories
+all_memories = await memory_service.get_bucket_memories(
+    bucket_id="file:document.pdf:user123",
+    user_id="user123",
+    include_raw_content=True
+)
+```
+
+### Bucket Types
+
+Common bucket types:
+- **`general`**: General purpose buckets (e.g., category-based)
+- **`file`**: File-specific buckets (one per uploaded file)
+- **`conversation`**: Conversation-specific buckets
+- **`user`**: User-level buckets
+
+```python
+# General bucket (category-based)
+await memory_service.add(
+    messages=[{"role": "user", "content": "I prefer dark mode"}],
+    user_id="user123",
+    bucket_id="preferences:user123",
+    bucket_type="general"
+)
+
+# File bucket
+await memory_service.add(
+    messages=[{"role": "user", "content": "Document content..."}],
+    user_id="user123",
+    bucket_id="file:report.pdf:user123",
+    bucket_type="file",
+    metadata={"filename": "report.pdf"}
+)
+```
+
 ### Memory Inference
 
 With `infer=True`, the service can generate insights and summaries:
@@ -241,8 +329,11 @@ Mem0MemoryService(
 
 #### Methods
 
-- `add(messages, user_id, metadata=None)` - Add single memory
-- `add_all(memories)` - Add multiple memories
+- `add(messages, user_id, metadata=None, bucket_id=None, bucket_type=None, store_raw_content=False, raw_content=None)` - Add single memory with optional bucket and raw content storage
+- `add_with_raw_content(messages, raw_content, user_id, bucket_id=None, bucket_type=None)` - Store both extracted facts and raw content
+- `get_buckets(user_id, bucket_type=None, limit=None)` - Get all buckets for a user
+- `get_bucket_memories(bucket_id, user_id, include_raw_content=False, limit=None)` - Get all memories in a bucket
+- `get_raw_content(bucket_id, user_id)` - Get raw content for a bucket
 - `search(query, user_id, limit=10, filters=None)` - Search memories
 - `get(memory_id, user_id)` - Get specific memory
 - `get_all(user_id, filters=None)` - Get all memories for user

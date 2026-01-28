@@ -445,11 +445,57 @@ class EmbeddingService:
             logger.error(f"Error chunking text: {e}", exc_info=True)
             raise EmbeddingServiceError(f"Chunking failed: {str(e)}") from e
 
+    async def embed(self, text: str | list[str], model: str | None = None) -> list[list[float]]:
+        """
+        Generate embeddings for text or a list of texts.
+
+        Natural API that works with both single strings and lists.
+
+        Args:
+            text: A single string or list of strings to embed
+            model: Optional model identifier (passed to embedding provider)
+
+        Returns:
+            List of embedding vectors (each is a list of floats).
+            If input was a single string, returns a list containing one vector.
+
+        Example:
+            # Single string
+            vectors = await service.embed("Hello world", model="text-embedding-3-small")
+            # vectors is [[0.1, 0.2, ...]]
+
+            # List of strings (batch - more efficient)
+            vectors = await service.embed(["chunk 1", "chunk 2"], model="text-embedding-3-small")
+            # vectors is [[0.1, ...], [0.2, ...]]
+        """
+        # Normalize to list
+        chunks = [text] if isinstance(text, str) else text
+
+        if not chunks:
+            return []
+
+        try:
+            # Use EmbeddingProvider's embed method (handles retries, logging, etc.)
+            vectors = await self.embedding_provider.embed(chunks, model=model)
+            logger.info(f"Generated {len(vectors)} embedding(s)")
+            return vectors
+        except (
+            AttributeError,
+            TypeError,
+            ValueError,
+            RuntimeError,
+            ConnectionError,
+            OSError,
+        ) as e:
+            logger.error(f"Error generating embeddings: {e}", exc_info=True)
+            raise EmbeddingServiceError(f"Embedding generation failed: {str(e)}") from e
+
     async def embed_chunks(self, chunks: list[str], model: str | None = None) -> list[list[float]]:
         """
-        Generate embeddings for text chunks.
+        Generate embeddings for text chunks (list only).
 
-        Uses the user-provided embedding provider/function.
+        DEPRECATED: Use embed() instead, which accepts both strings and lists.
+        This method is kept for backward compatibility.
 
         Args:
             chunks: List of text chunks to embed
@@ -462,24 +508,7 @@ class EmbeddingService:
             chunks = ["chunk 1", "chunk 2"]
             vectors = await service.embed_chunks(chunks, model="text-embedding-3-small")
         """
-        if not chunks:
-            return []
-
-        try:
-            # Use EmbeddingProvider's embed method (handles retries, logging, etc.)
-            vectors = await self.embedding_provider.embed(chunks, model=model)
-            logger.info(f"Generated {len(vectors)} embeddings")
-            return vectors
-        except (
-            AttributeError,
-            TypeError,
-            ValueError,
-            RuntimeError,
-            ConnectionError,
-            OSError,
-        ) as e:
-            logger.error(f"Error generating embeddings: {e}", exc_info=True)
-            raise EmbeddingServiceError(f"Embedding generation failed: {str(e)}") from e
+        return await self.embed(chunks, model=model)
 
     async def process_and_store(
         self,

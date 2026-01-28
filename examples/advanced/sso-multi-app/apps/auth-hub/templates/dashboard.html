@@ -13,6 +13,7 @@
         <ul style="margin-top: 0.5rem; list-style: none; padding: 0;">
             <li><a href="http://localhost:8001" style="color: var(--accent);">pwd-zero</a> (Port 8001)</li>
             <li><a href="http://localhost:8002" style="color: var(--accent);">FLUX</a> (Port 8002)</li>
+            <li><a href="http://localhost:8003" style="color: var(--accent);">AI Chat</a> (Port 8003)</li>
         </ul>
     </div>
 </div>
@@ -48,6 +49,7 @@
             <th>Auth Hub Roles</th>
             <th>pwd-zero</th>
             <th>FLUX</th>
+            <th>AI Chat</th>
             <th>Actions</th>
         </tr>
         {% for u in all_users %}
@@ -69,8 +71,14 @@
                 {% endfor %}
             </td>
             <td>
+                {% for role in u.app_roles.get('ai-chat', []) %}
+                <span class="badge {{ role }}">{{ role }}</span>
+                {% endfor %}
+            </td>
+            <td>
                 <button class="btn btn-secondary" onclick="grantAccess('{{ u.email }}', 'pwd-zero')">Grant pwd-zero</button>
                 <button class="btn btn-secondary" onclick="grantAccess('{{ u.email }}', 'flux')">Grant FLUX</button>
+                <button class="btn btn-secondary" onclick="grantAccess('{{ u.email }}', 'ai-chat')">Grant AI Chat</button>
             </td>
         </tr>
         {% endfor %}
